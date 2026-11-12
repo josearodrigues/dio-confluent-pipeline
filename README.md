@@ -25,10 +25,10 @@ flowchart LR
 
 ## Estrutura
 
-- `database/`: inicialização, dados sintéticos, cenários de teste e limpeza.
-- `infrastructure/`: Environment, cluster, ACLs, Schema Registry e conector CDC.
-- `flink/sql/`: startup offset, chaves primárias, Temporal Join, append e detecção.
-- `flink/scripts/`: submissão dos statements e consultas pontuais.
+- `database/init/`: criação do schema e carga sintética.
+- `database/seed/`: cenários de transações para validação.
+- `infrastructure/`: Environment, cluster, identidades, ACLs, Schema Registry e conector CDC.
+- `flink/sql/` e `flink/scripts/`: statements Flink e submissão sequencial.
 - `operations/`: verificações CDC, evidências e acompanhamento de custos.
 - `schemas/`: contratos Avro usados no exercício de compatibilidade.
 - `evidence/`: saídas produzidas durante execuções reais.
@@ -41,18 +41,18 @@ flowchart LR
 - PostgreSQL com logical replication e acesso de rede pelo conector gerenciado.
 - `bash`, `psql`, `jq` e `curl`.
 
-## Configuração
+## Configuração PostgreSQL
 
-1. Copie `.env.example` para `.env` e informe a conexão PostgreSQL.
+1. Copie `.env.example` para `.env` e preencha os dados da conexão e o nome da role CDC.
 2. Prepare uma instância dedicada ao laboratório.
-3. Crie e valide a role PostgreSQL de replicação `cdc`, conforme os requisitos do provedor.
-4. Inicialize os dados, somente após conferir o banco:
+3. Antes da inicialização, crie no PostgreSQL uma role dedicada com `LOGIN` e `REPLICATION`, usando o nome informado em `PG_CDC_USER`. Defina a senha correspondente em `PG_CDC_PASSWORD`. O usuário administrador configurado em `PG_ADMIN_USER` precisa ter permissão para conceder acesso à role.
+4. Inicialize o banco somente após conferir host, database e usuário:
 
 ```bash
 CONFIRM_RESET=yes ./scripts/run-sql.sh database/init/00-database.sql
 ```
 
-A inicialização remove e recria o schema `payments`. Não a execute em banco com dados a preservar.
+A inicialização remove e recria o schema `payments`. Não a execute em banco com dados a preservar. A role CDC não é criada pelo script, pois provedores gerenciados podem restringir a criação de roles com atributo REPLICATION.
 
 ## Ordem de execução
 
