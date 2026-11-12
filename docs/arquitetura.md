@@ -46,6 +46,6 @@ flowchart LR
 
 O modo `latest-offset` em transactions impede que os registros históricos do snapshot sejam lidos como transações novas pelo statement de fraude. A dimensão accounts continua sendo lida para alimentar o Temporal Join.
 
-## Limites
+## Limites do modo append
 
-O modo append não é um filtro de INSERT. Mudanças de UPDATE/DELETE do CDC podem produzir novas linhas na saída append. Esta implementação didática segue o fluxo do mentor e valida a regra com INSERTs novos; não é uma solução completa de reconciliação de estado.
+O modo append não é um filtro de INSERT. Eventos Debezium de criação (`c`), leitura de snapshot (`r`) e atualização (`u`) são tratados como novas linhas; eventos de exclusão (`d`) são ignorados. Portanto, atualizações CDC podem contribuir para a contagem de eventos em `MATCH_RECOGNIZE`, enquanto exclusões não geram uma linha de saída. A implementação didática valida a regra com INSERTs novos, mas não oferece reconciliação completa de estado nem semântica de changelog.
