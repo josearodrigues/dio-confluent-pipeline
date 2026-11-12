@@ -7,6 +7,12 @@
   \quit 3
 \endif
 
+\if :{?cdc_role}
+\else
+  \echo 'ERRO: informe a role CDC com -v cdc_role=<nome>.'
+  \quit 3
+\endif
+
 CREATE SCHEMA payments;
 SET search_path TO payments, public;
 
@@ -75,10 +81,11 @@ SELECT setval(pg_get_serial_sequence('payments.accounts','account_id'), 240, tru
 SELECT setval(pg_get_serial_sequence('payments.cards','card_id'), 320, true);
 SELECT setval(pg_get_serial_sequence('payments.transactions','transaction_id'), 2000, true);
 
--- CDC: a role de replicação deve existir antes da execução (Neon: criada no Console/CLI).
-GRANT USAGE ON SCHEMA payments TO cdc;
-GRANT SELECT ON ALL TABLES IN SCHEMA payments TO cdc;
-ALTER DEFAULT PRIVILEGES IN SCHEMA payments GRANT SELECT ON TABLES TO cdc;
+-- A role CDC com LOGIN e REPLICATION deve existir antes da execução.
+GRANT CONNECT ON DATABASE :"DBNAME" TO :"cdc_role";
+GRANT USAGE ON SCHEMA payments TO :"cdc_role";
+GRANT SELECT ON ALL TABLES IN SCHEMA payments TO :"cdc_role";
+ALTER DEFAULT PRIVILEGES IN SCHEMA payments GRANT SELECT ON TABLES TO :"cdc_role";
 
 ALTER TABLE customers REPLICA IDENTITY FULL;
 ALTER TABLE accounts REPLICA IDENTITY FULL;
