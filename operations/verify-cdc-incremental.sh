@@ -11,13 +11,19 @@ require confluent psql grep sleep
 : "${SR_URL:?SR_URL ausente}"
 : "${SR_API_KEY:?SR_API_KEY ausente}"
 : "${SR_API_SECRET:?SR_API_SECRET ausente}"
+: "${PG_HOST:?PG_HOST ausente}"
+: "${PG_PORT:?PG_PORT ausente}"
+: "${PG_DATABASE:?PG_DATABASE ausente}"
+: "${PG_ADMIN_USER:?PG_ADMIN_USER ausente}"
+: "${PG_ADMIN_PASSWORD:?PG_ADMIN_PASSWORD ausente}"
+
 TEST_ID=999999
 TOPIC=payments.customers
-mkdir -p "$ROOT_DIR/evidence/homologation"
 STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
+GROUP="snapshot-check-incremental-$STAMP"
+mkdir -p "$ROOT_DIR/evidence/homologation"
 RAW="$(mktemp)"
 OUT="$ROOT_DIR/evidence/homologation/$STAMP-cdc-incremental.txt"
-mkdir -p "$(dirname "$OUT")"
 cleanup(){
   [[ -n "${PID:-}" ]] && { kill "$PID" 2>/dev/null || true; wait "$PID" 2>/dev/null || true; }
   PGPASSWORD="$PG_ADMIN_PASSWORD" PGSSLMODE=require psql -X -h "$PG_HOST" -p "$PG_PORT" \
@@ -25,7 +31,7 @@ cleanup(){
   rm -f "$RAW"
 }
 trap cleanup EXIT
-confluent kafka topic consume "$TOPIC" --group app-reader --value-format avro --print-offset \
+confluent kafka topic consume "$TOPIC" --group "$GROUP" --value-format avro --print-offset \
   --schema-registry-endpoint "$SR_URL" --schema-registry-api-key "$SR_API_KEY" \
   --schema-registry-api-secret "$SR_API_SECRET" --api-key "$READER_API_KEY" \
   --api-secret "$READER_API_SECRET" --bootstrap "$BOOTSTRAP" \
@@ -50,6 +56,7 @@ wait "$PID" 2>/dev/null || true
 unset PID
 {
   echo "CDC incremental — $STAMP UTC"
+  echo "Consumer group: $GROUP"
   for op in c u d; do
     if grep -q "\"op\":\"$op\"" "$RAW"; then echo "op=$op CONFIRMADO"; else echo "op=$op AUSENTE"; fi
   done
