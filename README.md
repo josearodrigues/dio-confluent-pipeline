@@ -63,7 +63,7 @@ A inicialização remove e recria o schema `payments`. Não a execute em banco c
 5. `./flink/scripts/run.sh` — configura startup offset, declara PKs, cria Temporal Join, append e MATCH_RECOGNIZE.
 6. Execute o cenário positivo: `./scripts/run-sql.sh database/seed/simulate-events.sql`.
 7. Consulte os resultados no tópico `fraud_alerts` e registre as evidências.
-8. Opcional: execute `database/seed/slow-pattern.sql` para testar eventos espaçados.
+8. Execute `./operations/verify-cdc-incremental.sh` para validar INSERT, UPDATE e DELETE na tabela customers.
 
 A evolução do schema real é opcional e pode ser demonstrada com `./infrastructure/schema-evolution.sh`.
 
@@ -74,7 +74,7 @@ A evolução do schema real é opcional e pode ser demonstrada com `./infrastruc
 - Janela: 60 segundos de `$rowtime`, timestamp associado à chegada Kafka.
 - O snapshot inicial deve terminar antes de iniciar os statements de processamento.
 - Para evitar que as 2.000 transações do snapshot sejam interpretadas como uma rajada, o script define `scan.startup.mode=latest-offset` em transactions antes do Temporal Join. A dimensão accounts permanece disponível para o join.
-- O modo append não filtra eventos Debezium por operação. UPDATE/DELETE podem ser representados como novas linhas; portanto, o cenário de fraude deve usar INSERTs novos. A solução reproduz a sequência do mentor e não pretende oferecer tratamento completo de changelog.
+- O modo append não filtra eventos Debezium por operação: eventos de criação/leitura/atualização são tratados como novas linhas, enquanto exclusões são ignoradas. Assim, atualizações CDC podem contribuir para a contagem de padrões; a regra não equivale a contar exclusivamente INSERTs de negócio. O cenário positivo usa INSERTs novos para demonstrar a regra.
 - O resultado é um fluxo de alertas no Kafka, não uma persistência em banco de destino.
 
 ## Segurança e custos
