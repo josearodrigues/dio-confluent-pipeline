@@ -107,6 +107,8 @@ ensure_topic_acl "$SA_READER_ID" read,describe "payments."
 ensure_literal_topic_acl "$SA_READER_ID" read,describe "fraud_alerts"
 ensure_group_acl "$SA_READER_ID" app-reader no
 ensure_group_acl "$SA_READER_ID" snapshot-check- yes
+evidence_dir="$ROOT_DIR/evidence/cloud"
+mkdir -p "$evidence_dir"
 {
   echo "Environment: $ENV_ID"
   echo "Kafka cluster: $CLUSTER_ID"

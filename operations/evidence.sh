@@ -8,6 +8,7 @@ require confluent
 confluent environment use "$ENV_ID" >/dev/null
 confluent kafka cluster use "$CLUSTER_ID" >/dev/null
 OUT="$ROOT_DIR/evidence/cloud/operational-state.txt"
+mkdir -p "$ROOT_DIR/evidence/cloud"
 {
   echo "Coleta: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
   echo "Environment: $ENV_ID"

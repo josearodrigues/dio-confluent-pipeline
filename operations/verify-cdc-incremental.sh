@@ -13,6 +13,7 @@ require confluent psql grep sleep
 : "${SR_API_SECRET:?SR_API_SECRET ausente}"
 TEST_ID=999999
 TOPIC=payments.customers
+mkdir -p "$ROOT_DIR/evidence/homologation"
 STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
 RAW="$(mktemp)"
 OUT="$ROOT_DIR/evidence/homologation/$STAMP-cdc-incremental.txt"

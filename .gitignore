@@ -3,8 +3,16 @@
 .env.*
 !.env.example
 .state.env
+.state.env.*
+!.state.env.example
 .neon
 infrastructure/.rendered/
+
+# Chaves e arquivos sensíveis
+*.pem
+*.key
+*.secret
+*.token
 
 # Arquivos temporários
 .DS_Store

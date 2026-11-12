@@ -45,6 +45,7 @@ COMPAT_BAD="$(call -X POST "$SR_URL/compatibility/subjects/$SUBJECT/versions/lat
 }
 
 call -X POST "$SR_URL/subjects/$SUBJECT/versions" -d "$V2" >/dev/null
+mkdir -p "$ROOT_DIR/evidence/cloud"
 {
   echo "Subject: $SUBJECT"
   echo "Compatibilidade: BACKWARD"

@@ -41,4 +41,5 @@ for _ in $(seq 1 60); do
   sleep 10
 done
 [[ "$STATUS" == RUNNING ]] || { echo "Conector não chegou a RUNNING (status=$STATUS)." >&2; exit 1; }
+mkdir -p "$ROOT_DIR/evidence/cloud"
 confluent connect cluster describe "$ID" | tee "$ROOT_DIR/evidence/cloud/03-cdc-connector.txt"

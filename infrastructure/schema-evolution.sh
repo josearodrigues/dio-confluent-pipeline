@@ -25,6 +25,7 @@ SCHEMA="$(jq -r '.schema' <<<"$LATEST")"
 jq -e '.fields | any(.[]; .name=="channel")' <<<"$SCHEMA" >/dev/null || {
   echo "A versão nova não contém channel." >&2; exit 1;
 }
+mkdir -p "$ROOT_DIR/evidence/homologation"
 {
   echo "Subject: $SUBJECT"
   echo "Versões antes: $BEFORE"
