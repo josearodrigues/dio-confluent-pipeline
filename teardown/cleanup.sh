@@ -31,9 +31,12 @@ fi
 for key in "${WRITER_API_KEY:-}" "${READER_API_KEY:-}" "${SR_API_KEY:-}"; do
   [[ -n "$key" ]] && confluent api-key delete "$key" --force
 done
-for sa in "${SA_WRITER_ID:-}" "${SA_READER_ID:-}"; do
-  [[ -n "$sa" ]] && confluent iam service-account delete "$sa" --force
-done
+if [[ "${SA_WRITER_CREATED:-no}" == yes && -n "${SA_WRITER_ID:-}" ]]; then
+  confluent iam service-account delete "$SA_WRITER_ID" --force
+fi
+if [[ "${SA_READER_CREATED:-no}" == yes && -n "${SA_READER_ID:-}" ]]; then
+  confluent iam service-account delete "$SA_READER_ID" --force
+fi
 confluent kafka cluster delete "$CLUSTER_ID" --force
 confluent environment delete "$ENV_ID" --force
 echo "Recursos Confluent solicitados para remoção. Verifique o console e Billing."
