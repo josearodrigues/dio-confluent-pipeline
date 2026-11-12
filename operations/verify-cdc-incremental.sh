@@ -89,20 +89,26 @@ kill "$PID" 2>/dev/null || true
 wait "$PID" 2>/dev/null || true
 PID=""
 
+FOUND_C=0
+FOUND_U=0
+FOUND_D=0
+# Exige que cada operação esteja no evento que contém o marcador exclusivo.
+grep -F "$TEST_EMAIL" "$RAW" | grep -Eq '"op"[[:space:]]*:[[:space:]]*"c"' && FOUND_C=1 || true
+grep -F "$TEST_EMAIL" "$RAW" | grep -Eq '"op"[[:space:]]*:[[:space:]]*"u"' && FOUND_U=1 || true
+grep -F "$TEST_EMAIL" "$RAW" | grep -Eq '"op"[[:space:]]*:[[:space:]]*"d"' && FOUND_D=1 || true
+
 status=0
+[[ "$FOUND_C" == "1" ]] || status=1
+[[ "$FOUND_U" == "1" ]] || status=1
+[[ "$FOUND_D" == "1" ]] || status=1
 {
   echo "CDC incremental — $STAMP UTC"
   echo "Consumer group: $GROUP"
   echo "Test customer_id: $TEST_ID"
   echo "Test email: $TEST_EMAIL"
-  for op in c u d; do
-    if grep -Eq "\"op\"[[:space:]]*:[[:space:]]*\"$op\"" "$RAW"; then
-      echo "op=$op CONFIRMADO"
-    else
-      echo "op=$op AUSENTE"
-      status=1
-    fi
-  done
+  [[ "$FOUND_C" == "1" ]] && echo "op=c CONFIRMADO" || echo "op=c AUSENTE"
+  [[ "$FOUND_U" == "1" ]] && echo "op=u CONFIRMADO" || echo "op=u AUSENTE"
+  [[ "$FOUND_D" == "1" ]] && echo "op=d CONFIRMADO" || echo "op=d AUSENTE"
   grep -F "$TEST_EMAIL" "$RAW" || true
 } | tee "$OUT"
 
