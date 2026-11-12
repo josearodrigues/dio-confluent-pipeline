@@ -75,6 +75,8 @@ confluent environment list >/dev/null 2>&1 || confluent login --save
 ENVS="$(confluent environment list -o json)"
 ENV_ID="${ENV_ID:-$(find_id "$ENVS" "$CC_ENV_NAME")}"
 if [[ -z "$ENV_ID" ]]; then ENV_ID="$(confluent environment create "$CC_ENV_NAME" --governance-package essentials -o json | jq -r '.id')"; fi
+ENV_ACTUAL="$(confluent environment describe "$ENV_ID" -o json | jq -r '.name // empty')"
+[[ "$ENV_ACTUAL" == "$CC_ENV_NAME" ]] || fail "ENV_ID aponta para '$ENV_ACTUAL', esperado '$CC_ENV_NAME'. Revise .state.env."
 save_state ENV_ID "$ENV_ID"
 confluent environment use "$ENV_ID" >/dev/null
 CLUSTERS="$(confluent kafka cluster list -o json)"
@@ -82,6 +84,8 @@ CLUSTER_ID="${CLUSTER_ID:-$(find_id "$CLUSTERS" "$CC_CLUSTER_NAME")}"
 if [[ -z "$CLUSTER_ID" ]]; then
   CLUSTER_ID="$(confluent kafka cluster create "$CC_CLUSTER_NAME" --cloud "$CC_CLOUD" --region "$CC_REGION" --type basic -o json | jq -r '.id')"
 fi
+CLUSTER_ACTUAL="$(confluent kafka cluster describe "$CLUSTER_ID" -o json | jq -r '.name // empty')"
+[[ "$CLUSTER_ACTUAL" == "$CC_CLUSTER_NAME" ]] || fail "CLUSTER_ID aponta para '$CLUSTER_ACTUAL', esperado '$CC_CLUSTER_NAME'. Revise .state.env."
 save_state CLUSTER_ID "$CLUSTER_ID"
 confluent kafka cluster use "$CLUSTER_ID" >/dev/null
 STATUS=""
