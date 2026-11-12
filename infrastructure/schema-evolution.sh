@@ -6,9 +6,19 @@ require psql curl jq
 : "${SR_URL:?Execute schema-registry.sh primeiro}"
 : "${SR_API_KEY:?API key do Schema Registry ausente}"
 : "${SR_API_SECRET:?API secret do Schema Registry ausente}"
+: "${PG_HOST:?PG_HOST ausente}"
+: "${PG_PORT:?PG_PORT ausente}"
+: "${PG_DATABASE:?PG_DATABASE ausente}"
+: "${PG_ADMIN_USER:?PG_ADMIN_USER ausente}"
+: "${PG_ADMIN_PASSWORD:?PG_ADMIN_PASSWORD ausente}"
+[[ "${CONFIRM_SCHEMA_EVOLUTION:-}" == "yes" ]] || {
+  echo "A evolução altera a tabela payments.transactions e insere uma linha. Use CONFIRM_SCHEMA_EVOLUTION=yes após conferir o ambiente." >&2
+  exit 1
+}
 SUBJECT="${CDC_SUBJECT:-payments.transactions-value}"
 API="$SR_URL/subjects/$SUBJECT/versions"
 BEFORE="$(curl -fsS -u "$SR_API_KEY:$SR_API_SECRET" "$API" | jq 'length')"
+(( BEFORE > 0 )) || { echo "Subject $SUBJECT ainda não existe; aguarde o conector CDC registrar o schema." >&2; exit 1; }
 PGPASSWORD="$PG_ADMIN_PASSWORD" PGSSLMODE=require psql -X -v ON_ERROR_STOP=1 \
   -h "$PG_HOST" -p "$PG_PORT" -U "$PG_ADMIN_USER" -d "$PG_DATABASE" \
   -c "ALTER TABLE payments.transactions ADD COLUMN IF NOT EXISTS channel TEXT" \
