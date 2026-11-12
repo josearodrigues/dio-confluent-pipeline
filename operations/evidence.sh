@@ -16,7 +16,11 @@ mkdir -p "$ROOT_DIR/evidence/cloud"
   echo
   confluent connect cluster list
   echo
-  [[ -n "${FLINK_POOL_ID:-}" ]] && confluent flink compute-pool describe "$FLINK_POOL_ID"
-  echo
-  [[ -n "${FLINK_POOL_ID:-}" ]] && confluent flink statement list --compute-pool "$FLINK_POOL_ID" --environment "$ENV_ID"
+  if [[ -n "${FLINK_POOL_ID:-}" ]]; then
+    confluent flink compute-pool describe "$FLINK_POOL_ID"
+    echo
+    confluent flink statement list --compute-pool "$FLINK_POOL_ID" --environment "$ENV_ID"
+  else
+    echo "Compute pool Flink ainda não registrado em .state.env."
+  fi
 } 2>&1 | tee "$OUT"
