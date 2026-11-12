@@ -1,4 +1,5 @@
--- Etapa demonstrada pelo mentor para habilitar a entrada do MATCH_RECOGNIZE.
--- Atenção: append não equivale a filtrar somente op=c. Updates/deletes do CDC podem
--- ser representados como novas linhas; por isso o teste de fraude usa INSERTs novos.
+-- Habilita a entrada append-only exigida pelo MATCH_RECOGNIZE.
+-- Append não é um filtro de operações Debezium:
+-- INSERT/READ/UPDATE são tratados como novas linhas; DELETE é ignorado.
+-- Portanto, updates de entidades CDC podem contar como eventos adicionais no padrão.
 ALTER TABLE enriched_payments SET ('changelog.mode' = 'append');
