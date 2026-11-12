@@ -14,15 +14,24 @@ confluent kafka cluster use "$CLUSTER_ID" >/dev/null
 confluent flink region use --cloud "$CC_CLOUD" --region "$CC_REGION" >/dev/null
 
 if [[ -z "${FLINK_POOL_ID:-}" ]]; then
-  pool="$(confluent flink compute-pool list --environment "$ENV_ID" -o json |
-    jq -r '[.[] | select(.status=="PROVISIONED" or .status=="RUNNING")][0].id // empty')"
+  pools="$(confluent flink compute-pool list --environment "$ENV_ID" -o json)"
+  pool="$(jq -r --arg n "$CC_FLINK_POOL_NAME" '[.[] | select(.name==$n and (.status=="PROVISIONED" or .status=="RUNNING"))][0].id // empty' <<<"$pools")"
   if [[ -z "$pool" ]]; then
+    if jq -e --arg n "$CC_FLINK_POOL_NAME" 'any(.[]; .name==$n)' <<<"$pools" >/dev/null; then
+      echo "Compute pool '$CC_FLINK_POOL_NAME' existe, mas não está disponível. Inspecione-o antes de criar outro." >&2
+      exit 1
+    fi
     pool="$(confluent flink compute-pool create "$CC_FLINK_POOL_NAME" \
       --cloud "$CC_CLOUD" --region "$CC_REGION" --max-cfu 5 -o json | jq -r '.id')"
   fi
   save_state FLINK_POOL_ID "$pool"
 fi
 
+POOL_NAME="$(confluent flink compute-pool describe "$FLINK_POOL_ID" -o json | jq -r '.name // empty')"
+[[ "$POOL_NAME" == "$CC_FLINK_POOL_NAME" ]] || {
+  echo "FLINK_POOL_ID aponta para '$POOL_NAME', esperado '$CC_FLINK_POOL_NAME'. Revise .state.env." >&2
+  exit 1
+}
 POOL_STATUS=""
 for _ in $(seq 1 60); do
   POOL_STATUS="$(confluent flink compute-pool describe "$FLINK_POOL_ID" -o json | jq -r '.status')"
