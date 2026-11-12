@@ -77,9 +77,9 @@ psql_admin -v test_id="$TEST_ID" \
   -c "DELETE FROM payments.customers WHERE customer_id = :'test_id'"
 
 for _ in $(seq 1 30); do
-  if grep -Eq '"op"[[:space:]]*:[[:space:]]*"d"' "$RAW" &&
-     grep -Eq '"op"[[:space:]]*:[[:space:]]*"u"' "$RAW" &&
-     grep -Eq '"op"[[:space:]]*:[[:space:]]*"c"' "$RAW"; then
+  if grep -F "$TEST_EMAIL" "$RAW" | grep -Eq '"op"[[:space:]]*:[[:space:]]*"d"' &&
+     grep -F "$TEST_EMAIL" "$RAW" | grep -Eq '"op"[[:space:]]*:[[:space:]]*"u"' &&
+     grep -F "$TEST_EMAIL" "$RAW" | grep -Eq '"op"[[:space:]]*:[[:space:]]*"c"'; then
     break
   fi
   sleep 2
