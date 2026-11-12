@@ -6,6 +6,7 @@ source "$(dirname "${BASH_SOURCE[0]}")/_common.sh"
 : "${PG_DATABASE:?PG_DATABASE ausente}"
 : "${PG_ADMIN_USER:?PG_ADMIN_USER ausente}"
 : "${PG_ADMIN_PASSWORD:?PG_ADMIN_PASSWORD ausente}"
+: "${PG_CDC_USER:?PG_CDC_USER ausente}"
 require psql
 FILE="${1:?Uso: ./scripts/run-sql.sh caminho/arquivo.sql}"
 SQL_FILE="$FILE"
@@ -19,6 +20,7 @@ if [[ "$SQL_FILE" == *database/init/00-database.sql ]]; then
     exit 1
   }
   EXTRA+=(-v reset_ok=1)
+  EXTRA+=(-v "cdc_role=$PG_CDC_USER")
 fi
 if [[ "$SQL_FILE" == *database/cleanup/postgres-cleanup.sql ]]; then
   [[ "${CONFIRM_CLEANUP:-}" == "yes" ]] || {
@@ -38,7 +40,7 @@ LOG="$ROOT_DIR/evidence/$GROUP/$STAMP-$(basename "$SQL_FILE" .sql).log"
 set +e
 PGPASSWORD="$PG_ADMIN_PASSWORD" PGSSLMODE=require psql -X \
   -h "$PG_HOST" -p "$PG_PORT" -U "$PG_ADMIN_USER" -d "$PG_DATABASE" \
-  -v ON_ERROR_STOP=1 "${EXTRA[@]}" -f "$SQL_FILE" 2>&1 | tee "$LOG"
+  -v ON_ERROR_STOP=1 -v "DBNAME=$PG_DATABASE" "${EXTRA[@]}" -f "$SQL_FILE" 2>&1 | tee "$LOG"
 status="${PIPESTATUS[0]}"
 set -e
 echo "Log: $LOG"
