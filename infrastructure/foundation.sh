@@ -5,11 +5,17 @@ source "$(dirname "${BASH_SOURCE[0]}")/../scripts/_common.sh"
 require confluent jq
 fail(){ echo "ERRO: $*" >&2; exit 1; }
 find_id(){ jq -r --arg n "$2" '[.[]|select(.name==$n)][0].id // empty' <<<"$1"; }
+SA_CREATED=no
 ensure_sa(){
   local name="$1" desc="$2" list id
   list="$(confluent iam service-account list -o json)"
   id="$(find_id "$list" "$name")"
-  if [[ -z "$id" ]]; then id="$(confluent iam service-account create "$name" --description "$desc" -o json | jq -r '.id')"; fi
+  if [[ -z "$id" ]]; then
+    id="$(confluent iam service-account create "$name" --description "$desc" -o json | jq -r '.id')"
+    SA_CREATED=yes
+  else
+    SA_CREATED=no
+  fi
   printf '%s' "$id"
 }
 ensure_key(){
@@ -100,9 +106,11 @@ BOOTSTRAP="$(confluent kafka cluster describe "$CLUSTER_ID" -o json | jq -r '.en
 save_state BOOTSTRAP "$BOOTSTRAP"
 
 SA_WRITER_ID="$(ensure_sa cdc-writer 'Escrita dos eventos CDC')"
-SA_READER_ID="$(ensure_sa app-reader 'Leitura dos tópicos do laboratório')"
 save_state SA_WRITER_ID "$SA_WRITER_ID"
+save_state SA_WRITER_CREATED "$SA_CREATED"
+SA_READER_ID="$(ensure_sa app-reader 'Leitura dos tópicos do laboratório')"
 save_state SA_READER_ID "$SA_READER_ID"
+save_state SA_READER_CREATED "$SA_CREATED"
 ensure_key "$CLUSTER_ID" "$SA_WRITER_ID" WRITER_API_KEY WRITER_API_SECRET
 ensure_key "$CLUSTER_ID" "$SA_READER_ID" READER_API_KEY READER_API_SECRET
 ensure_topic_acl "$SA_WRITER_ID" create,write,describe "payments."
@@ -111,8 +119,7 @@ ensure_topic_acl "$SA_READER_ID" read,describe "payments."
 ensure_literal_topic_acl "$SA_READER_ID" read,describe "fraud_alerts"
 ensure_group_acl "$SA_READER_ID" app-reader no
 ensure_group_acl "$SA_READER_ID" snapshot-check- yes
-evidence_dir="$ROOT_DIR/evidence/cloud"
-mkdir -p "$evidence_dir"
+mkdir -p "$ROOT_DIR/evidence/cloud"
 {
   echo "Environment: $ENV_ID"
   echo "Kafka cluster: $CLUSTER_ID"
