@@ -1,0 +1,14 @@
+{
+  "type": "record",
+  "name": "Transaction",
+  "namespace": "io.dio.payments",
+  "fields": [
+    {"name": "transaction_id", "type": "long"},
+    {"name": "card_id", "type": "int"},
+    {"name": "account_id", "type": "int"},
+    {"name": "amount", "type": "double"},
+    {"name": "currency", "type": "string"},
+    {"name": "status", "type": "string"},
+    {"name": "channel", "type": ["null", "string"], "default": null}
+  ]
+}

@@ -1,0 +1,117 @@
+#!/usr/bin/env bash
+# Provisiona Environment, Kafka Basic, identidades e ACLs do laboratório.
+set -euo pipefail
+source "$(dirname "${BASH_SOURCE[0]}")/../scripts/_common.sh"
+require confluent jq
+fail(){ echo "ERRO: $*" >&2; exit 1; }
+find_id(){ jq -r --arg n "$2" '[.[]|select(.name==$n)][0].id // empty' <<<"$1"; }
+ensure_sa(){
+  local name="$1" desc="$2" list id
+  list="$(confluent iam service-account list -o json)"
+  id="$(find_id "$list" "$name")"
+  if [[ -z "$id" ]]; then id="$(confluent iam service-account create "$name" --description "$desc" -o json | jq -r '.id')"; fi
+  printf '%s' "$id"
+}
+ensure_key(){
+  local resource="$1" sa="$2" keyvar="$3" secretvar="$4" json existing
+  if [[ -n "${!keyvar:-}" && -n "${!secretvar:-}" ]]; then return; fi
+  existing="$(confluent api-key list --resource "$resource" --service-account "$sa" -o json | jq 'length')"
+  if [[ "$existing" -gt 0 ]]; then
+    fail "já existem $existing API key(s) para $keyvar, mas o segredo não está salvo. Recupere o estado ou revise as chaves antes de criar outra."
+  fi
+  json="$(confluent api-key create --resource "$resource" --service-account "$sa" --description "payments-lab-$keyvar" -o json)"
+  save_state "$keyvar" "$(jq -r '.api_key' <<<"$json")"
+  save_state "$secretvar" "$(jq -r '.api_secret' <<<"$json")"
+}
+ensure_topic_acl(){
+  local sa="$1" ops="$2" topic="$3" acls op
+  acls="$(confluent kafka acl list -o json)"
+  for op in ${ops//,/ }; do
+    if jq -e --arg p "User:$sa" --arg r "$topic" --arg op "$op" '
+      any(.[];
+        (.principal==$p) and ((.resource_name // .resourceName // "")==$r) and
+        ((.operation // "" | ascii_upcase)==($op|ascii_upcase)) and
+        ((.permission // "" | ascii_upcase)=="ALLOW") and
+        ((.pattern_type // .patternType // "" | ascii_upcase)=="PREFIXED")
+      )' <<<"$acls" >/dev/null; then continue; fi
+    confluent kafka acl create --allow --service-account "$sa" --operations "$op" --topic "$topic" --prefix >/dev/null
+    acls="$(confluent kafka acl list -o json)"
+  done
+}
+ensure_literal_topic_acl(){
+  local sa="$1" ops="$2" topic="$3" acls op
+  acls="$(confluent kafka acl list -o json)"
+  for op in ${ops//,/ }; do
+    if jq -e --arg p "User:$sa" --arg r "$topic" --arg op "$op" '
+      any(.[];
+        (.principal==$p) and ((.resource_name // .resourceName // "")==$r) and
+        ((.operation // "" | ascii_upcase)==($op|ascii_upcase)) and
+        ((.permission // "" | ascii_upcase)=="ALLOW") and
+        ((.pattern_type // .patternType // "" | ascii_upcase)=="LITERAL")
+      )' <<<"$acls" >/dev/null; then continue; fi
+    confluent kafka acl create --allow --service-account "$sa" --operations "$op" --topic "$topic" >/dev/null
+    acls="$(confluent kafka acl list -o json)"
+  done
+}
+ensure_group_acl(){
+  local sa="$1" group="$2" prefix="$3" acls pt
+  pt="$([[ "$prefix" == yes ]] && echo PREFIXED || echo LITERAL)"
+  acls="$(confluent kafka acl list -o json)"
+  if jq -e --arg p "User:$sa" --arg r "$group" --arg pt "$pt" '
+    any(.[];
+      (.principal==$p) and ((.resource_name // .resourceName // "")==$r) and
+      ((.resource_type // .resourceType // "" | ascii_upcase)=="GROUP") and
+      ((.pattern_type // .patternType // "" | ascii_upcase)==$pt) and
+      ((.operation // "" | ascii_upcase)=="READ") and ((.permission // "" | ascii_upcase)=="ALLOW")
+    )' <<<"$acls" >/dev/null; then return; fi
+  if [[ "$prefix" == yes ]]; then
+    confluent kafka acl create --allow --service-account "$sa" --operations read --consumer-group "$group" --prefix >/dev/null
+  else
+    confluent kafka acl create --allow --service-account "$sa" --operations read --consumer-group "$group" >/dev/null
+  fi
+}
+
+confluent environment list >/dev/null 2>&1 || confluent login --save
+ENVS="$(confluent environment list -o json)"
+ENV_ID="${ENV_ID:-$(find_id "$ENVS" "$CC_ENV_NAME")}"
+if [[ -z "$ENV_ID" ]]; then ENV_ID="$(confluent environment create "$CC_ENV_NAME" --governance-package essentials -o json | jq -r '.id')"; fi
+save_state ENV_ID "$ENV_ID"
+confluent environment use "$ENV_ID" >/dev/null
+CLUSTERS="$(confluent kafka cluster list -o json)"
+CLUSTER_ID="${CLUSTER_ID:-$(find_id "$CLUSTERS" "$CC_CLUSTER_NAME")}"
+if [[ -z "$CLUSTER_ID" ]]; then
+  CLUSTER_ID="$(confluent kafka cluster create "$CC_CLUSTER_NAME" --cloud "$CC_CLOUD" --region "$CC_REGION" --type basic -o json | jq -r '.id')"
+fi
+save_state CLUSTER_ID "$CLUSTER_ID"
+confluent kafka cluster use "$CLUSTER_ID" >/dev/null
+STATUS=""
+for _ in $(seq 1 60); do
+  STATUS="$(confluent kafka cluster describe "$CLUSTER_ID" -o json | jq -r '.status')"
+  [[ "$STATUS" == UP ]] && break
+  [[ "$STATUS" == FAILED ]] && fail "cluster Kafka em FAILED"
+  sleep 10
+done
+[[ "$STATUS" == UP ]] || fail "cluster Kafka não ficou UP"
+BOOTSTRAP="$(confluent kafka cluster describe "$CLUSTER_ID" -o json | jq -r '.endpoint')"
+save_state BOOTSTRAP "$BOOTSTRAP"
+
+SA_WRITER_ID="$(ensure_sa cdc-writer 'Escrita dos eventos CDC')"
+SA_READER_ID="$(ensure_sa app-reader 'Leitura dos tópicos do laboratório')"
+save_state SA_WRITER_ID "$SA_WRITER_ID"
+save_state SA_READER_ID "$SA_READER_ID"
+ensure_key "$CLUSTER_ID" "$SA_WRITER_ID" WRITER_API_KEY WRITER_API_SECRET
+ensure_key "$CLUSTER_ID" "$SA_READER_ID" READER_API_KEY READER_API_SECRET
+ensure_topic_acl "$SA_WRITER_ID" create,write,describe "payments."
+ensure_topic_acl "$SA_WRITER_ID" create,write,describe "__debezium-heartbeat"
+ensure_topic_acl "$SA_READER_ID" read,describe "payments."
+ensure_literal_topic_acl "$SA_READER_ID" read,describe "fraud_alerts"
+ensure_group_acl "$SA_READER_ID" app-reader no
+ensure_group_acl "$SA_READER_ID" snapshot-check- yes
+{
+  echo "Environment: $ENV_ID"
+  echo "Kafka cluster: $CLUSTER_ID"
+  echo "Bootstrap: $BOOTSTRAP"
+  echo "Writer service account: $SA_WRITER_ID"
+  echo "Reader service account: $SA_READER_ID"
+  confluent kafka acl list
+} | tee "$ROOT_DIR/evidence/cloud/01-foundation.txt"

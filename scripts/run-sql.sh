@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+set -euo pipefail
+source "$(dirname "${BASH_SOURCE[0]}")/_common.sh"
+: "${PG_HOST:?PG_HOST ausente}"
+: "${PG_PORT:?PG_PORT ausente}"
+: "${PG_DATABASE:?PG_DATABASE ausente}"
+: "${PG_ADMIN_USER:?PG_ADMIN_USER ausente}"
+: "${PG_ADMIN_PASSWORD:?PG_ADMIN_PASSWORD ausente}"
+require psql
+FILE="${1:?Uso: ./scripts/run-sql.sh caminho/arquivo.sql}"
+SQL_FILE="$FILE"
+[[ "$SQL_FILE" = /* ]] || SQL_FILE="$ROOT_DIR/$FILE"
+[[ -f "$SQL_FILE" ]] || { echo "Arquivo não encontrado: $SQL_FILE" >&2; exit 1; }
+
+EXTRA=()
+if [[ "$SQL_FILE" == *database/init/00-database.sql ]]; then
+  [[ "${CONFIRM_RESET:-}" == "yes" ]] || {
+    echo "A inicialização recria o schema payments. Use CONFIRM_RESET=yes após conferir o banco." >&2
+    exit 1
+  }
+  EXTRA+=(-v reset_ok=1)
+fi
+if [[ "$SQL_FILE" == *database/cleanup/postgres-cleanup.sql ]]; then
+  [[ "${CONFIRM_CLEANUP:-}" == "yes" ]] || {
+    echo "A limpeza remove o schema payments e a publication. Use CONFIRM_CLEANUP=yes após conferir o banco." >&2
+    exit 1
+  }
+fi
+
+STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
+case "$SQL_FILE" in
+  */database/init/*|*/database/cleanup/*) GROUP=local ;;
+  *) GROUP=homologation ;;
+esac
+mkdir -p "$ROOT_DIR/evidence/$GROUP"
+LOG="$ROOT_DIR/evidence/$GROUP/$STAMP-$(basename "$SQL_FILE" .sql).log"
+
+set +e
+PGPASSWORD="$PG_ADMIN_PASSWORD" PGSSLMODE=require psql -X \
+  -h "$PG_HOST" -p "$PG_PORT" -U "$PG_ADMIN_USER" -d "$PG_DATABASE" \
+  -v ON_ERROR_STOP=1 "${EXTRA[@]}" -f "$SQL_FILE" 2>&1 | tee "$LOG"
+status="${PIPESTATUS[0]}"
+set -e
+echo "Log: $LOG"
+exit "$status"

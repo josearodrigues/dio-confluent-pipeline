@@ -1,0 +1,12 @@
+# Segredos e estado local
+.env
+.env.*
+!.env.example
+.state.env
+.neon
+infrastructure/.rendered/
+
+# Arquivos temporários
+.DS_Store
+*.zip
+*.tmp
