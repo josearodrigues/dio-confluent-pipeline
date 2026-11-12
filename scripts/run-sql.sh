@@ -6,7 +6,6 @@ source "$(dirname "${BASH_SOURCE[0]}")/_common.sh"
 : "${PG_DATABASE:?PG_DATABASE ausente}"
 : "${PG_ADMIN_USER:?PG_ADMIN_USER ausente}"
 : "${PG_ADMIN_PASSWORD:?PG_ADMIN_PASSWORD ausente}"
-: "${PG_CDC_USER:?PG_CDC_USER ausente}"
 require psql
 FILE="${1:?Uso: ./scripts/run-sql.sh caminho/arquivo.sql}"
 SQL_FILE="$FILE"
@@ -15,6 +14,7 @@ SQL_FILE="$FILE"
 
 EXTRA=()
 if [[ "$SQL_FILE" == *database/init/00-database.sql ]]; then
+  : "${PG_CDC_USER:?PG_CDC_USER ausente}"
   [[ "${CONFIRM_RESET:-}" == "yes" ]] || {
     echo "A inicialização recria o schema payments. Use CONFIRM_RESET=yes após conferir o banco." >&2
     exit 1
