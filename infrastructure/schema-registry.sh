@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Prepara Schema Registry e valida evolução Avro compatível e incompatível.
+# Execução única por subject: não sobrescreve versões de uma execução anterior.
 set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/../scripts/_common.sh"
 require confluent jq curl
@@ -26,6 +27,11 @@ SUBJECT="contract.transactions-value"
 call(){ curl -fsS -u "$AUTH" -H 'Content-Type: application/vnd.schemaregistry.v1+json' "$@"; }
 payload(){ jq -Rs '{schemaType:"AVRO",schema:.}'; }
 
+SUBJECTS="$(call "$SR_URL/subjects")"
+if jq -e --arg s "$SUBJECT" 'index($s) != null' <<<"$SUBJECTS" >/dev/null; then
+  echo "Subject $SUBJECT já existe. Inspecione as versões e não reexecute este provisionamento." >&2
+  exit 1
+fi
 call -X PUT "$SR_URL/config/$SUBJECT" -d '{"compatibility":"BACKWARD"}' >/dev/null
 V1="$(payload < "$ROOT_DIR/schemas/transaction-v1.avsc")"
 V2="$(payload < "$ROOT_DIR/schemas/transaction-v2.avsc")"
