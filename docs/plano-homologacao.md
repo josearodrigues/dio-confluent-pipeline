@@ -78,11 +78,38 @@ O verificador consome os quatro tópicos desde o início e contabiliza eventos D
 | `payments.cards` | 320 |
 | `payments.transactions` | 2.000 |
 
-**Critério:** cada contagem observada deve corresponder à esperada. Investigue divergências antes de iniciar os statements Flink.
+**Critério:** cada contagem observada deve corresponder à esperada. Investigue divergências antes de iniciar CDC incremental, evolução do schema ou statements Flink.
 
-## 6. Flink SQL
+## 6. CDC incremental
 
-Somente após confirmar o snapshot, revise e execute:
+Após o snapshot inicial completo e antes de iniciar o Flink, valide alterações em tempo real:
+
+```bash
+./operations/verify-cdc-incremental.sh
+```
+
+O script cria um registro temporário exclusivo, executa INSERT/UPDATE/DELETE, procura os eventos `c`, `u` e `d` associados ao registro e tenta remover o registro no encerramento.
+
+**Evidência esperada:** arquivo datado `*-cdc-incremental.txt` em `evidence/homologation/`.
+
+**Critério:** correlacionar a linha de origem com os três eventos Debezium e confirmar `snapshot=false`. O teste deve ocorrer antes do Flink, como no Passo 5 da demonstração do mentor.
+
+## 7. Evolução do schema real do CDC
+
+Depois do teste incremental e antes de criar statements Flink, valide a evolução do subject efetivamente usado pelo conector:
+
+```bash
+CONFIRM_SCHEMA_EVOLUTION=yes ./infrastructure/schema-evolution.sh
+```
+
+Esta etapa é distinta do teste isolado de compatibilidade da etapa 3. Ela altera a tabela `payments.transactions`, adiciona a coluna `channel` e insere um registro para provocar nova versão no subject real `payments.transactions-value`. Exige confirmação explícita e deve ser executada somente após conferir o banco e o subject.
+
+**Evidência esperada:** `evidence/homologation/07-real-schema-evolution.txt`.
+
+**Critério:** comprovar a compatibilidade esperada, a publicação do novo schema pelo CDC e a captura do evento no tópico. Corresponde ao Passo 6 da demonstração do mentor.
+## 8. Flink SQL
+
+Somente após homologar o snapshot, o CDC incremental e a evolução do schema real, revise e execute:
 
 ```bash
 ./flink/scripts/run.sh
@@ -99,7 +126,7 @@ O script seleciona o contexto Flink, pode criar um compute pool se não encontra
 
 Esses estados confirmam o estado dos statements, não a correção funcional do Temporal Join nem a emissão de alertas. A validação funcional exige observar dados enriquecidos e mensagens de saída.
 
-## 7. Cenário positivo de fraude
+## 9. Cenário positivo de fraude
 
 Somente após confirmar os statements necessários em execução:
 
@@ -111,7 +138,7 @@ O SQL insere quatro transações positivas para o cartão 1. O wrapper registra 
 
 **Critério:** observar no tópico `fraud_alerts` o alerta correspondente ao padrão. Registrar a mensagem e o contexto de consumo como evidência. A execução dos INSERTs ou a consulta ao PostgreSQL não comprovam, isoladamente, a emissão do alerta.
 
-## 8. Cenário negativo opcional
+## 10. Cenário negativo opcional
 
 O arquivo `database/seed/slow-pattern.sql` insere três transações positivas para o cartão 4, com intervalos de aproximadamente 35 segundos entre elas; o primeiro e o terceiro eventos ficam separados por mais de 60 segundos.
 
@@ -123,29 +150,11 @@ Execute somente com os statements Flink ativos:
 
 **Critério:** observar o comportamento do tópico `fraud_alerts` e registrar a janela temporal e o resultado. Não declarar ausência de alerta sem observação suficiente do processamento/watermark. O arquivo prepara o cenário; não realiza sozinho a verificação do resultado.
 
-## 9. Verificações complementares opcionais
+## 11. Verificações complementares opcionais
 
-### CDC incremental
+As validações CDC incremental e evolução do schema real foram promovidas para as etapas obrigatórias anteriores ao Flink (seções 6 e 7), seguindo a sequência da demonstração do mentor. Não as repetir aqui.
 
-```bash
-./operations/verify-cdc-incremental.sh
-```
-
-O script cria um registro temporário exclusivo, executa INSERT/UPDATE/DELETE, procura os eventos `c`, `u` e `d` associados ao registro e tenta remover o registro no encerramento.
-
-**Evidência esperada:** arquivo datado `*-cdc-incremental.txt` em `evidence/homologation/`.
-
-### Evolução do schema real do CDC
-
-```bash
-CONFIRM_SCHEMA_EVOLUTION=yes ./infrastructure/schema-evolution.sh
-```
-
-Esta etapa é distinta do teste de compatibilidade isolado da etapa 3. Ela altera a tabela `payments.transactions`, adiciona a coluna `channel` e insere um registro para provocar nova versão no subject real `payments.transactions-value`. Exige confirmação explícita e deve ser executada somente após conferir o banco e o subject.
-
-**Evidência esperada:** `evidence/homologation/07-real-schema-evolution.txt`.
-
-## 10. Registro, custos e encerramento
+## 12. Registro, custos e encerramento
 
 - Preserve logs e resultados em `evidence/`; registre data, ambiente, escopo e resultado observado.
 - Classifique cada etapa como aprovada, falhou, parcial, não executada ou bloqueada.
@@ -161,3 +170,8 @@ Esta etapa é distinta do teste de compatibilidade isolado da etapa 3. Ela alter
 - O changelog append não filtra exclusivamente INSERTs: eventos CDC de criação, snapshot e atualização podem ser tratados como novas linhas, enquanto exclusões são ignoradas, conforme o SQL versionado.
 - `MATCH_RECOGNIZE` depende da semântica temporal/watermark do Flink; a janela de 60 segundos não deve ser descrita como garantia de emissão imediata em relógio de parede.
 - Nenhum resultado histórico de ambientes já excluídos comprova homologação no ambiente atual.
+
+
+## Ordem didática e operacional
+
+A sequência reproduz a demonstração do mentor: Passo 5 (CDC incremental: INSERT/UPDATE/DELETE), Passo 6 (evolução/compatibilidade de schema) e Passo 7 (Flink: Temporal Join, append e MATCH_RECOGNIZE). O teste isolado de contrato da etapa 3 é uma preparação de Schema Registry e não substitui a evolução do subject real na etapa 7.
