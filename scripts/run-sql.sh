@@ -40,7 +40,8 @@ if [[ "$SQL_FILE" == *database/init/01-database.sql ]]; then
   ROLE_FLAGS="$(PGPASSWORD="$PG_ADMIN_PASSWORD" PGSSLMODE=require psql -X -v ON_ERROR_STOP=1 -Atq \
     -v cdc_role="$PG_CDC_USER" -h "$PG_HOST" -p "$PG_PORT" \
     -U "$PG_ADMIN_USER" -d "$PG_DATABASE" <<'SQL'
-SELECT rolcanlogin::text || '|' || rolreplication::text
+SELECT rolcanlogin::text || '|' ||
+       (rolreplication OR pg_has_role(oid, 'neon_superuser', 'MEMBER'))::text
 FROM pg_roles
 WHERE rolname = :'cdc_role';
 SQL
