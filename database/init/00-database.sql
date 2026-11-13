@@ -3,18 +3,18 @@
 -- Execute após habilitar logical replication e preparar a role cdc:
 -- CONFIRM_RESET=yes ./scripts/run-sql.sh database/init/00-database.sql
 
-\\if :{?reset_ok}
+\if :{?reset_ok}
   \\echo 'Reset autorizado: removendo o schema payments.'
-\\else
+\else
   \\echo 'ERRO: execute com CONFIRM_RESET=yes para recriar o schema payments.'
   \\quit 3
-\\endif
+\endif
 
-\\if :{?cdc_role}
-\\else
+\if :{?cdc_role}
+\else
   \\echo 'ERRO: informe a role PostgreSQL que será usada pelo conector.'
   \\quit 3
-\\endif
+\endif
 
 BEGIN;
 
