@@ -5,10 +5,22 @@ source "$(dirname "${BASH_SOURCE[0]}")/../../scripts/_common.sh"
 require confluent jq
 : "${ENV_ID:?Execute infrastructure/foundation.sh primeiro}"
 : "${CLUSTER_ID:?Execute infrastructure/foundation.sh primeiro}"
+: "${CC_CLOUD:?Defina CC_CLOUD em .env}"
+: "${CC_REGION:?Defina CC_REGION em .env}"
+: "${CC_FLINK_POOL_NAME:?Defina CC_FLINK_POOL_NAME em .env}"
 FLINK_DIR="$ROOT_DIR/flink/sql"
 FLINK_IDLE_TIMEOUT="${FLINK_IDLE_TIMEOUT:-}"
 OUT="$ROOT_DIR/evidence/cloud/04-flink.txt"
 mkdir -p "$(dirname "$OUT")"
+
+for file in \
+  "$FLINK_DIR/00-startup-transactions.sql" \
+  "$FLINK_DIR/00-pk-accounts.sql" \
+  "$FLINK_DIR/01-enrichment.sql" \
+  "$FLINK_DIR/02-append-only.sql" \
+  "$FLINK_DIR/04-fraud-detection.sql"; do
+  [[ -r "$file" ]] || { echo "SQL ausente ou sem leitura: $file" >&2; exit 1; }
+done
 
 if [[ -n "$FLINK_IDLE_TIMEOUT" && ! "$FLINK_IDLE_TIMEOUT" =~ ^[1-9][0-9]*[[:space:]]*(ms|s|m)$ ]]; then
   echo "FLINK_IDLE_TIMEOUT inválido; use, por exemplo, \"5 s\", ou deixe vazio." >&2
@@ -24,10 +36,8 @@ confluent environment use "$ENV_ID" >/dev/null
 confluent kafka cluster use "$CLUSTER_ID" >/dev/null
 confluent flink region use --cloud "$CC_CLOUD" --region "$CC_REGION" >/dev/null
 
-# O compute pool pode ter sido excluído; sempre redescobrir pelo nome.
-unset FLINK_POOL_ID
-if [[ -z "${FLINK_POOL_ID:-}" ]]; then
-  pools="$(confluent flink compute-pool list --environment "$ENV_ID" -o json)"
+# Redescobre o compute pool pelo nome; não confia em ID antigo salvo localmente.
+pools="$(confluent flink compute-pool list --environment "$ENV_ID" -o json)"
   pool="$(jq -r --arg n "$CC_FLINK_POOL_NAME" '[.[] | select(.name==$n and (.status=="PROVISIONED" or .status=="RUNNING"))][0].id // empty' <<<"$pools")"
   if [[ -z "$pool" ]]; then
     if jq -e --arg n "$CC_FLINK_POOL_NAME" 'any(.[]; .name==$n)' <<<"$pools" >/dev/null; then
