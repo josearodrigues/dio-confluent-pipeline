@@ -46,7 +46,7 @@ FROM pg_roles
 WHERE rolname = :'cdc_role';
 SQL
 )"
-  [[ "$ROLE_FLAGS" == "t|t" ]] || {
+  [[ "$ROLE_FLAGS" == "true|true" ]] || {
     echo "ERRO: role $PG_CDC_USER ausente ou sem LOGIN + REPLICATION. Nenhum dado foi alterado." >&2
     exit 1
   }
