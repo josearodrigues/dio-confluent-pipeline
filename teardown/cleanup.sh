@@ -11,6 +11,23 @@ ENV_NAME="$(confluent environment describe "$ENV_ID" -o json | jq -r '.name // e
 CLUSTER_NAME="$(confluent kafka cluster describe "$CLUSTER_ID" -o json | jq -r '.name // empty')"
 [[ "$ENV_NAME" == "$CC_ENV_NAME" ]] || { echo "ENV_ID não corresponde ao Environment esperado." >&2; exit 1; }
 [[ "$CLUSTER_NAME" == "$CC_CLUSTER_NAME" ]] || { echo "CLUSTER_ID não corresponde ao cluster esperado." >&2; exit 1; }
+
+# IDs persistidos também precisam corresponder aos recursos que este projeto criou.
+if [[ -n "${CDC_CONNECTOR_ID:-}" ]]; then
+  CONNECTOR_NAME="$(confluent connect cluster describe "$CDC_CONNECTOR_ID" -o json | jq -r '.name // empty')"
+  [[ "$CONNECTOR_NAME" == "payments-postgres-cdc" ]] || {
+    echo "CDC_CONNECTOR_ID não corresponde ao conector esperado (payments-postgres-cdc)." >&2
+    exit 1
+  }
+fi
+if [[ -n "${FLINK_POOL_ID:-}" ]]; then
+  : "${CC_FLINK_POOL_NAME:?CC_FLINK_POOL_NAME ausente; não é seguro remover o compute pool}"
+  FLINK_POOL_NAME="$(confluent flink compute-pool describe "$FLINK_POOL_ID" -o json | jq -r '.name // empty')"
+  [[ "$FLINK_POOL_NAME" == "$CC_FLINK_POOL_NAME" ]] || {
+    echo "FLINK_POOL_ID não corresponde ao compute pool esperado ($CC_FLINK_POOL_NAME)." >&2
+    exit 1
+  }
+fi
 echo "ATENÇÃO: operação destrutiva. Environment: $ENV_NAME ($ENV_ID)"
 echo "Cluster: $CLUSTER_NAME ($CLUSTER_ID)"
 read -r -p "Digite exatamente '$ENV_ID/$CLUSTER_ID' para confirmar: " answer
