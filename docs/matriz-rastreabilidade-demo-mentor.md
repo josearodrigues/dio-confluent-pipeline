@@ -17,7 +17,7 @@ Este documento relaciona as etapas observáveis da demonstração de referência
 | Detecção de padrão temporal | `flink/sql/04-fraud-detection.sql` | Usa MATCH_RECOGNIZE para identificar três ou mais transações positivas por cartão em até 60 segundos de rowtime Kafka. |
 | Cenário positivo | `database/seed/simulate-events.sql` | Insere quatro transações positivas para o mesmo cartão, em sequência. |
 | Saída de alertas | Tópico Kafka `fraud_alerts` | Destino do resultado da detecção; o fluxo principal não inclui PostgreSQL Sink. |
-| Verificação de CDC incremental | `operations/verify-cdc-incremental.sh` | Prepara a verificação de INSERT, UPDATE e DELETE na tabela customers. |
+| Verificação de CDC incremental | `operations/verify-cdc-incremental.sh` | Executa a verificação de INSERT, UPDATE e DELETE na tabela customers e registra o resultado. |
 
 ## Adaptações em relação à demonstração
 
