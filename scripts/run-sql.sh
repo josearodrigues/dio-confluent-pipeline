@@ -16,6 +16,7 @@ SQL_FILE="$FILE"
 EXTRA=()
 if [[ "$SQL_FILE" == *database/init/00-database.sql ]]; then
   : "${PG_CDC_USER:?PG_CDC_USER ausente}"
+  : "${PG_CDC_PASSWORD:?PG_CDC_PASSWORD ausente}"
   [[ "$PG_CDC_USER" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] || {
     echo "PG_CDC_USER contém caracteres inválidos para um nome de role." >&2
     exit 1
@@ -49,7 +50,15 @@ SQL
     exit 1
   }
 
-  echo "Pré-validação aprovada: wal_level=logical; role $PG_CDC_USER com LOGIN + REPLICATION."
+  # Confirma também que a credencial da role CDC autentica no banco.
+  PGPASSWORD="$PG_CDC_PASSWORD" PGSSLMODE=require psql -X -v ON_ERROR_STOP=1 -Atq \
+    -h "$PG_HOST" -p "$PG_PORT" -U "$PG_CDC_USER" -d "$PG_DATABASE" \
+    -c 'SELECT 1' >/dev/null || {
+      echo "ERRO: a role $PG_CDC_USER não conseguiu autenticar no banco. Nenhum dado foi alterado." >&2
+      exit 1
+    }
+
+  echo "Pré-validação aprovada: wal_level=logical; role $PG_CDC_USER com LOGIN + REPLICATION e autenticação válida."
   EXTRA+=(-v reset_ok=1)
   EXTRA+=(-v "cdc_role=$PG_CDC_USER")
 fi
