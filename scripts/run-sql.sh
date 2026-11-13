@@ -9,12 +9,22 @@ source "$(dirname "${BASH_SOURCE[0]}")/_common.sh"
 require psql
 
 FILE="${1:?Uso: ./scripts/run-sql.sh caminho/arquivo.sql}"
-SQL_FILE="$FILE"
-[[ "$SQL_FILE" = /* ]] || SQL_FILE="$ROOT_DIR/$FILE"
-[[ -f "$SQL_FILE" ]] || { echo "Arquivo não encontrado: $SQL_FILE" >&2; exit 1; }
+if [[ "$FILE" = /* ]]; then
+  case "$FILE" in
+    "$ROOT_DIR"/*) SQL_RELATIVE="${FILE#"$ROOT_DIR"/}" ;;
+    *) echo "Arquivo SQL deve estar dentro do projeto." >&2; exit 1 ;;
+  esac
+else
+  SQL_RELATIVE="$FILE"
+fi
+case "/$SQL_RELATIVE/" in
+  */../*) echo "Caminho SQL inválido." >&2; exit 1 ;;
+esac
+SQL_FILE="$ROOT_DIR/$SQL_RELATIVE"
+[[ -f "$SQL_FILE" ]] || { echo "Arquivo não encontrado: $SQL_RELATIVE" >&2; exit 1; }
 
 EXTRA=()
-if [[ "$SQL_FILE" == *database/init/01-database.sql ]]; then
+if [[ "$SQL_RELATIVE" == database/init/01-database.sql ]]; then
   : "${PG_CDC_USER:?PG_CDC_USER ausente}"
   : "${PG_CDC_PASSWORD:?PG_CDC_PASSWORD ausente}"
   [[ "$PG_CDC_USER" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] || {
@@ -64,7 +74,7 @@ SQL
   EXTRA+=(-v "cdc_role=$PG_CDC_USER")
 fi
 
-if [[ "$SQL_FILE" == *database/cleanup/postgres-cleanup.sql ]]; then
+if [[ "$SQL_RELATIVE" == database/cleanup/postgres-cleanup.sql ]]; then
   [[ "${CONFIRM_CLEANUP:-}" == "yes" ]] || {
     echo "A limpeza remove o schema payments e a publication. Use CONFIRM_CLEANUP=yes após conferir o alvo." >&2
     exit 1
@@ -72,19 +82,21 @@ if [[ "$SQL_FILE" == *database/cleanup/postgres-cleanup.sql ]]; then
 fi
 
 STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
-case "$SQL_FILE" in
-  */database/init/*|*/database/cleanup/*) GROUP=local ;;
+case "$SQL_RELATIVE" in
+  database/init/*|database/cleanup/*) GROUP=local ;;
   *) GROUP=homologation ;;
 esac
 mkdir -p "$ROOT_DIR/evidence/$GROUP"
-LOG="$ROOT_DIR/evidence/$GROUP/$STAMP-$(basename "$SQL_FILE" .sql).log"
+LOG_RELATIVE="evidence/$GROUP/$STAMP-$(basename "$SQL_RELATIVE" .sql).log"
+LOG="$ROOT_DIR/$LOG_RELATIVE"
 
+cd "$ROOT_DIR"
 set +e
 PGPASSWORD="$PG_ADMIN_PASSWORD" PGSSLMODE=require psql -X \
   -h "$PG_HOST" -p "$PG_PORT" -U "$PG_ADMIN_USER" -d "$PG_DATABASE" \
   -v ON_ERROR_STOP=1 -v "DBNAME=$PG_DATABASE" "${EXTRA[@]}" \
-  -f "$SQL_FILE" 2>&1 | tee "$LOG"
+  -f "$SQL_RELATIVE" 2>&1 | tee "$LOG"
 status="${PIPESTATUS[0]}"
 set -e
-echo "Log: $LOG"
+echo "Log: $LOG_RELATIVE"
 exit "$status"
