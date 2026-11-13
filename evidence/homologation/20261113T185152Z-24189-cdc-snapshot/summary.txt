@@ -1,0 +1,23 @@
+Validação paralela do snapshot CDC
+UTC: 2026-11-13T18:51:52Z
+Consumer group: snapshot-check-20261113T185152Z-24189
+Timeout máximo individual: 2400s
+Critério de conclusão: quantidade esperada de eventos op=r por tópico.
+Marcadores snapshot são registrados para diagnóstico, não condicionam a conclusão.
+
+
+TÓPICO                      ESPERADO       op=r   MARCADORES  REGISTROS RESULTADO
+payments.customers                200        200          200        200 OK
+Encerramento: target-reached (código do processo: 143)
+Log: evidence/homologation/20261113T185152Z-24189-cdc-snapshot/payments-customers.log
+payments.accounts                 240        240          240        240 OK
+Encerramento: target-reached (código do processo: 143)
+Log: evidence/homologation/20261113T185152Z-24189-cdc-snapshot/payments-accounts.log
+payments.cards                    320        320          320        320 OK
+Encerramento: target-reached (código do processo: 143)
+Log: evidence/homologation/20261113T185152Z-24189-cdc-snapshot/payments-cards.log
+payments.transactions            2000       2000         2000       2000 OK
+Encerramento: target-reached (código do processo: 143)
+Log: evidence/homologation/20261113T185152Z-24189-cdc-snapshot/payments-transactions.log
+
+RESULTADO: snapshot validado nos quatro tópicos (2.760 eventos op=r).
