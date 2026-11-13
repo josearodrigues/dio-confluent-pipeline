@@ -94,7 +94,7 @@ O script cria um registro temporário exclusivo, executa INSERT/UPDATE/DELETE, p
 
 **Critério:** correlacionar a linha de origem com os três eventos Debezium e confirmar `snapshot=false`. O teste deve ocorrer antes do Flink, como no Passo 5 da demonstração do mentor.
 
-**Estado em 13/11/2026:** etapa homologada na instância atual; INSERT (`op=c`), UPDATE (`op=u`) e DELETE (`op=d`) foram observados com `snapshot=false`.
+**Estado em 13/11/2026:** pendente de comprovação nesta instância. Embora existam scripts para gerar INSERT, UPDATE e DELETE, não foi localizada no repositório evidência da execução atual que correlacione os três eventos (`op=c`, `op=u`, `op=d`) com `snapshot=false`. Resultados de projetos de estudo ou de ambientes anteriores não comprovam esta etapa.
 
 ## 7. Evolução adicional do schema real do CDC (extensão do projeto)
 
@@ -110,10 +110,10 @@ Esta é uma extensão do projeto, não o Passo 6 da demonstração do mentor. O 
 
 **Critério:** comprovar a publicação do novo schema pelo CDC e a captura do evento no tópico. Não corresponde ao Passo 6 da demonstração; é uma validação adicional do subject real.
 
-**Estado em 13/11/2026:** evolução homologada no subject `payments.transactions-value`; compatibilidade BACKWARD, campo `channel` e evento correspondente observados no Kafka.
+**Estado em 13/11/2026:** pendente de comprovação nesta instância. Não foi localizada evidência da execução atual que demonstre a evolução do subject `payments.transactions-value`, a compatibilidade BACKWARD e a captura do evento correspondente no Kafka. A existência do script e resultados de projetos de estudo ou ambientes anteriores não comprovam esta etapa.
 ## 8. Flink SQL
 
-Somente após homologar o snapshot, o CDC incremental e a evolução do schema real, revise e execute:
+Somente após comprovar o snapshot, o CDC incremental e a evolução do schema real por evidências da instância atual, revise e execute:
 
 ```bash
 ./flink/scripts/run.sh
@@ -158,7 +158,7 @@ Execute somente com os statements Flink ativos:
 
 ## 11. Verificações complementares opcionais
 
-A validação CDC incremental (Passo 5 do mentor) e a evolução adicional do subject CDC real foram colocadas antes do Flink. O teste isolado de contrato Avro (Passo 6 do mentor) é executado atualmente na etapa 3, junto da preparação do Schema Registry; não o repetir.
+A validação CDC incremental (Passo 5 do mentor) e a evolução adicional do subject CDC real estão planejadas antes do Flink, mas permanecem pendentes de comprovação nesta instância. O teste isolado de contrato Avro (Passo 6 do mentor) é executado pelo script da etapa 3; a execução na instância atual só deve ser considerada concluída se houver evidência correspondente.
 
 ## 12. Registro, custos e encerramento
 
