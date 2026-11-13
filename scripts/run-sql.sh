@@ -41,7 +41,7 @@ if [[ "$SQL_FILE" == *database/init/01-database.sql ]]; then
     -v cdc_role="$PG_CDC_USER" -h "$PG_HOST" -p "$PG_PORT" \
     -U "$PG_ADMIN_USER" -d "$PG_DATABASE" <<'SQL'
 SELECT rolcanlogin::text || '|' ||
-       (rolreplication OR pg_has_role(oid, 'neon_superuser', 'MEMBER'))::text
+       (rolreplication OR pg_has_role(rolname, 'neon_superuser', 'MEMBER'))::text
 FROM pg_roles
 WHERE rolname = :'cdc_role';
 SQL
