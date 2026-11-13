@@ -21,7 +21,13 @@ Este documento registra as decisões refletidas nos artefatos versionados do pro
 
 ## Ordem de homologação
 
-A ordem operacional acompanha a demonstração do mentor e é requisito do roteiro: (1) snapshot CDC completo; (2) CDC incremental com INSERT, UPDATE e DELETE; (3) evolução compatível/incompatível do schema real do CDC; (4) Flink SQL com Temporal Join, append e MATCH_RECOGNIZE; (5) cenários funcionais e verificações de saída. O teste isolado de contrato Avro/Schema Registry é uma preparação e não substitui a evolução do subject real. Não iniciar Flink antes de concluir as etapas 2 e 3.
+Na demonstração do mentor, a sequência é: Passo 5 (CDC incremental com INSERT, UPDATE e DELETE), Passo 6 (compatibilidade de contrato Avro em subject isolado, aceitando evolução compatível e rejeitando incompatível) e Passo 7 (Flink: Temporal Join, append e MATCH_RECOGNIZE).
+
+O projeto implementa duas validações diferentes:
+- O teste isolado do Passo 6 é executado atualmente junto do provisionamento do Schema Registry, antes do CDC, por `infrastructure/schema-registry.sh`. É uma diferença de ordem em relação à demo; o script não deve ser repetido depois porque o subject já existe.
+- A evolução do subject real `payments.transactions-value` é uma extensão do projeto, executada depois do CDC incremental e antes do Flink. Não é o teste isolado do Passo 6.
+
+Na execução atual, não iniciar Flink antes de concluir snapshot, CDC incremental e a validação adicional do subject real.
 
 ## Semântica e limitações
 
@@ -44,4 +50,4 @@ A ordem operacional acompanha a demonstração do mentor e é requisito do rotei
 
 ## Estado de validação
 
-As decisões acima descrevem o desenho e os artefatos atuais. A ordem de execução está alinhada aos passos 5, 6 e 7 da demonstração do mentor. Os resultados cloud devem ser classificados somente com evidências produzidas e verificadas durante a execução real.
+As decisões acima descrevem o desenho e os artefatos atuais. A matriz de rastreabilidade documenta a diferença entre a ordem da demo e a ordem atual dos scripts do projeto. Os resultados cloud devem ser classificados somente com evidências produzidas e verificadas durante a execução real.
