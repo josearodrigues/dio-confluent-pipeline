@@ -1,0 +1,50 @@
+Schema Registry: lsrc-0x65336
+Endpoint: https://psrc-4m5d0x0.us-east-2.aws.confluent.cloud
+Subject: contract.transactions-value
+==> [1/7] Registrando schema v1
+{
+  "id": 100001
+}
+==> [2/7] Configurando compatibilidade BACKWARD
+{
+  "compatibility": "BACKWARD"
+}
+==> [3/7] Verificando evolução compatível (campo opcional com default null)
+{
+  "is_compatible": true
+}
+==> [4/7] Verificando evolução incompatível (campo obrigatório sem default)
+{
+  "is_compatible": false
+}
+==> [5/7] Registrando v2 compatível
+{
+  "id": 100002
+}
+==> [6/7] Tentando registrar v3 incompatível; rejeição HTTP 40901 é esperada
+Rejeição esperada confirmada: HTTP 409 / código 40901.
+{
+  "error_code": 40901,
+  "message": "Schema being registered is incompatible with an earlier schema for subject \"contract.transactions-value\", details: [{errorType:\"READER_FIELD_MISSING_DEFAULT_VALUE\", description:\"The field 'mandatory_field' at path '/fields/6' in the new schema has no default value and is missing in the old schema\", additionalInfo:\"mandatory_field\"}, {oldSchemaVersion: 2}, {oldSchema: '{\"type\":\"record\",\"name\":\"Transaction\",\"namespace\":\"io.dio.payments\",\"fields\":[{\"name\":\"transaction_id\",\"type\":\"long\"},{\"name\":\"card_id\",\"type\":\"int\"},{\"name\":\"account_id\",\"type\":\"int\"},{\"name\":\"amount\",\"type\":\"double\"},{\"name\":\"currency\",\"type\":\"string\"},{\"name\":\"status\",\"type\":\"string\"},{\"name\":\"channel\",\"type\":[\"null\",\"string\"],\"default\":null}]}'}, {validateFields: 'true', compatibility: 'BACKWARD'}]; error code: 40901"
+}
+==> [7/7] Conferindo versões e schemas registrados
+[
+  1,
+  2
+]
+{
+  "id": 100001,
+  "subject": "contract.transactions-value",
+  "version": 1,
+  "schemaType": null,
+  "schema": "{\"type\":\"record\",\"name\":\"Transaction\",\"namespace\":\"io.dio.payments\",\"fields\":[{\"name\":\"transaction_id\",\"type\":\"long\"},{\"name\":\"card_id\",\"type\":\"int\"},{\"name\":\"account_id\",\"type\":\"int\"},{\"name\":\"amount\",\"type\":\"double\"},{\"name\":\"currency\",\"type\":\"string\"},{\"name\":\"status\",\"type\":\"string\"}]}"
+}
+{
+  "id": 100002,
+  "subject": "contract.transactions-value",
+  "version": 2,
+  "schemaType": null,
+  "schema": "{\"type\":\"record\",\"name\":\"Transaction\",\"namespace\":\"io.dio.payments\",\"fields\":[{\"name\":\"transaction_id\",\"type\":\"long\"},{\"name\":\"card_id\",\"type\":\"int\"},{\"name\":\"account_id\",\"type\":\"int\"},{\"name\":\"amount\",\"type\":\"double\"},{\"name\":\"currency\",\"type\":\"string\"},{\"name\":\"status\",\"type\":\"string\"},{\"name\":\"channel\",\"type\":[\"null\",\"string\"],\"default\":null}]}"
+}
+
+RESULTADO: v1 e v2 registrados; BACKWARD aceitou a evolução compatível e rejeitou a incompatível.
