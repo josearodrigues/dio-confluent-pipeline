@@ -20,7 +20,13 @@ ensure_sa(){
 }
 ensure_key(){
   local resource="$1" sa="$2" keyvar="$3" secretvar="$4" json existing
-  if [[ -n "${!keyvar:-}" && -n "${!secretvar:-}" ]]; then return; fi
+  if [[ -n "${!keyvar:-}" && -n "${!secretvar:-}" ]]; then
+    if confluent api-key list --resource "$resource" --service-account "$sa" -o json |
+      jq -e --arg k "${!keyvar}" 'any(.[]; (.key // .api_key // .id)==$k)' >/dev/null; then
+      return
+    fi
+    unset "$keyvar" "$secretvar"
+  fi
   existing="$(confluent api-key list --resource "$resource" --service-account "$sa" -o json | jq 'length')"
   if [[ "$existing" -gt 0 ]]; then
     fail "já existem $existing API key(s) para $keyvar, mas o segredo não está salvo. Recupere o estado ou revise as chaves antes de criar outra."
