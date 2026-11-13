@@ -41,18 +41,30 @@ flowchart LR
 - PostgreSQL com logical replication e acesso de rede pelo conector gerenciado.
 - `bash`, `psql`, `jq` e `curl`.
 
-## Configuração PostgreSQL
+## Preparação do PostgreSQL
 
-1. Copie `.env.example` para `.env` e preencha os dados da conexão e o nome da role CDC.
-2. Prepare uma instância dedicada ao laboratório.
-3. Antes da inicialização, crie no PostgreSQL uma role dedicada com `LOGIN` e `REPLICATION`, usando o nome informado em `PG_CDC_USER`. Defina a senha correspondente em `PG_CDC_PASSWORD`. O usuário administrador configurado em `PG_ADMIN_USER` precisa ter permissão para conceder acesso à role.
-4. Inicialize o banco somente após conferir host, database e usuário:
+A Fase 1 reproduz a preparação mostrada pelo mentor. Ela termina com o banco, o dataset e a publication prontos; não cria nem configura o conector CDC na Confluent.
+
+1. Crie um projeto PostgreSQL dedicado no Neon e habilite **Logical Replication** nas configurações do projeto. Essa alteração reinicia os computes; confirme o impacto antes de habilitá-la.
+2. Copie a connection string administrativa usando o **host direto**, sem pooler. Preencha no `.env`: `PG_HOST`, `PG_PORT`, `PG_DATABASE`, `PG_ADMIN_USER` e `PG_ADMIN_PASSWORD`.
+3. Crie a role de conexão no Neon pela CLI, conforme o procedimento do provedor:
+
+```bash
+neon roles create --name cdc
+```
+
+Configure `PG_CDC_USER=cdc` e a senha correspondente em `PG_CDC_PASSWORD` somente no ambiente local. A role precisa ter `LOGIN` e `REPLICATION`; não tente conceder o atributo por SQL se o provedor o administra.
+4. Confira o alvo e inicialize:
 
 ```bash
 CONFIRM_RESET=yes ./scripts/run-sql.sh database/init/00-database.sql
 ```
 
-A inicialização remove e recria o schema `payments`. Não a execute em banco com dados a preservar. A role CDC não é criada pelo script, pois provedores gerenciados podem restringir a criação de roles com atributo REPLICATION.
+O wrapper testa a conexão, exige `wal_level=logical` e verifica `LOGIN + REPLICATION` da role **antes** de executar o SQL destrutivo. Se qualquer verificação falhar, aborta sem apagar o schema.
+
+A inicialização recria somente o schema `payments`, carrega dados determinísticos (200 customers, 240 accounts, 320 cards, 30 merchants e 2.000 transactions), aplica `REPLICA IDENTITY FULL` às quatro tabelas capturadas e cria `payments_pub` com essas quatro tabelas. `merchants` integra o dataset do mentor, mas fica fora da publication e do escopo CDC.
+
+**Atenção:** o comando de inicialização apaga e recria `payments`. Use uma instância/banco dedicado ao laboratório e confira host e database exibidos pelo wrapper antes de confirmar.
 
 ## Ordem de execução
 
