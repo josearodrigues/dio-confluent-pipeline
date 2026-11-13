@@ -27,7 +27,7 @@ neon projects update "$NEON_PROJECT_ID" --enable-logical-replication
 
 echo "Verificando a role $PG_CDC_USER na branch $NEON_BRANCH..."
 ROLES_JSON="$(neon roles list --project-id "$NEON_PROJECT_ID" --branch "$NEON_BRANCH" --output json)"
-if jq -e --arg role "$PG_CDC_USER" 'any(.[]; .name == $role)' <<<"$ROLES_JSON" >/dev/null; then
+if jq -e --arg role "$PG_CDC_USER" 'any(.roles[]; .name == $role)' <<<"$ROLES_JSON" >/dev/null; then
   echo "A role $PG_CDC_USER já existe; não será criada novamente."
 else
   echo "Criando a role $PG_CDC_USER..."
