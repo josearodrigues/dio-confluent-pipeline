@@ -13,6 +13,8 @@ confluent environment use "$ENV_ID" >/dev/null
 confluent kafka cluster use "$CLUSTER_ID" >/dev/null
 confluent flink region use --cloud "$CC_CLOUD" --region "$CC_REGION" >/dev/null
 
+# O compute pool pode ter sido excluído; sempre redescobrir pelo nome.
+unset FLINK_POOL_ID
 if [[ -z "${FLINK_POOL_ID:-}" ]]; then
   pools="$(confluent flink compute-pool list --environment "$ENV_ID" -o json)"
   pool="$(jq -r --arg n "$CC_FLINK_POOL_NAME" '[.[] | select(.name==$n and (.status=="PROVISIONED" or .status=="RUNNING"))][0].id // empty' <<<"$pools")"
