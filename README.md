@@ -37,7 +37,7 @@ flowchart LR
 ## Pré-requisitos
 
 - Conta Neon com um projeto PostgreSQL dedicado.
-- [Neon CLI](https://neon.com/docs/get-started/neon-cli) instalada e autenticada (`neon auth`).
+- Conta Neon e [Neon CLI](https://neon.com/docs/get-started/neon-cli) instalada (requer Node.js/npm) e autenticada (`neon auth`).
 - `bash`, `psql`, `jq` e `curl`.
 - Conta Confluent Cloud com acesso a Kafka, Connect, Schema Registry e Flink.
 - Confluent CLI autenticada e compatível com os comandos do projeto.
