@@ -1,0 +1,46 @@
+Connector Details
++--------+-----------------------+
+| ID     | lcc-v7wypn5           |
+| Name   | payments-postgres-cdc |
+| Status | RUNNING               |
+| Type   | source                |
++--------+-----------------------+
+
+
+Task Level Details
+  Task |  State   
+-------+----------
+     0 | RUNNING  
+
+
+Configuration Details
+                Config               |                                   Value                                    
+-------------------------------------+----------------------------------------------------------------------------
+  after.state.only                   | false                                                                      
+  cloud.environment                  | prod                                                                       
+  cloud.provider                     | aws                                                                        
+  connector.class                    | PostgresCdcSourceV2                                                        
+  database.dbname                    | payments                                                                   
+  database.hostname                  | ep-round-moon-bexugixe.c-9.us-east-2.aws.neon.tech                         
+  database.password                  | ****************                                                           
+  database.port                      | 5432                                                                       
+  database.sslmode                   | require                                                                    
+  database.user                      | cdc                                                                        
+  kafka.auth.mode                    | SERVICE_ACCOUNT                                                            
+  kafka.endpoint                     | SASL_SSL://pkc-921jm.us-east-2.aws.confluent.cloud:9092                    
+  kafka.region                       | us-east-2                                                                  
+  kafka.service.account.id           | sa-wzkvv85                                                                 
+  name                               | payments-postgres-cdc                                                      
+  output.data.format                 | AVRO                                                                       
+  output.key.format                  | AVRO                                                                       
+  publication.autocreate.mode        | disabled                                                                   
+  publication.name                   | payments_pub                                                               
+  slot.name                          | payments_slot                                                              
+  snapshot.mode                      | initial                                                                    
+  table.include.list                 | payments.customers,payments.accounts,payments.cards,payments.transactions  
+  tasks.max                          | 1                                                                          
+  topic.prefix                       | payments                                                                   
+  transforms                         | renameTopic                                                                
+  transforms.renameTopic.regex       | ^payments\.payments\.(.*)$                                                 
+  transforms.renameTopic.replacement | payments.$1                                                                
+  transforms.renameTopic.type        | io.confluent.connect.cloud.transforms.TopicRegexRouter                     
