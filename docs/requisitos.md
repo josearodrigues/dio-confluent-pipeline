@@ -6,9 +6,9 @@ Este documento define o escopo funcional e técnico do laboratório e os critér
 
 | ID | Requisito | Artefatos relacionados |
 |---|---|---|
-| RF-01 | Capturar eventos CDC das tabelas customers, accounts, cards e transactions. | `database/init/00-database.sql`, `infrastructure/connectors/cdc/connector.json` |
+| RF-01 | Capturar eventos CDC das tabelas customers, accounts, cards e transactions. | `database/init/01-database.sql`, `infrastructure/connectors/cdc/connector.json` |
 | RF-02 | Publicar os eventos CDC nos tópicos Kafka correspondentes. | `infrastructure/connectors/cdc/connector.json` |
-| RF-03 | Declarar no Flink as chaves necessárias ao processamento. | `flink/sql/00-pk-accounts.sql`, `flink/sql/00-pk-transactions.sql` |
+| RF-03 | Declarar no Flink as chaves necessárias ao processamento. | `flink/sql/00-pk-accounts.sql` |
 | RF-04 | Enriquecer transações com a dimensão accounts por Temporal Join. | `flink/sql/01-enrichment.sql` |
 | RF-05 | Preparar a entrada append-only usada pelo reconhecimento de padrão. | `flink/sql/02-append-only.sql` |
 | RF-06 | Identificar três ou mais transações positivas do mesmo cartão em até 60 segundos de `$rowtime` Kafka. | `flink/sql/04-fraud-detection.sql` |
