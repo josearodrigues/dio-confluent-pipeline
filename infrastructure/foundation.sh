@@ -79,14 +79,16 @@ ensure_group_acl(){
 
 confluent environment list >/dev/null 2>&1 || confluent login --save
 ENVS="$(confluent environment list -o json)"
-ENV_ID="${ENV_ID:-$(find_id "$ENVS" "$CC_ENV_NAME")}"
+# Sempre redescobrir por nome; IDs locais podem apontar para recursos excluídos.
+ENV_ID="$(find_id "$ENVS" "$CC_ENV_NAME")"
 if [[ -z "$ENV_ID" ]]; then ENV_ID="$(confluent environment create "$CC_ENV_NAME" --governance-package essentials -o json | jq -r '.id')"; fi
 ENV_ACTUAL="$(confluent environment describe "$ENV_ID" -o json | jq -r '.name // empty')"
 [[ "$ENV_ACTUAL" == "$CC_ENV_NAME" ]] || fail "ENV_ID aponta para '$ENV_ACTUAL', esperado '$CC_ENV_NAME'. Revise .state.env."
 save_state ENV_ID "$ENV_ID"
 confluent environment use "$ENV_ID" >/dev/null
 CLUSTERS="$(confluent kafka cluster list -o json)"
-CLUSTER_ID="${CLUSTER_ID:-$(find_id "$CLUSTERS" "$CC_CLUSTER_NAME")}"
+# A listagem ocorre no Environment atual; não reutilizar ID persistido.
+CLUSTER_ID="$(find_id "$CLUSTERS" "$CC_CLUSTER_NAME")"
 if [[ -z "$CLUSTER_ID" ]]; then
   CLUSTER_ID="$(confluent kafka cluster create "$CC_CLUSTER_NAME" --cloud "$CC_CLOUD" --region "$CC_REGION" --type basic -o json | jq -r '.id')"
 fi
@@ -111,6 +113,8 @@ save_state SA_WRITER_CREATED "$SA_CREATED"
 SA_READER_ID="$(ensure_sa app-reader 'Leitura dos tópicos do laboratório')"
 save_state SA_READER_ID "$SA_READER_ID"
 save_state SA_READER_CREATED "$SA_CREATED"
+# Não confiar em API Keys antigas do arquivo de estado.
+unset WRITER_API_KEY WRITER_API_SECRET READER_API_KEY READER_API_SECRET
 ensure_key "$CLUSTER_ID" "$SA_WRITER_ID" WRITER_API_KEY WRITER_API_SECRET
 ensure_key "$CLUSTER_ID" "$SA_READER_ID" READER_API_KEY READER_API_SECRET
 ensure_topic_acl "$SA_WRITER_ID" create,write,describe "payments."
