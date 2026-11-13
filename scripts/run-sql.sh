@@ -14,7 +14,7 @@ SQL_FILE="$FILE"
 [[ -f "$SQL_FILE" ]] || { echo "Arquivo não encontrado: $SQL_FILE" >&2; exit 1; }
 
 EXTRA=()
-if [[ "$SQL_FILE" == *database/init/00-database.sql ]]; then
+if [[ "$SQL_FILE" == *database/init/01-database.sql ]]; then
   : "${PG_CDC_USER:?PG_CDC_USER ausente}"
   : "${PG_CDC_PASSWORD:?PG_CDC_PASSWORD ausente}"
   [[ "$PG_CDC_USER" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] || {
