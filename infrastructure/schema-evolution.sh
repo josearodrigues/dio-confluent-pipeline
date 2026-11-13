@@ -62,8 +62,9 @@ cleanup() {
     wait "$PID" 2>/dev/null || true
   fi
   if (( INSERTED )); then
-    psql_admin -v marker="$TEST_CHANNEL" \
-      -c "DELETE FROM payments.transactions WHERE channel = :'marker'" >/dev/null 2>&1 || true
+    psql_admin -v marker="$TEST_CHANNEL" >/dev/null 2>&1 <<'SQL' || true
+DELETE FROM payments.transactions WHERE channel = :'marker';
+SQL
   fi
   rm -f "$RAW"
 }
@@ -107,9 +108,11 @@ sleep 5
 
 # A coluna é opcional no Avro (default null); o INSERT produz o evento que registra o novo schema.
 psql_admin -c "ALTER TABLE payments.transactions ADD COLUMN IF NOT EXISTS channel TEXT"
-psql_admin -v marker="$TEST_CHANNEL" \
-  -c "INSERT INTO payments.transactions (card_id,account_id,merchant_id,amount,channel,created_at) \
-      SELECT card_id,account_id,1,12.34,:'marker',CURRENT_TIMESTAMP FROM payments.cards WHERE card_id=1"
+psql_admin -v marker="$TEST_CHANNEL" <<'SQL'
+INSERT INTO payments.transactions (card_id,account_id,merchant_id,amount,channel,created_at)
+SELECT card_id,account_id,1,12.34,:'marker',CURRENT_TIMESTAMP
+FROM payments.cards WHERE card_id=1;
+SQL
 INSERTED=1
 
 START_TIME=$SECONDS
