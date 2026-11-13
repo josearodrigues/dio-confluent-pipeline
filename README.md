@@ -44,7 +44,7 @@ flowchart LR
 
 ## Preparação do PostgreSQL no Neon
 
-A Fase 1 reproduz a preparação mostrada pelo mentor. Execute as etapas **nesta ordem**. A criação/configuração do conector CDC continua na Fase 2, na Confluent. Se os ambientes Neon/Confluent anteriores foram excluídos, não reutilize o arquivo local `.state.env`: arquive-o antes da nova fundação, pois contém IDs e credenciais de recursos antigos. Preserve `.env` apenas com parâmetros atuais e não compartilhe seu conteúdo.
+A Fase 1 reproduz a preparação mostrada pelo mentor. Execute as etapas **nesta ordem**. A criação/configuração do conector CDC continua na Fase 2, na Confluent. Os scripts redescobrem Environment, cluster, Schema Registry e compute pool pelos nomes configurados, em vez de confiar cegamente nos IDs persistidos. O `.state.env` permanece privado (permissão 600) e contém IDs e credenciais; não o apague nem compartilhe. Se uma API key já existir, mas seu segredo não estiver disponível localmente, a automação interrompe a execução para evitar criar chaves duplicadas.
 
 1. Crie no Neon um projeto PostgreSQL dedicado ao laboratório.
 2. Copie `.env.example` para `.env` e preencha:
