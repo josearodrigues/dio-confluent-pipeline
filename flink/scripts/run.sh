@@ -38,17 +38,16 @@ confluent flink region use --cloud "$CC_CLOUD" --region "$CC_REGION" >/dev/null
 
 # Redescobre o compute pool pelo nome; não confia em ID antigo salvo localmente.
 pools="$(confluent flink compute-pool list --environment "$ENV_ID" -o json)"
-  pool="$(jq -r --arg n "$CC_FLINK_POOL_NAME" '[.[] | select(.name==$n and (.status=="PROVISIONED" or .status=="RUNNING"))][0].id // empty' <<<"$pools")"
-  if [[ -z "$pool" ]]; then
-    if jq -e --arg n "$CC_FLINK_POOL_NAME" 'any(.[]; .name==$n)' <<<"$pools" >/dev/null; then
-      echo "Compute pool '$CC_FLINK_POOL_NAME' existe, mas não está disponível. Inspecione-o antes de criar outro." >&2
-      exit 1
-    fi
-    pool="$(confluent flink compute-pool create "$CC_FLINK_POOL_NAME" \
-      --cloud "$CC_CLOUD" --region "$CC_REGION" --max-cfu 5 -o json | jq -r '.id')"
+pool="$(jq -r --arg n "$CC_FLINK_POOL_NAME" '[.[] | select(.name==$n and (.status=="PROVISIONED" or .status=="RUNNING"))][0].id // empty' <<<"$pools")"
+if [[ -z "$pool" ]]; then
+  if jq -e --arg n "$CC_FLINK_POOL_NAME" 'any(.[]; .name==$n)' <<<"$pools" >/dev/null; then
+    echo "Compute pool '$CC_FLINK_POOL_NAME' existe, mas não está disponível. Inspecione-o antes de criar outro." >&2
+    exit 1
   fi
-  save_state FLINK_POOL_ID "$pool"
+  pool="$(confluent flink compute-pool create "$CC_FLINK_POOL_NAME" \
+    --cloud "$CC_CLOUD" --region "$CC_REGION" --max-cfu 5 -o json | jq -r '.id')"
 fi
+save_state FLINK_POOL_ID "$pool"
 
 POOL_NAME="$(confluent flink compute-pool describe "$FLINK_POOL_ID" -o json | jq -r '.name // empty')"
 [[ "$POOL_NAME" == "$CC_FLINK_POOL_NAME" ]] || {
