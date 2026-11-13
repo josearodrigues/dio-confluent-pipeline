@@ -84,6 +84,8 @@ A etapa 01 recria somente o schema `payments`, carrega dados determinísticos (2
 2. `./infrastructure/schema-registry.sh` — Schema Registry e compatibilidade Avro.
 3. `./infrastructure/connectors/cdc/connector.sh` — conector PostgreSQL CDC V2.
 4. Aguarde o snapshot inicial e valide os tópicos com `./operations/verify-cdc-snapshot.sh`.
+
+O verificador inicia os quatro consumidores em paralelo e acompanha cada tópico separadamente. Cada consumidor é encerrado ao atingir a contagem esperada de eventos Debezium `op=r` (200 customers, 240 accounts, 320 cards e 2.000 transactions); os marcadores de snapshot ficam registrados apenas como diagnóstico. O timeout máximo é individual e configurável em segundos por `CDC_SNAPSHOT_TIMEOUT` (padrão: 1.800 segundos / 30 minutos).
 5. `./flink/scripts/run.sh` — configura startup offset, declara a PK de accounts, cria Temporal Join, append e MATCH_RECOGNIZE.
 6. Execute o cenário positivo: `./scripts/run-sql.sh database/seed/simulate-events.sql`.
 7. Consulte os resultados no tópico `fraud_alerts` e registre as evidências.
