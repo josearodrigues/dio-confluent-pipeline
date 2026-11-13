@@ -15,7 +15,6 @@
   "publication.name": "payments_pub",
   "publication.autocreate.mode": "disabled",
   "snapshot.mode": "initial",
-  "heartbeat.interval.ms": "60000",
   "output.data.format": "AVRO",
   "output.key.format": "AVRO",
   "after.state.only": "false",
