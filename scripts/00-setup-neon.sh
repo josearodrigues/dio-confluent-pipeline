@@ -27,7 +27,7 @@ neon projects update "$NEON_PROJECT_ID" --enable-logical-replication
 
 echo "Verificando a role $PG_CDC_USER na branch $NEON_BRANCH..."
 ROLES_JSON="$(neon roles list --project-id "$NEON_PROJECT_ID" --branch "$NEON_BRANCH" --output json)"
-if jq -e --arg role "$PG_CDC_USER" 'any(.roles[]; .name == $role)' <<<"$ROLES_JSON" >/dev/null; then
+if jq -e --arg role "$PG_CDC_USER" '((if type == "array" then . else .roles end) | any(.[]; .name == $role))' <<<"$ROLES_JSON" >/dev/null; then
   echo "A role $PG_CDC_USER já existe; não será criada novamente."
 else
   echo "Criando a role $PG_CDC_USER..."
@@ -59,18 +59,12 @@ fi
 
 write_env_value() {
   local key="$1" value="$2" escaped tmp
+  # %q produz uma atribuição segura para source no Bash, preservando
+  # literalmente caracteres especiais, espaços, aspas e barras invertidas.
   printf -v escaped '%q' "$value"
   tmp="$(mktemp "$ROOT_DIR/.env.XXXXXX")"
-  awk -v key="$key" -v value="$escaped" '
-    BEGIN { updated = 0 }
-    index($0, key "=") == 1 {
-      if (!updated) print key "=" value
-      updated = 1
-      next
-    }
-    { print }
-    END { if (!updated) print key "=" value }
-  ' "$ROOT_DIR/.env" > "$tmp"
+  awk -v key="$key" 'index($0, key "=") != 1 { print }' "$ROOT_DIR/.env" > "$tmp"
+  printf '%s=%s\n' "$key" "$escaped" >> "$tmp"
   chmod 600 "$tmp"
   mv "$tmp" "$ROOT_DIR/.env"
 }
