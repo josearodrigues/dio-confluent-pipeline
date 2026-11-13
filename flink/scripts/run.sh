@@ -6,8 +6,19 @@ require confluent jq
 : "${ENV_ID:?Execute infrastructure/foundation.sh primeiro}"
 : "${CLUSTER_ID:?Execute infrastructure/foundation.sh primeiro}"
 FLINK_DIR="$ROOT_DIR/flink/sql"
+FLINK_IDLE_TIMEOUT="${FLINK_IDLE_TIMEOUT:-}"
 OUT="$ROOT_DIR/evidence/cloud/04-flink.txt"
 mkdir -p "$(dirname "$OUT")"
+
+if [[ -n "$FLINK_IDLE_TIMEOUT" && ! "$FLINK_IDLE_TIMEOUT" =~ ^[1-9][0-9]*[[:space:]]*(ms|s|m)$ ]]; then
+  echo "FLINK_IDLE_TIMEOUT inválido; use, por exemplo, \"5 s\", ou deixe vazio." >&2
+  exit 1
+fi
+if [[ -n "$FLINK_IDLE_TIMEOUT" ]]; then
+  echo "Idleness timeout fixo por statement: $FLINK_IDLE_TIMEOUT"
+else
+  echo "Idleness: detecção progressiva padrão da Confluent"
+fi
 
 confluent environment use "$ENV_ID" >/dev/null
 confluent kafka cluster use "$CLUSTER_ID" >/dev/null
@@ -53,8 +64,13 @@ submit() {
     return 1
   fi
   echo "Submetendo $name"
+  local -a property_args=()
+  if [[ -n "$FLINK_IDLE_TIMEOUT" ]]; then
+    property_args=(--property "sql.tables.scan.idle-timeout=$FLINK_IDLE_TIMEOUT")
+  fi
   confluent flink statement create "$name" --sql "$(cat "$file")" \
-    --compute-pool "$FLINK_POOL_ID" --database "$CLUSTER_ID"
+    --compute-pool "$FLINK_POOL_ID" --database "$CLUSTER_ID" \
+    "${property_args[@]}"
   for _ in $(seq 1 60); do
     data="$(confluent flink statement describe "$name" -o json)"
     status="$(jq -r '.status // .phase // empty' <<<"$data")"
