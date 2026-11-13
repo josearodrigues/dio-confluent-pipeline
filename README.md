@@ -36,41 +36,47 @@ flowchart LR
 
 ## Pré-requisitos
 
+- Conta Neon com um projeto PostgreSQL dedicado.
+- [Neon CLI](https://neon.com/docs/get-started/neon-cli) instalada e autenticada (`neon auth`).
+- `bash`, `psql`, `jq` e `curl`.
 - Conta Confluent Cloud com acesso a Kafka, Connect, Schema Registry e Flink.
 - Confluent CLI autenticada e compatível com os comandos do projeto.
-- PostgreSQL com logical replication e acesso de rede pelo conector gerenciado.
-- `bash`, `psql`, `jq` e `curl`.
 
-## Preparação do PostgreSQL
+## Preparação do PostgreSQL no Neon
 
-A Fase 1 reproduz a preparação mostrada pelo mentor. Ela termina com o banco, o dataset e a publication prontos; não cria nem configura o conector CDC na Confluent.
+A Fase 1 reproduz a preparação mostrada pelo mentor. Execute as etapas **nesta ordem**. A criação/configuração do conector CDC continua na Fase 2, na Confluent.
 
-1. Crie um projeto PostgreSQL dedicado no Neon e habilite **Logical Replication** nas configurações do projeto. Copie `.env.example` para `.env` (`cp .env.example .env`) e preencha os parâmetros localmente. Essa alteração reinicia os computes; confirme o impacto antes de habilitá-la.
-2. Copie a connection string administrativa usando o **host direto**, sem pooler. Preencha no `.env`: `PG_HOST`, `PG_PORT`, `PG_DATABASE`, `PG_ADMIN_USER` e `PG_ADMIN_PASSWORD`.
-3. Crie a role de conexão no Neon pela CLI, conforme o procedimento do provedor:
+1. Crie no Neon um projeto PostgreSQL dedicado ao laboratório.
+2. Copie `.env.example` para `.env` e preencha:
+   - `NEON_PROJECT_ID`: identificador do projeto Neon.
+   - `NEON_BRANCH`: branch do banco (padrão `main`).
+   - `PG_DATABASE`: nome do banco.
+   - `PG_HOST`, `PG_PORT`, `PG_ADMIN_USER` e `PG_ADMIN_PASSWORD`: dados da connection string administrativa. Use o host direto, sem pooler.
+3. Autentique a Neon CLI, se ainda não estiver:
 
-```bash
-neon roles create --name cdc
-```
+   ```bash
+   neon auth
+   ```
 
-Configure `PG_CDC_USER=cdc` e obtenha a credencial da role localmente, sem expor a connection string:
+4. Execute a etapa **00**, que habilita Logical Replication, cria a role `cdc` se ainda não existir, recupera sua credencial e atualiza `.env` sem exibir a senha:
 
-```bash
-neon connection-string main --project-id <PROJECT_ID> --role-name cdc --database-name <PG_DATABASE> --ssl require
-```
+   ```bash
+   ./scripts/00-setup-neon.sh
+   ```
 
-Extraia a senha no próprio terminal e preencha `PG_CDC_PASSWORD` no `.env`. A role precisa ter `LOGIN` e `REPLICATION`; não tente conceder o atributo por SQL se o provedor o administra. O wrapper valida também a autenticação dessa role antes de executar o reset.
-4. Confira o alvo e inicialize:
+   **Atenção:** habilitar Logical Replication pode suspender os endpoints ativos do projeto e não pode ser desfeito. O script apresenta o aviso e exige confirmação interativa antes de solicitar a alteração. A role criada pela Neon CLI recebe a associação `neon_superuser`, que inclui o privilégio `REPLICATION`.
 
-```bash
-CONFIRM_RESET=yes ./scripts/run-sql.sh database/init/00-database.sql
-```
+5. Somente depois da etapa 00, execute a etapa **01**:
 
-O wrapper testa a conexão, exige `wal_level=logical` e verifica `LOGIN + REPLICATION` da role **antes** de executar o SQL destrutivo. Se qualquer verificação falhar, aborta sem apagar o schema.
+   ```bash
+   CONFIRM_RESET=yes ./scripts/run-sql.sh database/init/01-database.sql
+   ```
 
-A inicialização recria somente o schema `payments`, carrega dados determinísticos (200 customers, 240 accounts, 320 cards, 30 merchants e 2.000 transactions), aplica `REPLICA IDENTITY FULL` às quatro tabelas capturadas e cria `payments_pub` com essas quatro tabelas. `merchants` integra o dataset do mentor, mas fica fora da publication e do escopo CDC.
+   O wrapper testa a conexão administrativa, exige `wal_level=logical`, verifica `LOGIN + REPLICATION` da role e testa sua autenticação **antes** de executar o SQL destrutivo. Se alguma verificação falhar, aborta sem apagar o schema.
 
-**Atenção:** o comando de inicialização apaga e recria `payments`. Use uma instância/banco dedicado ao laboratório e confira host e database exibidos pelo wrapper antes de confirmar.
+A etapa 01 recria somente o schema `payments`, carrega dados determinísticos (200 customers, 240 accounts, 320 cards, 30 merchants e 2.000 transactions), aplica `REPLICA IDENTITY FULL` às quatro tabelas capturadas e cria `payments_pub` com essas quatro tabelas. `merchants` integra o dataset do mentor, mas fica fora da publication e do escopo CDC.
+
+**Atenção:** a etapa 01 apaga e recria `payments`. Use uma instância/banco dedicado ao laboratório e confira host e database exibidos pelo wrapper antes de confirmar.
 
 ## Ordem de execução
 
