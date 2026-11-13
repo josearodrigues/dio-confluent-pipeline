@@ -37,6 +37,7 @@ Os critérios abaixo devem ser avaliados com evidências do ambiente efetivament
 | CA-05 | As transações de teste são publicadas e processadas no fluxo. | Evidência do cenário positivo e observação dos eventos correspondentes no fluxo. |
 | CA-06 | Três ou mais transações positivas do mesmo cartão em até 60 segundos produzem alerta. | Mensagem observada no tópico `fraud_alerts`, com cartão, contagem e tempos suficientes para demonstrar o padrão. |
 | CA-07 | As evidências identificam data, ambiente e escopo realmente testado, sem expor segredos. | Arquivos em `evidence/` e registro do resultado/limitações. |
+| CA-08 | O contrato Avro aceita a evolução compatível e rejeita a evolução incompatível configuradas no exercício. | `evidence/cloud/02-schema-registry.txt`, distinguindo o subject isolado `contract.transactions-value` do subject CDC real. |
 
 ## Critério complementar
 
