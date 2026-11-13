@@ -18,7 +18,7 @@ Antes de executar qualquer script:
 A inicialização do banco é destrutiva para o schema `payments` existente e exige confirmação explícita:
 
 ```bash
-CONFIRM_RESET=yes ./scripts/run-sql.sh database/init/00-database.sql
+CONFIRM_RESET=yes ./scripts/run-sql.sh database/init/01-database.sql
 ```
 
 Use somente em banco dedicado e após conferir a conexão.
