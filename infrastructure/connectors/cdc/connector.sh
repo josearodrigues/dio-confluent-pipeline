@@ -44,7 +44,8 @@ PUBLICATION_OK="$(PGPASSWORD="$PG_ADMIN_PASSWORD" PGSSLMODE=require psql -X -At 
 # A role do conector precisa ler todas as tabelas capturadas.
 SELECT_OK="$(PGPASSWORD="$PG_ADMIN_PASSWORD" PGSSLMODE=require psql -X -At \
   -h "$PG_HOST" -p "$PG_PORT" -U "$PG_ADMIN_USER" -d "$PG_DATABASE" \
-  -v ON_ERROR_STOP=1 -c "SELECT bool_and(has_table_privilege('$PG_CDC_USER', 'payments.' || t, 'SELECT'))::text FROM unnest(ARRAY['customers','accounts','cards','transactions']) AS t")"
+  -v ON_ERROR_STOP=1 -v "cdc_role=$PG_CDC_USER" \
+  -c "SELECT bool_and(has_table_privilege(:'cdc_role', 'payments.' || t, 'SELECT'))::text FROM unnest(ARRAY['customers','accounts','cards','transactions']) AS t")"
 [[ "$SELECT_OK" == "true" ]] || {
   echo "A role '$PG_CDC_USER' não possui SELECT em todas as tabelas CDC." >&2
   echo "Conector não será criado; corrija as permissões antes de continuar." >&2
