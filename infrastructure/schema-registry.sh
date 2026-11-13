@@ -17,6 +17,12 @@ save_state SR_URL "$SR_URL"
 if [[ "$PREV_SR_ID" != "$SR_ID" ]]; then
   unset SR_API_KEY SR_API_SECRET
 fi
+if [[ -n "${SR_API_KEY:-}" && -n "${SR_API_SECRET:-}" ]]; then
+  if ! confluent api-key list --resource "$SR_ID" -o json |
+    jq -e --arg k "$SR_API_KEY" 'any(.[]; (.key // .api_key // .id)==$k)' >/dev/null; then
+    unset SR_API_KEY SR_API_SECRET
+  fi
+fi
 if [[ -z "${SR_API_KEY:-}" || -z "${SR_API_SECRET:-}" ]]; then
   EXISTING="$(confluent api-key list --resource "$SR_ID" -o json | jq 'length')"
   [[ "$EXISTING" -eq 0 ]] || {
