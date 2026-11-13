@@ -30,8 +30,8 @@ if [[ -z "${SR_API_KEY:-}" || -z "${SR_API_SECRET:-}" ]]; then
     exit 1
   }
   KEY="$(confluent api-key create --resource "$SR_ID" --description payments-schema-registry -o json)"
-  save_state SR_API_KEY "$(jq -r '.api_key' <<<"$KEY")"
-  save_state SR_API_SECRET "$(jq -r '.api_secret' <<<"$KEY")"
+  save_state SR_API_KEY "$(jq -r '.key' <<<"$KEY")"
+  save_state SR_API_SECRET "$(jq -r '.secret' <<<"$KEY")"
 fi
 AUTH="$SR_API_KEY:$SR_API_SECRET"
 SUBJECT="contract.transactions-value"
