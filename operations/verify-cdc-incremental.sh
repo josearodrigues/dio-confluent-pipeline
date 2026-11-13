@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Valida INSERT, UPDATE e DELETE de um registro temporário na tabela customers.
+# Valida INSERT, UPDATE e DELETE incrementais em payments.customers.
 set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/../scripts/_common.sh"
 require confluent psql grep sleep date
@@ -18,29 +18,30 @@ require confluent psql grep sleep date
 : "${PG_ADMIN_USER:?PG_ADMIN_USER ausente}"
 : "${PG_ADMIN_PASSWORD:?PG_ADMIN_PASSWORD ausente}"
 
-TOPIC=payments.customers
+TOPIC="payments.customers"
 STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
-# IDs ficam dentro do intervalo INT e são conferidos antes do INSERT.
 TEST_ID="$(( $(date +%s) % 1000000000 + 1000000000 ))"
 TEST_EMAIL="cdc-test-${STAMP}-${RANDOM}@example.test"
-GROUP="snapshot-check-incremental-$STAMP"
+# app-reader é o grupo autorizado pela ACL literal documentada na fundação.
+GROUP="app-reader"
+TIMEOUT_SECONDS="${CDC_INCREMENTAL_TIMEOUT:-120}"
+[[ "$TIMEOUT_SECONDS" =~ ^[1-9][0-9]*$ ]] || { echo "CDC_INCREMENTAL_TIMEOUT deve ser inteiro positivo." >&2; exit 1; }
+
 mkdir -p "$ROOT_DIR/evidence/homologation"
 RAW="$(mktemp)"
 OUT="$ROOT_DIR/evidence/homologation/$STAMP-cdc-incremental.txt"
 CREATED=0
 PID=""
 
-psql_admin(){
+psql_admin() {
   PGPASSWORD="$PG_ADMIN_PASSWORD" PGSSLMODE=require psql -X -v ON_ERROR_STOP=1 \
     -h "$PG_HOST" -p "$PG_PORT" -U "$PG_ADMIN_USER" -d "$PG_DATABASE" "$@"
 }
-
-cleanup(){
+cleanup() {
   if [[ -n "$PID" ]]; then
     kill "$PID" 2>/dev/null || true
     wait "$PID" 2>/dev/null || true
   fi
-  # Só remove o registro quando este processo confirmou que o criou.
   if [[ "$CREATED" == "1" ]]; then
     psql_admin -v test_id="$TEST_ID" \
       -c "DELETE FROM payments.customers WHERE customer_id = :'test_id'" \
@@ -49,15 +50,13 @@ cleanup(){
   rm -f "$RAW"
 }
 trap cleanup EXIT
+trap 'exit 130' INT TERM
 
-# Pré-valida ID e e-mail para não colidir com dados preexistentes.
 EXISTS="$(psql_admin -At -v test_id="$TEST_ID" -v test_email="$TEST_EMAIL" \
   -c "SELECT (EXISTS (SELECT 1 FROM payments.customers WHERE customer_id = :'test_id') OR EXISTS (SELECT 1 FROM payments.customers WHERE email = :'test_email'))::int")"
-[[ "$EXISTS" == "0" ]] || {
-  echo "Colisão detectada para o registro de teste; nenhum dado foi alterado." >&2
-  exit 1
-}
+[[ "$EXISTS" == "0" ]] || { echo "Colisão detectada; nenhum dado foi alterado." >&2; exit 1; }
 
+echo "Iniciando consumidor de $TOPIC (grupo $GROUP)."
 confluent kafka topic consume "$TOPIC" --group "$GROUP" --value-format avro --print-offset \
   --schema-registry-endpoint "$SR_URL" --schema-registry-api-key "$SR_API_KEY" \
   --schema-registry-api-secret "$SR_API_SECRET" --api-key "$READER_API_KEY" \
@@ -67,7 +66,7 @@ PID=$!
 sleep 5
 
 psql_admin -v test_id="$TEST_ID" -v test_email="$TEST_EMAIL" \
-  -c "INSERT INTO payments.customers(customer_id,full_name,email,city) VALUES (:'test_id','CDC test',:'test_email','Rio')"
+  -c "INSERT INTO payments.customers(customer_id,full_name,email,city,created_at) VALUES (:'test_id','CDC test',:'test_email','Rio',CURRENT_TIMESTAMP)"
 CREATED=1
 sleep 2
 psql_admin -v test_id="$TEST_ID" \
@@ -76,12 +75,19 @@ sleep 2
 psql_admin -v test_id="$TEST_ID" \
   -c "DELETE FROM payments.customers WHERE customer_id = :'test_id'"
 
-for _ in $(seq 1 30); do
-  if grep -F "$TEST_EMAIL" "$RAW" | grep -Eq '"op"[[:space:]]*:[[:space:]]*"d"' &&
-     grep -F "$TEST_EMAIL" "$RAW" | grep -Eq '"op"[[:space:]]*:[[:space:]]*"u"' &&
-     grep -F "$TEST_EMAIL" "$RAW" | grep -Eq '"op"[[:space:]]*:[[:space:]]*"c"'; then
-    break
-  fi
+START_TIME=$SECONDS
+while (( SECONDS - START_TIME < TIMEOUT_SECONDS )); do
+  MATCHED="$(grep -F "$TEST_EMAIL" "$RAW" || true)"
+  FOUND_C=0; FOUND_U=0; FOUND_D=0
+  while IFS= read -r line; do
+    [[ "$line" =~ \"op\"[[:space:]]*:[[:space:]]*\"c\" ]] &&
+      [[ "$line" =~ \"snapshot\"[[:space:]]*:[[:space:]]*(\"false\"|false) ]] && FOUND_C=1
+    [[ "$line" =~ \"op\"[[:space:]]*:[[:space:]]*\"u\" ]] &&
+      [[ "$line" =~ \"snapshot\"[[:space:]]*:[[:space:]]*(\"false\"|false) ]] && FOUND_U=1
+    [[ "$line" =~ \"op\"[[:space:]]*:[[:space:]]*\"d\" ]] &&
+      [[ "$line" =~ \"snapshot\"[[:space:]]*:[[:space:]]*(\"false\"|false) ]] && FOUND_D=1
+  done <<< "$MATCHED"
+  (( FOUND_C && FOUND_U && FOUND_D )) && break
   sleep 2
 done
 
@@ -89,31 +95,36 @@ kill "$PID" 2>/dev/null || true
 wait "$PID" 2>/dev/null || true
 PID=""
 
-FOUND_C=0
-FOUND_U=0
-FOUND_D=0
-# Exige que cada operação esteja no evento que contém o marcador exclusivo.
-grep -F "$TEST_EMAIL" "$RAW" | grep -Eq '"op"[[:space:]]*:[[:space:]]*"c"' && FOUND_C=1 || true
-grep -F "$TEST_EMAIL" "$RAW" | grep -Eq '"op"[[:space:]]*:[[:space:]]*"u"' && FOUND_U=1 || true
-grep -F "$TEST_EMAIL" "$RAW" | grep -Eq '"op"[[:space:]]*:[[:space:]]*"d"' && FOUND_D=1 || true
+MATCHED="$(grep -F "$TEST_EMAIL" "$RAW" || true)"
+FOUND_C=0; FOUND_U=0; FOUND_D=0
+while IFS= read -r line; do
+  [[ "$line" =~ \"op\"[[:space:]]*:[[:space:]]*\"c\" ]] &&
+    [[ "$line" =~ \"snapshot\"[[:space:]]*:[[:space:]]*(\"false\"|false) ]] && FOUND_C=1
+  [[ "$line" =~ \"op\"[[:space:]]*:[[:space:]]*\"u\" ]] &&
+    [[ "$line" =~ \"snapshot\"[[:space:]]*:[[:space:]]*(\"false\"|false) ]] && FOUND_U=1
+  [[ "$line" =~ \"op\"[[:space:]]*:[[:space:]]*\"d\" ]] &&
+    [[ "$line" =~ \"snapshot\"[[:space:]]*:[[:space:]]*(\"false\"|false) ]] && FOUND_D=1
+done <<< "$MATCHED"
 
-status=0
-[[ "$FOUND_C" == "1" ]] || status=1
-[[ "$FOUND_U" == "1" ]] || status=1
-[[ "$FOUND_D" == "1" ]] || status=1
+STATUS=0
+(( FOUND_C )) || STATUS=1
+(( FOUND_U )) || STATUS=1
+(( FOUND_D )) || STATUS=1
 {
   echo "CDC incremental — $STAMP UTC"
+  echo "Tópico: $TOPIC"
   echo "Consumer group: $GROUP"
-  echo "Test customer_id: $TEST_ID"
-  echo "Test email: $TEST_EMAIL"
-  [[ "$FOUND_C" == "1" ]] && echo "op=c CONFIRMADO" || echo "op=c AUSENTE"
-  [[ "$FOUND_U" == "1" ]] && echo "op=u CONFIRMADO" || echo "op=u AUSENTE"
-  [[ "$FOUND_D" == "1" ]] && echo "op=d CONFIRMADO" || echo "op=d AUSENTE"
-  grep -F "$TEST_EMAIL" "$RAW" || true
+  echo "customer_id: $TEST_ID"
+  echo "Marcador: $TEST_EMAIL"
+  echo "op=c + snapshot=false: $([[ $FOUND_C == 1 ]] && echo CONFIRMADO || echo AUSENTE)"
+  echo "op=u + snapshot=false: $([[ $FOUND_U == 1 ]] && echo CONFIRMADO || echo AUSENTE)"
+  echo "op=d + snapshot=false: $([[ $FOUND_D == 1 ]] && echo CONFIRMADO || echo AUSENTE)"
+  echo "Eventos correlacionados:"
+  printf '%s\n' "$MATCHED"
 } | tee "$OUT"
 
-if [[ "$status" -ne 0 ]]; then
-  echo "Falha: uma ou mais operações CDC esperadas não foram observadas. Consulte $OUT." >&2
+if (( STATUS != 0 )); then
+  echo "Falha: não foram confirmados os três eventos incrementais com snapshot=false. Evidência: $OUT" >&2
   exit 1
 fi
-echo "As operações c, u e d foram observadas. Evidência: $OUT"
+echo "CDC incremental confirmado. A limpeza do registro é tentada ao encerrar."
