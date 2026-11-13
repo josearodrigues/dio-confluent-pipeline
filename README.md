@@ -44,7 +44,7 @@ flowchart LR
 
 ## Preparação do PostgreSQL no Neon
 
-A Fase 1 reproduz a preparação mostrada pelo mentor. Execute as etapas **nesta ordem**. A criação/configuração do conector CDC continua na Fase 2, na Confluent. Os scripts redescobrem Environment, cluster, Schema Registry e compute pool pelos nomes configurados, em vez de confiar cegamente nos IDs persistidos. O `.state.env` permanece privado (permissão 600) e contém IDs e credenciais; não o apague nem compartilhe. Se uma API key já existir, mas seu segredo não estiver disponível localmente, a automação interrompe a execução para evitar criar chaves duplicadas.
+A Fase 1 reproduz a preparação mostrada pelo mentor. Execute as etapas **nesta ordem**. A criação/configuração do conector CDC continua na Fase 2, na Confluent. Os scripts redescobrem Environment, cluster, Schema Registry e compute pool pelos nomes configurados, em vez de confiar cegamente nos IDs persistidos. 
 
 1. Crie no Neon um projeto PostgreSQL dedicado ao laboratório.
 2. Copie `.env.example` para `.env` e preencha:
@@ -98,12 +98,12 @@ A evolução do schema real é opcional e pode ser demonstrada com `./infrastruc
 - Janela: 60 segundos de `$rowtime`, timestamp associado à chegada Kafka.
 - O snapshot inicial deve terminar antes de iniciar os statements de processamento.
 - Para evitar que as 2.000 transações do snapshot sejam interpretadas como uma rajada, o script define `scan.startup.mode=latest-offset` em transactions antes do Temporal Join. A dimensão accounts permanece disponível para o join.
-- O modo append não filtra eventos Debezium por operação: eventos de criação/leitura/atualização são tratados como novas linhas, enquanto exclusões são ignoradas. Assim, atualizações CDC podem contribuir para a contagem de padrões; a regra não equivale a contar exclusivamente INSERTs de negócio. O cenário positivo usa INSERTs novos para demonstrar a regra.
+- A conversão para append-only altera a representação do changelog para atender ao operador seguinte. Não deve ser interpretada como filtro universal de operações Debezium nem como garantia de que somente INSERTs de negócio serão contados. Atualizações/retrações podem ser representadas como novos registros conforme a semântica do plano e do conector; validar o comportamento observado antes de interpretar alertas. O cenário positivo usa INSERTs novos para demonstrar a regra.
 - O resultado é um fluxo de alertas no Kafka, não uma persistência em banco de destino.
 
 ## Segurança e custos
 
-Não versione `.env`, `.state.env`, arquivos renderizados ou segredos. Execute em ambiente dedicado. Compute pool Flink e conectores gerenciados podem gerar custos enquanto provisionados/ativos. Consulte `operations/cost-and-metrics.md` antes e depois do laboratório.
+Não versione `.env`, `.state.env`, arquivos renderizados ou segredos. O `.state.env` local contém IDs e credenciais, deve permanecer privado (permissão 600) e não deve ser compartilhado. A automação redescobre os recursos Confluent pelo nome; se uma API key já existir sem que seu segredo esteja disponível localmente, interrompe a execução para evitar duplicação. Execute em ambiente dedicado. Compute pool Flink e conectores gerenciados podem gerar custos enquanto provisionados/ativos. Consulte `operations/cost-and-metrics.md` antes e depois do laboratório.
 
 ## Estado da entrega
 
