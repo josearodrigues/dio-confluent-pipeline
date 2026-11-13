@@ -53,7 +53,13 @@ A Fase 1 reproduz a preparação mostrada pelo mentor. Ela termina com o banco, 
 neon roles create --name cdc
 ```
 
-Configure `PG_CDC_USER=cdc` e a senha correspondente em `PG_CDC_PASSWORD` somente no ambiente local. A role precisa ter `LOGIN` e `REPLICATION`; não tente conceder o atributo por SQL se o provedor o administra.
+Configure `PG_CDC_USER=cdc` e obtenha a credencial da role localmente, sem expor a connection string:
+
+```bash
+neon connection-string main --project-id <PROJECT_ID> --role-name cdc --database-name <PG_DATABASE> --ssl require
+```
+
+Extraia a senha no próprio terminal e preencha `PG_CDC_PASSWORD` no `.env`. A role precisa ter `LOGIN` e `REPLICATION`; não tente conceder o atributo por SQL se o provedor o administra. O wrapper valida também a autenticação dessa role antes de executar o reset.
 4. Confira o alvo e inicialize:
 
 ```bash
