@@ -1,0 +1,19 @@
+Environment: env-mn3vgw
+Kafka cluster: lkc-rrwvjjk
+Bootstrap: SASL_SSL://pkc-921jm.us-east-2.aws.confluent.cloud:9092
+Writer service account: sa-wzkvv85
+Reader service account: sa-kgwpp7g
+     Principal    | Permission | Operation | Resource Type |    Resource Name     | Pattern Type  
+------------------+------------+-----------+---------------+----------------------+---------------
+  User:sa-kgwpp7g | ALLOW      | DESCRIBE  | TOPIC         | fraud_alerts         | LITERAL       
+  User:sa-kgwpp7g | ALLOW      | DESCRIBE  | TOPIC         | payments.            | PREFIXED      
+  User:sa-kgwpp7g | ALLOW      | READ      | GROUP         | app-reader           | LITERAL       
+  User:sa-kgwpp7g | ALLOW      | READ      | GROUP         | snapshot-check-      | PREFIXED      
+  User:sa-kgwpp7g | ALLOW      | READ      | TOPIC         | fraud_alerts         | LITERAL       
+  User:sa-kgwpp7g | ALLOW      | READ      | TOPIC         | payments.            | PREFIXED      
+  User:sa-wzkvv85 | ALLOW      | CREATE    | TOPIC         | __debezium-heartbeat | PREFIXED      
+  User:sa-wzkvv85 | ALLOW      | CREATE    | TOPIC         | payments.            | PREFIXED      
+  User:sa-wzkvv85 | ALLOW      | DESCRIBE  | TOPIC         | __debezium-heartbeat | PREFIXED      
+  User:sa-wzkvv85 | ALLOW      | DESCRIBE  | TOPIC         | payments.            | PREFIXED      
+  User:sa-wzkvv85 | ALLOW      | WRITE     | TOPIC         | __debezium-heartbeat | PREFIXED      
+  User:sa-wzkvv85 | ALLOW      | WRITE     | TOPIC         | payments.            | PREFIXED      
