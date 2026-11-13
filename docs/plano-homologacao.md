@@ -96,7 +96,7 @@ O script cria um registro temporário exclusivo, executa INSERT/UPDATE/DELETE, p
 
 **Estado em 13/11/2026:** etapa homologada na instância atual; INSERT (`op=c`), UPDATE (`op=u`) e DELETE (`op=d`) foram observados com `snapshot=false`.
 
-## 7. Evolução do schema real do CDC
+## 7. Evolução adicional do schema real do CDC (extensão do projeto)
 
 Depois do teste incremental e antes de criar statements Flink, valide a evolução do subject efetivamente usado pelo conector:
 
@@ -104,11 +104,11 @@ Depois do teste incremental e antes de criar statements Flink, valide a evoluç�
 CONFIRM_SCHEMA_EVOLUTION=yes ./infrastructure/schema-evolution.sh
 ```
 
-Esta etapa é distinta do teste isolado de compatibilidade da etapa 3. Ela altera a tabela `payments.transactions`, adiciona a coluna `channel` e insere um registro para provocar nova versão no subject real `payments.transactions-value`. Exige confirmação explícita e deve ser executada somente após conferir o banco e o subject.
+Esta é uma extensão do projeto, não o Passo 6 da demonstração do mentor. O Passo 6 testa compatibilidade em um subject Avro isolado (`contract.transactions-value`), por meio de `infrastructure/schema-registry.sh`, atualmente executado na etapa 3 deste plano. Esta etapa adicional altera a tabela `payments.transactions`, adiciona a coluna `channel` e insere um registro para provocar nova versão no subject real `payments.transactions-value`. Exige confirmação explícita e deve ser executada somente após conferir o banco e o subject.
 
 **Evidência esperada:** `evidence/homologation/07-real-schema-evolution.txt`.
 
-**Critério:** comprovar a compatibilidade esperada, a publicação do novo schema pelo CDC e a captura do evento no tópico. Corresponde ao Passo 6 da demonstração do mentor.
+**Critério:** comprovar a publicação do novo schema pelo CDC e a captura do evento no tópico. Não corresponde ao Passo 6 da demonstração; é uma validação adicional do subject real.
 
 **Estado em 13/11/2026:** evolução homologada no subject `payments.transactions-value`; compatibilidade BACKWARD, campo `channel` e evento correspondente observados no Kafka.
 ## 8. Flink SQL
@@ -158,7 +158,7 @@ Execute somente com os statements Flink ativos:
 
 ## 11. Verificações complementares opcionais
 
-As validações CDC incremental e evolução do schema real foram promovidas para as etapas obrigatórias anteriores ao Flink (seções 6 e 7), seguindo a sequência da demonstração do mentor. Não as repetir aqui.
+A validação CDC incremental (Passo 5 do mentor) e a evolução adicional do subject CDC real foram colocadas antes do Flink. O teste isolado de contrato Avro (Passo 6 do mentor) é executado atualmente na etapa 3, junto da preparação do Schema Registry; não o repetir.
 
 ## 12. Registro, custos e encerramento
 
@@ -180,4 +180,4 @@ As validações CDC incremental e evolução do schema real foram promovidas par
 
 ## Ordem didática e operacional
 
-A sequência reproduz a demonstração do mentor: Passo 5 (CDC incremental: INSERT/UPDATE/DELETE), Passo 6 (evolução/compatibilidade de schema) e Passo 7 (Flink: Temporal Join, append e MATCH_RECOGNIZE). O teste isolado de contrato da etapa 3 é uma preparação de Schema Registry e não substitui a evolução do subject real na etapa 7.
+A sequência conceitual da demonstração é: Passo 5 (CDC incremental: INSERT/UPDATE/DELETE), Passo 6 (compatibilidade de contrato Avro em subject isolado) e Passo 7 (Flink: Temporal Join, append e MATCH_RECOGNIZE). Neste projeto, o teste isolado do Passo 6 é executado na etapa 3, antes do CDC, porque `schema-registry.sh` combina provisionamento e teste de contrato. A evolução do subject CDC real, executada após o CDC incremental e antes do Flink, é uma extensão adicional e não deve ser chamada de Passo 6.
