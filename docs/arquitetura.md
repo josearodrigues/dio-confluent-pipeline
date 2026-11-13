@@ -34,7 +34,7 @@ flowchart LR
 
 1. O snapshot CDC publica o estado inicial das quatro tabelas.
 2. Após validar o snapshot, transactions é configurada para iniciar no offset mais recente; accounts mantém a leitura da dimensão.
-3. Flink declara chaves primárias para accounts e transactions.
+3. Flink declara a chave primária de accounts, necessária ao lado dimensional do Temporal Join.
 4. Temporal Join associa cada transação à versão da conta válida no `$rowtime` do evento.
 5. A tabela enriquecida é alterada para `changelog.mode=append`, como na demonstração de referência.
 6. MATCH_RECOGNIZE procura pelo menos três transações positivas do mesmo cartão em até 60 segundos.
