@@ -96,6 +96,8 @@ O verificador inicia os quatro consumidores em paralelo e acompanha cada tópico
 
 A evolução real do schema deixou de ser opcional no roteiro principal: ela antecede o Flink, conforme a sequência demonstrada pelo mentor. O teste isolado de compatibilidade da etapa 2 continua sendo uma verificação distinta.
 
+**Estado confirmado em 13/11/2026:** snapshot CDC (2.760/2.760), CDC incremental (`c/u/d`, `snapshot=false`) e evolução do subject real `payments.transactions-value` estão homologados. A próxima etapa é Flink; revisão estática concluída, execução cloud ainda não realizada.
+
 ## Regra e limitações
 
 - Particionamento lógico da regra: `card_id`.
