@@ -61,7 +61,7 @@ A Fase 1 reproduz a preparação mostrada pelo mentor. Execute as etapas **nesta
 4. Execute a etapa **00**, que habilita Logical Replication, cria a role `cdc` se ainda não existir, recupera sua credencial e atualiza `.env` sem exibir a senha:
 
    ```bash
-   ./scripts/00-setup-neon.sh
+   bash scripts/00-setup-neon.sh
    ```
 
    **Atenção:** habilitar Logical Replication pode suspender os endpoints ativos do projeto e não pode ser desfeito. O script apresenta o aviso e exige confirmação interativa antes de solicitar a alteração. A role criada pela Neon CLI recebe a associação `neon_superuser`, que inclui o privilégio `REPLICATION`.
