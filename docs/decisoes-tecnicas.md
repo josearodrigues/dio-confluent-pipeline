@@ -19,6 +19,10 @@ Este documento registra as decisões refletidas nos artefatos versionados do pro
 | MATCH_RECOGNIZE por card_id | Detecta três ou mais registros positivos do mesmo cartão em até 60 segundos de `$rowtime`. |
 | Tópico fraud_alerts como saída | O fluxo termina no Kafka. PostgreSQL Sink não faz parte do escopo principal. |
 
+## Ordem de homologação
+
+A ordem operacional acompanha a demonstração do mentor e é requisito do roteiro: (1) snapshot CDC completo; (2) CDC incremental com INSERT, UPDATE e DELETE; (3) evolução compatível/incompatível do schema real do CDC; (4) Flink SQL com Temporal Join, append e MATCH_RECOGNIZE; (5) cenários funcionais e verificações de saída. O teste isolado de contrato Avro/Schema Registry é uma preparação e não substitui a evolução do subject real. Não iniciar Flink antes de concluir as etapas 2 e 3.
+
 ## Semântica e limitações
 
 - `$rowtime`/`rowtime` usado na regra representa o timestamp associado ao evento Kafka, não o campo de negócio `created_at`.
@@ -40,4 +44,4 @@ Este documento registra as decisões refletidas nos artefatos versionados do pro
 
 ## Estado de validação
 
-As decisões acima descrevem o desenho e os artefatos atuais. O repositório não presume que a execução cloud esteja homologada. Registrar resultados somente com evidências produzidas e verificadas durante a execução real.
+As decisões acima descrevem o desenho e os artefatos atuais. A ordem de execução está alinhada aos passos 5, 6 e 7 da demonstração do mentor. Os resultados cloud devem ser classificados somente com evidências produzidas e verificadas durante a execução real.
