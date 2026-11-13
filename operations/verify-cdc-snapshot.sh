@@ -14,7 +14,7 @@ require confluent awk date sleep
 : "${SR_API_KEY:?SR_API_KEY ausente}"
 : "${SR_API_SECRET:?SR_API_SECRET ausente}"
 
-TIMEOUT_SECONDS="${CDC_SNAPSHOT_TIMEOUT:-1800}"
+TIMEOUT_SECONDS="${CDC_SNAPSHOT_TIMEOUT:-2400}"
 [[ "$TIMEOUT_SECONDS" =~ ^[1-9][0-9]*$ ]] || {
   echo "ERRO: CDC_SNAPSHOT_TIMEOUT deve ser um inteiro positivo (segundos)." >&2
   exit 1
