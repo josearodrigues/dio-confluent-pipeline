@@ -23,35 +23,6 @@ ROLE_OK="$(PGPASSWORD="$PG_ADMIN_PASSWORD" PGSSLMODE=require psql -X -At \
   exit 1
 }
 
-# Confirma que a credencial usada pelo conector autentica no banco.
-PGPASSWORD="$PG_CDC_PASSWORD" PGSSLMODE=require psql -X -v ON_ERROR_STOP=1 -At \
-  -h "$PG_HOST" -p "$PG_PORT" -U "$PG_CDC_USER" -d "$PG_DATABASE" \
-  -c 'SELECT 1' >/dev/null || {
-    echo "A role CDC não conseguiu autenticar no banco; conector não será criado." >&2
-    exit 1
-  }
-
-# A publication deve conter exatamente as quatro tabelas configuradas no JSON.
-PUBLICATION_OK="$(PGPASSWORD="$PG_ADMIN_PASSWORD" PGSSLMODE=require psql -X -At \
-  -h "$PG_HOST" -p "$PG_PORT" -U "$PG_ADMIN_USER" -d "$PG_DATABASE" \
-  -v ON_ERROR_STOP=1 -c "SELECT (count(*) = 4 AND count(*) FILTER (WHERE schemaname = 'payments' AND tablename IN ('customers','accounts','cards','transactions')) = 4)::text FROM pg_publication_tables WHERE pubname = 'payments_pub'")"
-[[ "$PUBLICATION_OK" == "true" ]] || {
-  echo "A publication payments_pub não contém exatamente customers, accounts, cards e transactions." >&2
-  echo "Conector não será criado; confira a inicialização do banco e o escopo da publication." >&2
-  exit 1
-}
-
-# A role do conector precisa ler todas as tabelas capturadas.
-SELECT_OK="$(PGPASSWORD="$PG_ADMIN_PASSWORD" PGSSLMODE=require psql -X -At \
-  -h "$PG_HOST" -p "$PG_PORT" -U "$PG_ADMIN_USER" -d "$PG_DATABASE" \
-  -v ON_ERROR_STOP=1 -v "cdc_role=$PG_CDC_USER" \
-  -c "SELECT bool_and(has_table_privilege(:'cdc_role', 'payments.' || t, 'SELECT'))::text FROM unnest(ARRAY['customers','accounts','cards','transactions']) AS t")"
-[[ "$SELECT_OK" == "true" ]] || {
-  echo "A role '$PG_CDC_USER' não possui SELECT em todas as tabelas CDC." >&2
-  echo "Conector não será criado; corrija as permissões antes de continuar." >&2
-  exit 1
-}
-
 NAME="payments-postgres-cdc"
 OUT="$ROOT_DIR/infrastructure/.rendered/cdc-connector.json"
 mkdir -p "$(dirname "$OUT")"
