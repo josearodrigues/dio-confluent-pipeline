@@ -32,8 +32,8 @@ ensure_key(){
     fail "já existem $existing API key(s) para $keyvar, mas o segredo não está salvo. Recupere o estado ou revise as chaves antes de criar outra."
   fi
   json="$(confluent api-key create --resource "$resource" --service-account "$sa" --description "payments-lab-$keyvar" -o json)"
-  save_state "$keyvar" "$(jq -r '.api_key' <<<"$json")"
-  save_state "$secretvar" "$(jq -r '.api_secret' <<<"$json")"
+  save_state "$keyvar" "$(jq -r '.key' <<<"$json")"
+  save_state "$secretvar" "$(jq -r '.secret' <<<"$json")"
 }
 ensure_topic_acl(){
   local sa="$1" ops="$2" topic="$3" acls op
