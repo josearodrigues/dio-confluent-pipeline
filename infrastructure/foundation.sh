@@ -16,7 +16,7 @@ ensure_sa(){
   else
     SA_CREATED=no
   fi
-  printf '%s' "$id"
+  SA_RESULT_ID="$id"
 }
 ensure_key(){
   local resource="$1" sa="$2" keyvar="$3" secretvar="$4" json existing
@@ -118,11 +118,13 @@ done
 BOOTSTRAP="$(confluent kafka cluster describe "$CLUSTER_ID" -o json | jq -r '.endpoint')"
 save_state BOOTSTRAP "$BOOTSTRAP"
 
-SA_WRITER_ID="$(ensure_sa cdc-writer 'Escrita dos eventos CDC')"
+ensure_sa cdc-writer 'Escrita dos eventos CDC'
+SA_WRITER_ID="$SA_RESULT_ID"
 if [[ "$PREV_SA_WRITER_ID" == "$SA_WRITER_ID" && "$PREV_SA_WRITER_CREATED" == yes ]]; then SA_CREATED=yes; fi
 save_state SA_WRITER_ID "$SA_WRITER_ID"
 save_state SA_WRITER_CREATED "$SA_CREATED"
-SA_READER_ID="$(ensure_sa app-reader 'Leitura dos tópicos do laboratório')"
+ensure_sa app-reader 'Leitura dos tópicos do laboratório'
+SA_READER_ID="$SA_RESULT_ID"
 if [[ "$PREV_SA_READER_ID" == "$SA_READER_ID" && "$PREV_SA_READER_CREATED" == yes ]]; then SA_CREATED=yes; fi
 save_state SA_READER_ID "$SA_READER_ID"
 save_state SA_READER_CREATED "$SA_CREATED"
