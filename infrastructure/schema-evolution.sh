@@ -89,7 +89,7 @@ CONNECTOR_STATUS="$(jq -r --arg n "$CONNECTOR_NAME" '[.[] | select(.name==$n)][0
 [[ "$CONNECTOR_STATUS" == "RUNNING" ]] || fail "conector $CONNECTOR_NAME não está RUNNING (status=${CONNECTOR_STATUS:-ausente})."
 
 # A política é alterada somente após a confirmação explícita acima.
-sr_call PUT "/config/$SUBJECT" '{"compatibility":"BACKWARD}' >/dev/null
+sr_call PUT "/config/$SUBJECT" '{"compatibility":"BACKWARD"}' >/dev/null
 LEVEL="$(sr_call GET "/config/$SUBJECT?defaultToGlobal=true" | jq -r '.compatibilityLevel // .compatibility // empty')"
 case "$LEVEL" in
   BACKWARD|BACKWARD_TRANSITIVE|FULL|FULL_TRANSITIVE) ;;
