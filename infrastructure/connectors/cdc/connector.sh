@@ -13,16 +13,6 @@ require confluent jq psql
 : "${PG_CDC_USER:?PG_CDC_USER ausente}"
 : "${PG_CDC_PASSWORD:?PG_CDC_PASSWORD ausente}"
 
-ROLE_OK="$(PGPASSWORD="$PG_ADMIN_PASSWORD" PGSSLMODE=require psql -X -At \
-  -h "$PG_HOST" -p "$PG_PORT" -U "$PG_ADMIN_USER" -d "$PG_DATABASE" \
-  -v ON_ERROR_STOP=1 -v "cdc_role=$PG_CDC_USER" \
-  -c "SELECT COALESCE(bool_and(rolcanlogin AND rolreplication), false) FROM pg_roles WHERE rolname = :'cdc_role'")"
-[[ "$ROLE_OK" == "t" ]] || {
-  echo "A role PostgreSQL '$PG_CDC_USER' não existe ou não possui LOGIN e REPLICATION." >&2
-  echo "Crie/ajuste a role no provedor antes de provisionar o conector." >&2
-  exit 1
-}
-
 NAME="payments-postgres-cdc"
 OUT="$ROOT_DIR/infrastructure/.rendered/cdc-connector.json"
 mkdir -p "$(dirname "$OUT")"
@@ -34,10 +24,12 @@ if jq -e --arg n "$NAME" 'any(.[]; .name==$n)' <<<"$CONNECTORS" >/dev/null; then
   echo "Conector $NAME já existe; inspecione antes de continuar." >&2
   exit 1
 fi
-SLOT="$(PGPASSWORD="$PG_ADMIN_PASSWORD" PGSSLMODE=require psql -X -At \
-  -h "$PG_HOST" -p "$PG_PORT" -U "$PG_ADMIN_USER" -d "$PG_DATABASE" \
-  -c "SELECT count(*) FROM pg_replication_slots WHERE slot_name='payments_slot'")"
-[[ "$SLOT" == "0" ]] || { echo "Slot payments_slot já existe; não será reutilizado automaticamente." >&2; exit 1; }
+SLOT_EXISTS="$(PGPASSWORD="$PG_ADMIN_PASSWORD" PGSSLMODE=require psql \
+  -X -h "$PG_HOST" -p "$PG_PORT" \
+  -U "$PG_ADMIN_USER" -d "$PG_DATABASE" \
+  -v ON_ERROR_STOP=1 -Atqc \
+  "SELECT EXISTS (SELECT 1 FROM pg_replication_slots WHERE slot_name = 'payments_slot');")"
+[[ "$SLOT_EXISTS" == "f" ]] || { echo "Slot payments_slot já existe; não será reutilizado automaticamente." >&2; exit 1; }
 render_template "$ROOT_DIR/infrastructure/connectors/cdc/connector.json" "$OUT" \
   SA_WRITER_ID PG_HOST PG_PORT PG_CDC_USER PG_CDC_PASSWORD PG_DATABASE
 confluent connect cluster create --config-file "$OUT"
