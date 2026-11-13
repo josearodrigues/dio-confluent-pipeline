@@ -73,7 +73,6 @@ submit() {
   # A carga inicial CDC deve estar concluída antes de iniciar esta sequência.
   submit payments-transactions-startup "$FLINK_DIR/00-startup-transactions.sql" COMPLETED
   submit payments-pk-accounts "$FLINK_DIR/00-pk-accounts.sql" COMPLETED
-  submit payments-pk-transactions "$FLINK_DIR/00-pk-transactions.sql" COMPLETED
   submit payments-enrichment "$FLINK_DIR/01-enrichment.sql" RUNNING
   submit payments-append-only "$FLINK_DIR/02-append-only.sql" COMPLETED
   submit payments-fraud-detection "$FLINK_DIR/04-fraud-detection.sql" RUNNING
