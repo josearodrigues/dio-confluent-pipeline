@@ -114,7 +114,7 @@ Este repositório começa com histórico Git independente. Os artefatos descreve
 
 ### Evidências SQL e privacidade de caminhos
 
-O wrapper `scripts/run-sql.sh` executa o `psql` a partir da raiz do projeto e utiliza caminhos relativos para o arquivo SQL. Os logs mostram apenas caminhos internos do repositório, e o resumo informa o caminho relativo da evidência, sem expor o diretório local da máquina.
+O wrapper `scripts/run-sql.sh` executa o `psql` a partir da raiz do projeto e utiliza caminhos relativos para o arquivo SQL. Os logs mostram apenas caminhos internos do repositório, e o resumo informa o caminho relativo da evidência, sem expor o diretório local da máquina. O verificador `operations/verify-cdc-snapshot.sh` também grava e apresenta somente caminhos relativos em seus resumos e mensagens; cada execução usa um identificador com timestamp e PID para evitar colisão de diretório e consumer group.
 
 
 ## Configuração de idleness do Flink
