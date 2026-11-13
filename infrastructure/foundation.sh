@@ -77,6 +77,9 @@ ensure_group_acl(){
   fi
 }
 
+PREV_CLUSTER_ID="${CLUSTER_ID:-}"
+PREV_SA_WRITER_ID="${SA_WRITER_ID:-}"
+PREV_SA_READER_ID="${SA_READER_ID:-}"
 confluent environment list >/dev/null 2>&1 || confluent login --save
 ENVS="$(confluent environment list -o json)"
 # Sempre redescobrir por nome; IDs locais podem apontar para recursos excluídos.
@@ -114,7 +117,13 @@ SA_READER_ID="$(ensure_sa app-reader 'Leitura dos tópicos do laboratório')"
 save_state SA_READER_ID "$SA_READER_ID"
 save_state SA_READER_CREATED "$SA_CREATED"
 # Não confiar em API Keys antigas do arquivo de estado.
-unset WRITER_API_KEY WRITER_API_SECRET READER_API_KEY READER_API_SECRET
+# Reutiliza segredos somente se cluster e service accounts continuam os mesmos.
+if [[ "$PREV_CLUSTER_ID" != "$CLUSTER_ID" || "$PREV_SA_WRITER_ID" != "$SA_WRITER_ID" ]]; then
+  unset WRITER_API_KEY WRITER_API_SECRET
+fi
+if [[ "$PREV_CLUSTER_ID" != "$CLUSTER_ID" || "$PREV_SA_READER_ID" != "$SA_READER_ID" ]]; then
+  unset READER_API_KEY READER_API_SECRET
+fi
 ensure_key "$CLUSTER_ID" "$SA_WRITER_ID" WRITER_API_KEY WRITER_API_SECRET
 ensure_key "$CLUSTER_ID" "$SA_READER_ID" READER_API_KEY READER_API_SECRET
 ensure_topic_acl "$SA_WRITER_ID" create,write,describe "payments."
