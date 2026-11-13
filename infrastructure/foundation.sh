@@ -20,20 +20,21 @@ ensure_sa(){
 }
 ensure_key(){
   local resource="$1" sa="$2" keyvar="$3" secretvar="$4" json existing
-  if [[ -n "${!keyvar:-}" && -n "${!secretvar:-}" ]]; then
+  if [[ -n "${!keyvar:-}" && -n "${!secretvar:-}" &&
+        "${!keyvar}" != null && "${!secretvar}" != null ]]; then
     if confluent api-key list --resource "$resource" --service-account "$sa" -o json |
       jq -e --arg k "${!keyvar}" 'any(.[]; (.key // .api_key // .id)==$k)' >/dev/null; then
       return
     fi
-    unset "$keyvar" "$secretvar"
   fi
+  # Estado ausente/inválido (inclusive o literal "null") não é reutilizável.
+  unset "$keyvar" "$secretvar"
   existing="$(confluent api-key list --resource "$resource" --service-account "$sa" -o json | jq 'length')"
   if [[ "$existing" -gt 0 ]]; then
     fail "já existem $existing API key(s) para $keyvar, mas o segredo não está salvo. Recupere o estado ou revise as chaves antes de criar outra."
   fi
   json="$(confluent api-key create --resource "$resource" --service-account "$sa" --description "payments-lab-$keyvar" -o json)"
-  save_state "$keyvar" "$(jq -r '.key' <<<"$json")"
-  save_state "$secretvar" "$(jq -r '.secret' <<<"$json")"
+  save_api_key_credentials "$json" "$keyvar" "$secretvar"
 }
 ensure_topic_acl(){
   local sa="$1" ops="$2" topic="$3" acls op
