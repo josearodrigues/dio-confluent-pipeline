@@ -85,13 +85,16 @@ A etapa 01 recria somente o schema `payments`, carrega dados determinísticos (2
 3. `./infrastructure/connectors/cdc/connector.sh` — conector PostgreSQL CDC V2.
 4. Aguarde o snapshot inicial e valide os tópicos com `./operations/verify-cdc-snapshot.sh`.
 
-O verificador inicia os quatro consumidores em paralelo e acompanha cada tópico separadamente. Cada consumidor é encerrado ao atingir a contagem esperada de eventos Debezium `op=r` (200 customers, 240 accounts, 320 cards e 2.000 transactions); os marcadores de snapshot ficam registrados apenas como diagnóstico. O timeout máximo é individual e configurável em segundos por `CDC_SNAPSHOT_TIMEOUT` (padrão: 1.800 segundos / 30 minutos).
-5. `./flink/scripts/run.sh` — configura startup offset, declara a PK de accounts, cria Temporal Join, append e MATCH_RECOGNIZE.
-6. Execute o cenário positivo: `./scripts/run-sql.sh database/seed/simulate-events.sql`.
-7. Consulte os resultados no tópico `fraud_alerts` e registre as evidências.
-8. Execute `./operations/verify-cdc-incremental.sh` para validar INSERT, UPDATE e DELETE na tabela customers.
+A sequência após o snapshot é obrigatória: CDC incremental (Passo 5 do mentor), evolução do schema real (Passo 6) e somente então Flink (Passo 7).
 
-A evolução do schema real é opcional e pode ser demonstrada com `./infrastructure/schema-evolution.sh`.
+O verificador inicia os quatro consumidores em paralelo e acompanha cada tópico separadamente. Cada consumidor é encerrado ao atingir a contagem esperada de eventos Debezium `op=r` (200 customers, 240 accounts, 320 cards e 2.000 transactions); os marcadores de snapshot ficam registrados apenas como diagnóstico. O timeout máximo é individual e configurável em segundos por `CDC_SNAPSHOT_TIMEOUT` (padrão: 1.800 segundos / 30 minutos).
+5. `./operations/verify-cdc-incremental.sh` — valide INSERT, UPDATE e DELETE e confirme os eventos `c`, `u` e `d` com `snapshot=false` (Passo 5 do mentor).
+6. `CONFIRM_SCHEMA_EVOLUTION=yes ./infrastructure/schema-evolution.sh` — valide a evolução do subject real `payments.transactions-value` (Passo 6 do mentor). Confira banco e subject antes de confirmar.
+7. `./flink/scripts/run.sh` — somente depois das validações anteriores, configura startup offset, declara a PK de accounts, cria Temporal Join, append e MATCH_RECOGNIZE (Passo 7 do mentor).
+8. Execute o cenário positivo: `./scripts/run-sql.sh database/seed/simulate-events.sql`.
+9. Consulte os resultados no tópico `fraud_alerts` e registre as evidências.
+
+A evolução real do schema deixou de ser opcional no roteiro principal: ela antecede o Flink, conforme a sequência demonstrada pelo mentor. O teste isolado de compatibilidade da etapa 2 continua sendo uma verificação distinta.
 
 ## Regra e limitações
 
