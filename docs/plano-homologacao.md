@@ -78,7 +78,7 @@ O verificador consome os quatro tópicos desde o início e contabiliza eventos D
 | `payments.cards` | 320 |
 | `payments.transactions` | 2.000 |
 
-**Critério:** cada contagem observada deve corresponder à esperada. Investigue divergências antes de iniciar CDC incremental, evolução do schema ou statements Flink.
+**Critério:** cada contagem observada deve corresponder à esperada. Na execução homologada de 13/11/2026, os quatro tópicos atingiram 2.760/2.760 eventos `op=r` com timeout de 2.400 segundos; resultado `target-reached`. Snapshot: **homologado**.
 
 ## 6. CDC incremental
 
@@ -94,6 +94,8 @@ O script cria um registro temporário exclusivo, executa INSERT/UPDATE/DELETE, p
 
 **Critério:** correlacionar a linha de origem com os três eventos Debezium e confirmar `snapshot=false`. O teste deve ocorrer antes do Flink, como no Passo 5 da demonstração do mentor.
 
+**Estado em 13/11/2026:** etapa homologada na instância atual; INSERT (`op=c`), UPDATE (`op=u`) e DELETE (`op=d`) foram observados com `snapshot=false`.
+
 ## 7. Evolução do schema real do CDC
 
 Depois do teste incremental e antes de criar statements Flink, valide a evolução do subject efetivamente usado pelo conector:
@@ -107,6 +109,8 @@ Esta etapa é distinta do teste isolado de compatibilidade da etapa 3. Ela alter
 **Evidência esperada:** `evidence/homologation/07-real-schema-evolution.txt`.
 
 **Critério:** comprovar a compatibilidade esperada, a publicação do novo schema pelo CDC e a captura do evento no tópico. Corresponde ao Passo 6 da demonstração do mentor.
+
+**Estado em 13/11/2026:** evolução homologada no subject `payments.transactions-value`; compatibilidade BACKWARD, campo `channel` e evento correspondente observados no Kafka.
 ## 8. Flink SQL
 
 Somente após homologar o snapshot, o CDC incremental e a evolução do schema real, revise e execute:
@@ -118,6 +122,8 @@ Somente após homologar o snapshot, o CDC incremental e a evolução do schema r
 O script seleciona o contexto Flink, pode criar um compute pool se não encontrar um disponível com o nome configurado e submete, em sequência, os statements de startup offset, PKs, enrichment, append e detecção. Ele interrompe a sequência se um statement com o mesmo nome já existir; não sobrescreve automaticamente.
 
 **Evidência esperada:** `evidence/cloud/04-flink.txt`.
+
+**Estado em 13/11/2026:** revisão estática do script e dos SQLs concluída; `bash -n` aprovado sobre o conteúdo remoto final. Nenhum compute pool ou statement Flink foi criado/executado nesta instância. A execução permanece pendente de autorização.
 
 **Critério mínimo:** verificar os estados esperados registrados pelo script:
 - startup offset e declarações de PK: `COMPLETED`;
