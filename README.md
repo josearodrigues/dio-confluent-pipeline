@@ -45,7 +45,7 @@ flowchart LR
 
 A Fase 1 reproduz a preparação mostrada pelo mentor. Ela termina com o banco, o dataset e a publication prontos; não cria nem configura o conector CDC na Confluent.
 
-1. Crie um projeto PostgreSQL dedicado no Neon e habilite **Logical Replication** nas configurações do projeto. Essa alteração reinicia os computes; confirme o impacto antes de habilitá-la.
+1. Crie um projeto PostgreSQL dedicado no Neon e habilite **Logical Replication** nas configurações do projeto. Copie `.env.example` para `.env` (`cp .env.example .env`) e preencha os parâmetros localmente. Essa alteração reinicia os computes; confirme o impacto antes de habilitá-la.
 2. Copie a connection string administrativa usando o **host direto**, sem pooler. Preencha no `.env`: `PG_HOST`, `PG_PORT`, `PG_DATABASE`, `PG_ADMIN_USER` e `PG_ADMIN_PASSWORD`.
 3. Crie a role de conexão no Neon pela CLI, conforme o procedimento do provedor:
 
