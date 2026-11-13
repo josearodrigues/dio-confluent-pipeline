@@ -21,8 +21,10 @@ TIMEOUT_SECONDS="${CDC_SNAPSHOT_TIMEOUT:-1800}"
 }
 
 STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
-GROUP="snapshot-check-$STAMP"
-DIR="$ROOT_DIR/evidence/homologation/$STAMP-cdc-snapshot"
+RUN_ID="${STAMP}-$"
+GROUP="snapshot-check-$RUN_ID"
+EVIDENCE_DIR="evidence/homologation/${RUN_ID}-cdc-snapshot"
+DIR="$ROOT_DIR/$EVIDENCE_DIR"
 SUMMARY="$DIR/summary.txt"
 mkdir -p "$DIR"
 cd "$ROOT_DIR"
@@ -80,7 +82,8 @@ trap 'exit 130' INT TERM
 echo "==> Iniciando os quatro consumidores em paralelo"
 for topic in "${TOPICS[@]}"; do
   log="$DIR/${topic//./-}.log"
-  echo "Iniciando $topic (esperado: ${EXPECTED[$topic]}) -> $log"
+  log_rel="$EVIDENCE_DIR/${topic//./-}.log"
+  echo "Iniciando $topic (esperado: ${EXPECTED[$topic]}) -> $log_rel"
 
   confluent kafka topic consume "$topic" \
     --from-beginning \
@@ -158,7 +161,7 @@ for topic in "${TOPICS[@]}"; do
   printf '%-28s %8s %10s %12s %10s %s\n' \
     "$topic" "$expected" "$op_r" "$snapshot_markers" "$records" "$result" | tee -a "$SUMMARY"
   echo "Encerramento: $reason (código do processo: $rc)" | tee -a "$SUMMARY"
-  echo "Log: $log" | tee -a "$SUMMARY"
+  echo "Log: $EVIDENCE_DIR/${topic//./-}.log" | tee -a "$SUMMARY"
 done
 
 echo | tee -a "$SUMMARY"
@@ -167,5 +170,5 @@ if (( status == 0 )); then
 else
   echo "RESULTADO: snapshot incompleto ou divergente; consulte os logs individuais." | tee -a "$SUMMARY"
 fi
-echo "Resumo: $SUMMARY"
+echo "Resumo: $EVIDENCE_DIR/summary.txt"
 exit "$status"
