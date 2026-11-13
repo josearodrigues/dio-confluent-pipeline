@@ -86,6 +86,8 @@ ensure_group_acl(){
 PREV_CLUSTER_ID="${CLUSTER_ID:-}"
 PREV_SA_WRITER_ID="${SA_WRITER_ID:-}"
 PREV_SA_READER_ID="${SA_READER_ID:-}"
+PREV_SA_WRITER_CREATED="${SA_WRITER_CREATED:-no}"
+PREV_SA_READER_CREATED="${SA_READER_CREATED:-no}"
 confluent environment list >/dev/null 2>&1 || confluent login --save
 ENVS="$(confluent environment list -o json)"
 # Sempre redescobrir por nome; IDs locais podem apontar para recursos excluídos.
@@ -117,9 +119,11 @@ BOOTSTRAP="$(confluent kafka cluster describe "$CLUSTER_ID" -o json | jq -r '.en
 save_state BOOTSTRAP "$BOOTSTRAP"
 
 SA_WRITER_ID="$(ensure_sa cdc-writer 'Escrita dos eventos CDC')"
+if [[ "$PREV_SA_WRITER_ID" == "$SA_WRITER_ID" && "$PREV_SA_WRITER_CREATED" == yes ]]; then SA_CREATED=yes; fi
 save_state SA_WRITER_ID "$SA_WRITER_ID"
 save_state SA_WRITER_CREATED "$SA_CREATED"
 SA_READER_ID="$(ensure_sa app-reader 'Leitura dos tópicos do laboratório')"
+if [[ "$PREV_SA_READER_ID" == "$SA_READER_ID" && "$PREV_SA_READER_CREATED" == yes ]]; then SA_CREATED=yes; fi
 save_state SA_READER_ID "$SA_READER_ID"
 save_state SA_READER_CREATED "$SA_CREATED"
 # Não confiar em API Keys antigas do arquivo de estado.
