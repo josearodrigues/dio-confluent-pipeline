@@ -17,11 +17,15 @@ save_state SR_URL "$SR_URL"
 if [[ "$PREV_SR_ID" != "$SR_ID" ]]; then
   unset SR_API_KEY SR_API_SECRET
 fi
-if [[ -n "${SR_API_KEY:-}" && -n "${SR_API_SECRET:-}" ]]; then
+if [[ -n "${SR_API_KEY:-}" && -n "${SR_API_SECRET:-}" &&
+      "$SR_API_KEY" != null && "$SR_API_SECRET" != null ]]; then
   if ! confluent api-key list --resource "$SR_ID" -o json |
     jq -e --arg k "$SR_API_KEY" 'any(.[]; (.key // .api_key // .id)==$k)' >/dev/null; then
     unset SR_API_KEY SR_API_SECRET
   fi
+else
+  # Estado ausente/inválido (inclusive o literal "null") não é reutilizável.
+  unset SR_API_KEY SR_API_SECRET
 fi
 if [[ -z "${SR_API_KEY:-}" || -z "${SR_API_SECRET:-}" ]]; then
   EXISTING="$(confluent api-key list --resource "$SR_ID" -o json | jq 'length')"
@@ -30,8 +34,7 @@ if [[ -z "${SR_API_KEY:-}" || -z "${SR_API_SECRET:-}" ]]; then
     exit 1
   }
   KEY="$(confluent api-key create --resource "$SR_ID" --description payments-schema-registry -o json)"
-  save_state SR_API_KEY "$(jq -r '.key' <<<"$KEY")"
-  save_state SR_API_SECRET "$(jq -r '.secret' <<<"$KEY")"
+  save_api_key_credentials "$KEY" SR_API_KEY SR_API_SECRET
 fi
 AUTH="$SR_API_KEY:$SR_API_SECRET"
 SUBJECT="contract.transactions-value"
