@@ -21,7 +21,7 @@ TIMEOUT_SECONDS="${CDC_SNAPSHOT_TIMEOUT:-1800}"
 }
 
 STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
-RUN_ID="${STAMP}-$"
+RUN_ID="${STAMP}-${BASHPID}"
 GROUP="snapshot-check-$RUN_ID"
 EVIDENCE_DIR="evidence/homologation/${RUN_ID}-cdc-snapshot"
 DIR="$ROOT_DIR/$EVIDENCE_DIR"
