@@ -22,7 +22,7 @@ BEFORE="$(curl -fsS -u "$SR_API_KEY:$SR_API_SECRET" "$API" | jq 'length')"
 PGPASSWORD="$PG_ADMIN_PASSWORD" PGSSLMODE=require psql -X -v ON_ERROR_STOP=1 \
   -h "$PG_HOST" -p "$PG_PORT" -U "$PG_ADMIN_USER" -d "$PG_DATABASE" \
   -c "ALTER TABLE payments.transactions ADD COLUMN IF NOT EXISTS channel TEXT" \
-  -c "INSERT INTO payments.transactions (card_id,account_id,merchant_id,amount,channel) SELECT card_id,account_id,1,12.34,'schema-evolution' FROM payments.cards WHERE card_id=1"
+  -c "INSERT INTO payments.transactions (card_id,account_id,merchant_id,amount,channel,created_at) SELECT card_id,account_id,1,12.34,'schema-evolution',TIMESTAMPTZ '2026-11-13 12:05:00+00' FROM payments.cards WHERE card_id=1"
 AFTER="$BEFORE"
 for _ in $(seq 1 40); do
   AFTER="$(curl -fsS -u "$SR_API_KEY:$SR_API_SECRET" "$API" | jq 'length')"
