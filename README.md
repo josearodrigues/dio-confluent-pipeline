@@ -108,3 +108,8 @@ Não versione `.env`, `.state.env`, arquivos renderizados ou segredos. O `.state
 ## Estado da entrega
 
 Este repositório começa com histórico Git independente. Os artefatos descrevem como recriar o laboratório; sua presença não comprova execução na Confluent Cloud. Registre resultados reais em `evidence/` somente após executá-los e verificá-los.
+
+
+### Evidências SQL e privacidade de caminhos
+
+O wrapper `scripts/run-sql.sh` executa o `psql` a partir da raiz do projeto e utiliza caminhos relativos para o arquivo SQL. Os logs mostram apenas caminhos internos do repositório, e o resumo informa o caminho relativo da evidência, sem expor o diretório local da máquina.
