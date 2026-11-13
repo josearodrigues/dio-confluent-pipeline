@@ -43,17 +43,22 @@ cleanup() {
     wait "$PID" 2>/dev/null || true
   fi
   if [[ "$CREATED" == "1" ]]; then
-    psql_admin -v test_id="$TEST_ID" \
-      -c "DELETE FROM payments.customers WHERE customer_id = :'test_id'" \
-      >/dev/null 2>&1 || true
+    psql_admin -v test_id="$TEST_ID" >/dev/null 2>&1 <<'SQL' || true
+DELETE FROM payments.customers WHERE customer_id = :'test_id';
+SQL
   fi
   rm -f "$RAW"
 }
 trap cleanup EXIT
 trap 'exit 130' INT TERM
 
-EXISTS="$(psql_admin -At -v test_id="$TEST_ID" -v test_email="$TEST_EMAIL" \
-  -c "SELECT (EXISTS (SELECT 1 FROM payments.customers WHERE customer_id = :'test_id') OR EXISTS (SELECT 1 FROM payments.customers WHERE email = :'test_email'))::int")"
+EXISTS="$(psql_admin -At -v test_id="$TEST_ID" -v test_email="$TEST_EMAIL" <<'SQL'
+SELECT (
+  EXISTS (SELECT 1 FROM payments.customers WHERE customer_id = :'test_id')
+  OR EXISTS (SELECT 1 FROM payments.customers WHERE email = :'test_email')
+)::int;
+SQL
+)"
 [[ "$EXISTS" == "0" ]] || { echo "Colisão detectada; nenhum dado foi alterado." >&2; exit 1; }
 
 echo "Iniciando consumidor de $TOPIC (grupo $GROUP)."
@@ -65,15 +70,19 @@ confluent kafka topic consume "$TOPIC" --group "$GROUP" --value-format avro --pr
 PID=$!
 sleep 5
 
-psql_admin -v test_id="$TEST_ID" -v test_email="$TEST_EMAIL" \
-  -c "INSERT INTO payments.customers(customer_id,full_name,email,city,created_at) VALUES (:'test_id','CDC test',:'test_email','Rio',CURRENT_TIMESTAMP)"
+psql_admin -v test_id="$TEST_ID" -v test_email="$TEST_EMAIL" <<'SQL'
+INSERT INTO payments.customers(customer_id,full_name,email,city,created_at)
+VALUES (:'test_id','CDC test',:'test_email','Rio',CURRENT_TIMESTAMP);
+SQL
 CREATED=1
 sleep 2
-psql_admin -v test_id="$TEST_ID" \
-  -c "UPDATE payments.customers SET city='Niterói' WHERE customer_id = :'test_id'"
+psql_admin -v test_id="$TEST_ID" <<'SQL'
+UPDATE payments.customers SET city='Niterói' WHERE customer_id = :'test_id';
+SQL
 sleep 2
-psql_admin -v test_id="$TEST_ID" \
-  -c "DELETE FROM payments.customers WHERE customer_id = :'test_id'"
+psql_admin -v test_id="$TEST_ID" <<'SQL'
+DELETE FROM payments.customers WHERE customer_id = :'test_id';
+SQL
 
 START_TIME=$SECONDS
 while (( SECONDS - START_TIME < TIMEOUT_SECONDS )); do
