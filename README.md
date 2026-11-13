@@ -113,3 +113,16 @@ Este repositório começa com histórico Git independente. Os artefatos descreve
 ### Evidências SQL e privacidade de caminhos
 
 O wrapper `scripts/run-sql.sh` executa o `psql` a partir da raiz do projeto e utiliza caminhos relativos para o arquivo SQL. Os logs mostram apenas caminhos internos do repositório, e o resumo informa o caminho relativo da evidência, sem expor o diretório local da máquina.
+
+
+## Configuração de idleness do Flink
+
+Por padrão, o projeto mantém a detecção progressiva de partições ociosas da Confluent. Para reproduzir o timeout fixo de 5 segundos demonstrado pelo mentor, configure no `.env`:
+
+```bash
+FLINK_IDLE_TIMEOUT="5 s"
+```
+
+O script `flink/scripts/run.sh` transmite essa configuração como propriedade de cada statement criado. Para voltar ao comportamento progressivo, deixe `FLINK_IDLE_TIMEOUT` vazio. A propriedade é aplicada somente a statements novos; o script não sobrescreve statements existentes e interrompe se encontrar nomes duplicados.
+
+O timeout fixo pode fazer uma partição ser excluída mais cedo do cálculo de watermark. Se ela voltar a produzir eventos atrasados, o watermark pode já ter avançado. Compare watermarks e resultados antes de escolher a configuração.
