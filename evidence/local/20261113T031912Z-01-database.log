@@ -1,6 +1,6 @@
 Reset autorizado: removendo o schema payments.
 BEGIN
-psql:/home/joserodrigues/1h/DIO/20261017-IBM Confluent - Dados em tempo real para agentes de IA/projetos/dio-confluent-pipeline/database/init/01-database.sql:21: NOTICE:  schema "payments" does not exist, skipping
+psql:database/init/01-database.sql:21: NOTICE:  schema "payments" does not exist, skipping
 DROP SCHEMA
 CREATE SCHEMA
 SET
@@ -47,7 +47,7 @@ ALTER TABLE
 ALTER TABLE
 ALTER TABLE
 ALTER TABLE
-psql:/home/joserodrigues/1h/DIO/20261017-IBM Confluent - Dados em tempo real para agentes de IA/projetos/dio-confluent-pipeline/database/init/01-database.sql:131: NOTICE:  publication "payments_pub" does not exist, skipping
+psql:database/init/01-database.sql:131: NOTICE:  publication "payments_pub" does not exist, skipping
 DROP PUBLICATION
 CREATE PUBLICATION
 DO
