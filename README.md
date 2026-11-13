@@ -4,7 +4,7 @@ Projeto didático de CDC e processamento de eventos com PostgreSQL, Confluent Cl
 
 **Fluxo:** PostgreSQL → Debezium CDC → Kafka → Flink SQL (Temporal Join) → append → MATCH_RECOGNIZE → tópico Kafka de alertas.
 
-O projeto acompanha a estrutura e a sequência didática da demonstração do mentor, com nomes e configurações próprios. O destino da solução é o tópico Kafka `fraud_alerts`; não há PostgreSQL Sink no fluxo principal.
+O projeto acompanha os conceitos da demonstração do mentor, com nomes e configurações próprios. Há uma diferença de ordem no teste isolado de contrato Avro e uma validação adicional do subject CDC real; consulte `docs/matriz-rastreabilidade-demo-mentor.md`. O destino da solução é o tópico Kafka `fraud_alerts`; não há PostgreSQL Sink no fluxo principal.
 
 ## Arquitetura
 
@@ -85,16 +85,16 @@ A etapa 01 recria somente o schema `payments`, carrega dados determinísticos (2
 3. `./infrastructure/connectors/cdc/connector.sh` — conector PostgreSQL CDC V2.
 4. Aguarde o snapshot inicial e valide os tópicos com `./operations/verify-cdc-snapshot.sh`.
 
-A sequência após o snapshot é obrigatória: CDC incremental (Passo 5 do mentor), evolução do schema real (Passo 6) e somente então Flink (Passo 7).
+A sequência após o snapshot é: CDC incremental (Passo 5 do mentor), evolução adicional do subject CDC real (extensão deste projeto) e, depois, Flink (Passo 7). O teste isolado de compatibilidade Avro do Passo 6 do mentor é executado atualmente junto da preparação do Schema Registry, antes do conector CDC; não é a mesma operação que evoluir o subject CDC real.
 
 O verificador inicia os quatro consumidores em paralelo e acompanha cada tópico separadamente. Cada consumidor é encerrado ao atingir a contagem esperada de eventos Debezium `op=r` (200 customers, 240 accounts, 320 cards e 2.000 transactions); os marcadores de snapshot ficam registrados apenas como diagnóstico. O timeout máximo é individual e configurável em segundos por `CDC_SNAPSHOT_TIMEOUT` (padrão: 1.800 segundos / 30 minutos).
 5. `./operations/verify-cdc-incremental.sh` — valide INSERT, UPDATE e DELETE e confirme os eventos `c`, `u` e `d` com `snapshot=false` (Passo 5 do mentor).
-6. `CONFIRM_SCHEMA_EVOLUTION=yes ./infrastructure/schema-evolution.sh` — valide a evolução do subject real `payments.transactions-value` (Passo 6 do mentor). Confira banco e subject antes de confirmar.
+6. `CONFIRM_SCHEMA_EVOLUTION=yes ./infrastructure/schema-evolution.sh` — validação adicional do projeto no subject real `payments.transactions-value`; não confundir com o Passo 6 do mentor, que usa um subject isolado. Confira banco e subject antes de confirmar.
 7. `./flink/scripts/run.sh` — somente depois das validações anteriores, configura startup offset, declara a PK de accounts, cria Temporal Join, append e MATCH_RECOGNIZE (Passo 7 do mentor).
 8. Execute o cenário positivo: `./scripts/run-sql.sh database/seed/simulate-events.sql`.
 9. Consulte os resultados no tópico `fraud_alerts` e registre as evidências.
 
-A evolução real do schema deixou de ser opcional no roteiro principal: ela antecede o Flink, conforme a sequência demonstrada pelo mentor. O teste isolado de compatibilidade da etapa 2 continua sendo uma verificação distinta.
+A evolução real do schema é uma validação adicional deste projeto e antecede o Flink. O Passo 6 da demonstração do mentor é o teste de compatibilidade no subject isolado `contract.transactions-value`, atualmente executado dentro da preparação do Schema Registry (etapa 2), antes do CDC. As duas validações não são intercambiáveis.
 
 **Estado confirmado em 13/11/2026:** snapshot CDC (2.760/2.760), CDC incremental (`c/u/d`, `snapshot=false`) e evolução do subject real `payments.transactions-value` estão homologados. A próxima etapa é Flink; revisão estática concluída, execução cloud ainda não realizada.
 
