@@ -84,7 +84,7 @@ A etapa 01 recria somente o schema `payments`, carrega dados determinísticos (2
 2. `./infrastructure/schema-registry.sh` — Schema Registry e compatibilidade Avro.
 3. `./infrastructure/connectors/cdc/connector.sh` — conector PostgreSQL CDC V2.
 4. Aguarde o snapshot inicial e valide os tópicos com `./operations/verify-cdc-snapshot.sh`.
-5. `./flink/scripts/run.sh` — configura startup offset, declara PKs, cria Temporal Join, append e MATCH_RECOGNIZE.
+5. `./flink/scripts/run.sh` — configura startup offset, declara a PK de accounts, cria Temporal Join, append e MATCH_RECOGNIZE.
 6. Execute o cenário positivo: `./scripts/run-sql.sh database/seed/simulate-events.sql`.
 7. Consulte os resultados no tópico `fraud_alerts` e registre as evidências.
 8. Execute `./operations/verify-cdc-incremental.sh` para validar INSERT, UPDATE e DELETE na tabela customers.
