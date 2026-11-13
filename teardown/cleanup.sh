@@ -19,7 +19,7 @@ confluent environment use "$ENV_ID" >/dev/null
 confluent kafka cluster use "$CLUSTER_ID" >/dev/null
 
 for statement in payments-fraud-detection payments-append-only payments-enrichment \
-  payments-pk-transactions payments-pk-accounts payments-transactions-startup; do
+  payments-pk-accounts payments-transactions-startup; do
   confluent flink statement delete "$statement" --force 2>/dev/null || true
 done
 if [[ -n "${CDC_CONNECTOR_ID:-}" ]]; then
