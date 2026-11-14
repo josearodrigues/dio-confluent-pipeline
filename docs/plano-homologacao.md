@@ -138,17 +138,25 @@ Esses estados confirmam o estado dos statements, não a correção funcional do 
 
 **Atualização — preflight global de statements (14/11/2026):** depois de resolver e validar o compute pool, mas antes de submeter qualquer statement, o orquestrador consulta a lista do pool e verifica os cinco nomes planejados (payments-pk-accounts, payments-pk-transactions, payments-enrichment, payments-append-only, payments-fraud-detection). Se qualquer nome já existir, interrompe antes da primeira submissão; não exclui nem sobrescreve statements. A verificação individual em submit() permanece como proteção adicional. Alteração publicada no commit 4dfe1228f91f4cbd383c041cdbfcba9dabe3a58f. Ainda depende de sincronização e bash -n local. Nenhuma operação Cloud foi executada.
 
-## 9. Cenário positivo de fraude
+## 9. Cenário positivo de fraude — sequência do mentor
 
-Somente após confirmar os statements necessários em execução:
+Somente após confirmar que o snapshot CDC terminou e que os statements de enrichment e detecção estão em `RUNNING`, execute:
 
 ```bash
 ./scripts/run-sql.sh database/seed/simulate-events.sql
 ```
 
-O SQL insere quatro transações positivas para o cartão 1. O wrapper registra a execução em `evidence/homologation/`.
+O arquivo executa quatro INSERTs independentes, nesta ordem:
+1. Três transações positivas de R$ 100,00 para o cartão 1 (conta 1, merchant 1).
+2. Uma quarta transação de R$ 10,00 para outro cartão (cartão 320, conta 80, merchant 1).
+3. Aguarda 90 segundos (`pg_sleep(90)`) como janela de observação indicada na demonstração.
+4. Consulta as linhas inseridas; cada INSERT também retorna seu `transaction_id`.
 
-**Critério:** observar no tópico `fraud_alerts` o alerta correspondente ao padrão. Registrar a mensagem e o contexto de consumo como evidência. A execução dos INSERTs ou a consulta ao PostgreSQL não comprovam, isoladamente, a emissão do alerta.
+Os IDs de cartão/conta/merchant foram conferidos no PostgreSQL do ambiente atual antes da preparação do cenário. O arquivo executa as instruções em sequência e o wrapper registra a saída em `evidence/homologation/`.
+
+**Importante:** o SQL Flink atual usa `$rowtime`, não `created_at`, e define `T` apenas como `amount > 0`. A quarta transação, por usar outro `card_id`, não pertence à mesma partição do padrão dos três primeiros eventos. Seu possível efeito sobre a watermark precisa ser observado; os 90 segundos são uma janela de espera, não garantia de emissão.
+
+**Critério:** após a execução, observar no tópico `fraud_alerts` um alerta novo correlacionável ao cartão 1, com `txn_count = 3`, e registrar a mensagem/offset/timestamps como evidência. A execução dos INSERTs, a espera ou a consulta ao PostgreSQL não comprovam, isoladamente, a emissão do alerta.
 
 ## 10. Cenário negativo opcional
 
