@@ -69,9 +69,9 @@ chmod 600 "$JSON_FILE"
   echo
   echo "- Coletado em (UTC): $STAMP"
   echo "- Kafka cluster ID: $CLUSTER_ID"
-  echo "- Métrica: `$METRICS_NAME`"
-  echo "- Intervalo solicitado: `$METRICS_INTERVAL`"
-  echo "- Granularidade: `$METRICS_GRANULARITY`"
+  echo "- Métrica: \`$METRICS_NAME\`"
+  echo "- Intervalo solicitado: \`$METRICS_INTERVAL\`"
+  echo "- Granularidade: \`$METRICS_GRANULARITY\`"
   echo "- Unidade: bytes (By); contador agregado na granularidade solicitada."
   echo "- Escopo: tráfego recebido pelo cluster Kafka; não identifica isoladamente o produtor."
   echo
@@ -87,8 +87,8 @@ chmod 600 "$JSON_FILE"
   echo
   echo "## Arquivos"
   echo
-  echo "- JSON original: `evidence/observability/$(basename "$JSON_FILE")`"
-  echo "- Este resumo: `evidence/observability/$(basename "$SUMMARY_FILE")`"
+  echo "- JSON original: \`evidence/observability/$(basename "$JSON_FILE")\`"
+  echo "- Este resumo: \`evidence/observability/$(basename "$SUMMARY_FILE")\`"
   echo
   echo "A ausência de pontos não deve ser interpretada como tráfego zero. Esta consulta não comprova cobertura contínua de todos os intervalos."
 } > "$SUMMARY_FILE"
