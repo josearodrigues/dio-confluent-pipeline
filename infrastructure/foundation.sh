@@ -30,6 +30,17 @@ extract_id(){
     end
   ' <<<"$1"
 }
+normalize_json_list(){
+  jq -ce '
+    if type == "array" then .
+    elif type == "object" and (.data | type) == "array" then .data
+    else error("formato JSON de listagem não reconhecido")
+    end
+    | if all(.[]; type == "object") then .
+      else error("listagem contém item que não é objeto")
+      end
+  ' <<<"$1"
+}
 SA_CREATED=no
 ensure_sa(){
   local name="$1" desc="$2" list id
@@ -139,6 +150,8 @@ ensure_metrics_role(){
 ensure_topic_acl(){
   local sa="$1" ops="$2" topic="$3" acls op
   acls="$(confluent kafka acl list -o json)"
+  acls="$(normalize_json_list "$acls")" ||
+    fail "não foi possível interpretar a listagem de ACLs."
   for op in ${ops//,/ }; do
     if jq -e --arg p "User:$sa" --arg r "$topic" --arg op "$op" '
       any(.[];
@@ -149,11 +162,15 @@ ensure_topic_acl(){
       )' <<<"$acls" >/dev/null; then continue; fi
     confluent kafka acl create --allow --service-account "$sa" --operations "$op" --topic "$topic" --prefix >/dev/null
     acls="$(confluent kafka acl list -o json)"
+    acls="$(normalize_json_list "$acls")" ||
+      fail "não foi possível interpretar a listagem de ACLs após a criação."
   done
 }
 ensure_literal_topic_acl(){
   local sa="$1" ops="$2" topic="$3" acls op
   acls="$(confluent kafka acl list -o json)"
+  acls="$(normalize_json_list "$acls")" ||
+    fail "não foi possível interpretar a listagem de ACLs."
   for op in ${ops//,/ }; do
     if jq -e --arg p "User:$sa" --arg r "$topic" --arg op "$op" '
       any(.[];
@@ -164,12 +181,16 @@ ensure_literal_topic_acl(){
       )' <<<"$acls" >/dev/null; then continue; fi
     confluent kafka acl create --allow --service-account "$sa" --operations "$op" --topic "$topic" >/dev/null
     acls="$(confluent kafka acl list -o json)"
+    acls="$(normalize_json_list "$acls")" ||
+      fail "não foi possível interpretar a listagem de ACLs após a criação."
   done
 }
 ensure_group_acl(){
   local sa="$1" group="$2" prefix="$3" acls pt
   pt="$([[ "$prefix" == yes ]] && echo PREFIXED || echo LITERAL)"
   acls="$(confluent kafka acl list -o json)"
+  acls="$(normalize_json_list "$acls")" ||
+    fail "não foi possível interpretar a listagem de ACLs."
   if jq -e --arg p "User:$sa" --arg r "$group" --arg pt "$pt" '
     any(.[];
       (.principal==$p) and ((.resource_name // .resourceName // "")==$r) and
