@@ -81,10 +81,15 @@ else
     echo "Pool legado está em status '$pool_status'; não será renomeado." >&2
     exit 1
   }
+  legacy_max_cfu="$(jq -er '.max_cfu | select(type == "number" and . > 0)' <<<"$legacy")" || {
+    echo "Não foi possível confirmar max_cfu do pool legado; não será renomeado." >&2
+    exit 1
+  }
 
-  echo "Renomeando pool existente $LEGACY_POOL_ID para '$CC_FLINK_POOL_NAME' (sem alterar CFUs)."
+  echo "Renomeando pool existente $LEGACY_POOL_ID para '$CC_FLINK_POOL_NAME', preservando max_cfu=$legacy_max_cfu."
   confluent flink compute-pool update "$LEGACY_POOL_ID" \
-    --environment "$ENV_ID" --name "$CC_FLINK_POOL_NAME" >/dev/null
+    --environment "$ENV_ID" --name "$CC_FLINK_POOL_NAME" \
+    --max-cfu "$legacy_max_cfu" >/dev/null
   pools="$(confluent flink compute-pool list --environment "$ENV_ID" -o json)"
   target_count="$(jq --arg n "$CC_FLINK_POOL_NAME" '[.[] | select(.name==$n)] | length' <<<"$pools")"
   [[ "$target_count" -eq 1 ]] || {
