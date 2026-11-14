@@ -227,3 +227,31 @@ A tabela original continua não localizada.
 4. Só então definir se a implementação deve usar Sink gerenciado, consumidor de aplicação ou outro mecanismo.
 
 Nenhuma implementação foi alterada e nenhuma operação Confluent/Neon foi executada nesta revisão.
+
+
+## Fechamento do inventário do acervo Dropbox (14/11/2026)
+
+Após confirmação do usuário de que não há outras fontes além do Dropbox, o acervo disponível deve ser tratado como o conjunto completo de materiais fornecidos para esta investigação. A listagem recursiva da pasta `Bootcamp IBM Confluent` foi concluída com `has_more=false`.
+
+### Inventário dos arquivos 4.0 disponíveis
+- `4.0.0.0-Confluent Cloud- Desafio Final com Pipeline Real-Time End-to-End.png` — imagem localizada e exibida pela pré-visualização do Dropbox; o conteúdo interno do diagrama não foi extraído/interpretado nesta sessão.
+- `4.0.0.1-Desafio de projeto- Construindo um pipeline rela-time end-to-end com Confluent Cloud.srt` — transcrição automática da apresentação do desafio.
+- `4.0.0.2-Resolução do desafio de projeto.srt` — transcrição automática da demonstração de resolução.
+- `4.0.0.2-desafio-final-demo.md` — roteiro textual auxiliar da demonstração.
+- `4.0.0.3-1-Desafio Final - Pipeline de pagamentos (entrega de exemplo).pdf` — exemplo de entrega e critérios dos quatro pilares.
+- `4.0.0.3-Entendendo o Desafio.md` — descrição/explicação do desafio.
+- `4.0.0.4-Informações.md` — descrição curta do desafio.
+
+Não há outros arquivos 4.0 na listagem atual da pasta. Também existem materiais de apoio das aulas 1.x, 2.x e 3.x; eles não foram todos reexaminados nesta etapa, pois a investigação atual está delimitada à interpretação dos materiais finais 4.0. Não afirmar que esses materiais de aula foram analisados integralmente.
+
+### Leitura consolidada e limites
+- `4.0.0.4` declara: pipeline de pagamentos em tempo real; PostgreSQL → CDC → Flink SQL para enriquecer transações e marcar suspeitas → entrega do resultado a quem vai consumir; cinco camadas, da fundação à operação; README público com evidência de execução de cada camada.
+- `4.0.0.1.srt`, em 00:00:25–00:00:58, pede pipeline funcional, repositório público, código/SQL/scripts, README com evidências/outputs/comandos e setup/teardown reproduzíveis.
+- `4.0.0.1.srt`, em 00:01:41–00:02:07, descreve saída dos dados processados de volta ao PostgreSQL **ou para outro lugar**, recomendando PostgreSQL. Como é SRT automático, a redação exata deve ser conferida contra o áudio/vídeo se necessário; ainda assim, a ideia é coerente com `4.0.0.4` (“entrega o resultado para quem vai consumir”).
+- Portanto, o requisito conceitual de saída/entrega ao consumidor está confirmado; PostgreSQL é recomendado, não obrigatório. O mecanismo concreto (PostgreSQL Sink, consumidor de aplicação ou outro) não está identificado nos documentos finais disponíveis.
+- Os quatro pilares (observabilidade, segurança, custos, confiabilidade) do exemplo são dimensões de operação/avaliação; “cinco camadas” é a organização geral do pipeline mencionada na descrição. Não misturar essas duas estruturas.
+- A tabela de garantias citada pelo PDF como estando no README do desafio não aparece nos arquivos atualmente disponíveis no Dropbox. O README do projeto de outro participante encontrado por busca pública não é oficial e não substitui essa fonte. Assim, a tabela original deve ser registrada como **não disponível no acervo**, não como arquivo a procurar indefinidamente.
+
+### Próximo encaminhamento
+O material disponível é suficiente para estabelecer o requisito conceitual end-to-end e a necessidade de uma saída consumível. Não é suficiente para exigir especificamente PostgreSQL Sink nem para reproduzir uma tabela oficial de garantias trecho a trecho. A análise deve avançar usando essa distinção, sem pedir ao usuário arquivos inexistentes nem buscar uma fonte alternativa que ele já informou não possuir.
+A próxima etapa, quando autorizada, será confrontar esses requisitos com a demonstração do mentor e os dois projetos, identificando a solução de saída efetivamente implementada e as lacunas de confiabilidade. Não alterar implementação antes desse confronto.
