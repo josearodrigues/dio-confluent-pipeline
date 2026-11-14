@@ -36,22 +36,78 @@ confluent environment use "$ENV_ID" >/dev/null
 confluent kafka cluster use "$CLUSTER_ID" >/dev/null
 confluent flink region use --cloud "$CC_CLOUD" --region "$CC_REGION" >/dev/null
 
-# Redescobre o compute pool pelo nome; não confia em ID antigo salvo localmente.
+# Reutiliza o pool nomeado; na primeira execução, renomeia somente o pool
+# legado previamente identificado. Nunca cria compute pool automaticamente.
+LEGACY_POOL_ID="lfcp-2268w8o"
+LEGACY_POOL_NAME="default.env-mn3vgw.us-east-2"
 pools="$(confluent flink compute-pool list --environment "$ENV_ID" -o json)"
-pool="$(jq -r --arg n "$CC_FLINK_POOL_NAME" '[.[] | select(.name==$n and (.status=="PROVISIONED" or .status=="RUNNING"))][0].id // empty' <<<"$pools")"
-if [[ -z "$pool" ]]; then
-  if jq -e --arg n "$CC_FLINK_POOL_NAME" 'any(.[]; .name==$n)' <<<"$pools" >/dev/null; then
-    echo "Compute pool '$CC_FLINK_POOL_NAME' existe, mas não está disponível. Inspecione-o antes de criar outro." >&2
+
+target_count="$(jq --arg n "$CC_FLINK_POOL_NAME" '[.[] | select(.name==$n)] | length' <<<"$pools")"
+legacy_count="$(jq --arg id "$LEGACY_POOL_ID" --arg n "$LEGACY_POOL_NAME" \
+  '[.[] | select(.id==$id or .name==$n)] | length' <<<"$pools")"
+
+if [[ "$target_count" -gt 1 || "$legacy_count" -gt 1 ]]; then
+  echo "Há compute pools duplicados/ambíguos no environment '$ENV_ID'. Nenhuma alteração foi feita." >&2
+  exit 1
+fi
+
+if [[ "$target_count" -eq 1 ]]; then
+  pool="$(jq -r --arg n "$CC_FLINK_POOL_NAME" '.[] | select(.name==$n) | .id' <<<"$pools")"
+  pool_status="$(jq -r --arg id "$pool" '.[] | select(.id==$id) | .status' <<<"$pools")"
+  [[ "$pool_status" == PROVISIONED || "$pool_status" == RUNNING ]] || {
+    echo "Compute pool '$CC_FLINK_POOL_NAME' existe, mas está em status '$pool_status'. Interrompendo." >&2
+    exit 1
+  }
+  if [[ "$legacy_count" -eq 1 ]]; then
+    echo "Pool legado e pool de destino coexistem. Inspecione manualmente; nada será alterado." >&2
     exit 1
   fi
-  pool="$(confluent flink compute-pool create "$CC_FLINK_POOL_NAME" \
-    --cloud "$CC_CLOUD" --region "$CC_REGION" --max-cfu 5 -o json | jq -r '.id')"
+else
+  [[ "$legacy_count" -eq 1 ]] || {
+    echo "Pool '$CC_FLINK_POOL_NAME' não encontrado e o pool legado conhecido '$LEGACY_POOL_ID' também não está presente. Nenhum pool será criado." >&2
+    exit 1
+  }
+
+  legacy="$(jq -c --arg id "$LEGACY_POOL_ID" '.[] | select(.id==$id)' <<<"$pools")"
+  [[ "$(jq -r '.name' <<<"$legacy")" == "$LEGACY_POOL_NAME" &&
+     "$(jq -r '.environment' <<<"$legacy")" == "$ENV_ID" &&
+     "$(jq -r '.cloud | ascii_upcase' <<<"$legacy")" == "$(tr '[:lower:]' '[:upper:]' <<<"$CC_CLOUD" | tr -d '\n')" &&
+     "$(jq -r '.region' <<<"$legacy")" == "$CC_REGION" ]] || {
+    echo "O pool legado não corresponde ao ID, nome, environment, cloud e região esperados. Interrompendo sem renomear." >&2
+    exit 1
+  }
+  pool_status="$(jq -r '.status' <<<"$legacy")"
+  [[ "$pool_status" == PROVISIONED || "$pool_status" == RUNNING ]] || {
+    echo "Pool legado está em status '$pool_status'; não será renomeado." >&2
+    exit 1
+  }
+
+  echo "Renomeando pool existente $LEGACY_POOL_ID para '$CC_FLINK_POOL_NAME' (sem alterar CFUs)."
+  confluent flink compute-pool update "$LEGACY_POOL_ID" \
+    --environment "$ENV_ID" --name "$CC_FLINK_POOL_NAME" >/dev/null
+  pools="$(confluent flink compute-pool list --environment "$ENV_ID" -o json)"
+  target_count="$(jq --arg n "$CC_FLINK_POOL_NAME" '[.[] | select(.name==$n)] | length' <<<"$pools")"
+  [[ "$target_count" -eq 1 ]] || {
+    echo "Não foi possível confirmar unicamente o pool renomeado. Interrompendo." >&2
+    exit 1
+  }
+  pool="$(jq -r --arg n "$CC_FLINK_POOL_NAME" '.[] | select(.name==$n) | .id' <<<"$pools")"
 fi
+
+# Confirma novamente identidade e localização antes de persistir o ID local.
+selected="$(jq -c --arg id "$pool" '.[] | select(.id==$id)' <<<"$pools")"
+[[ "$(jq -r '.name' <<<"$selected")" == "$CC_FLINK_POOL_NAME" &&
+   "$(jq -r '.environment' <<<"$selected")" == "$ENV_ID" &&
+   "$(jq -r '.cloud | ascii_upcase' <<<"$selected")" == "$(tr '[:lower:]' '[:upper:]' <<<"$CC_CLOUD" | tr -d '\n')" &&
+   "$(jq -r '.region' <<<"$selected")" == "$CC_REGION" ]] || {
+  echo "Pool selecionado não corresponde ao nome, environment, cloud e região configurados." >&2
+  exit 1
+}
 save_state FLINK_POOL_ID "$pool"
 
-POOL_NAME="$(confluent flink compute-pool describe "$FLINK_POOL_ID" -o json | jq -r '.name // empty')"
+POOL_NAME="$(confluent flink compute-pool describe "$pool" --environment "$ENV_ID" -o json | jq -r '.name // empty')"
 [[ "$POOL_NAME" == "$CC_FLINK_POOL_NAME" ]] || {
-  echo "FLINK_POOL_ID aponta para '$POOL_NAME', esperado '$CC_FLINK_POOL_NAME'. Revise .state.env." >&2
+  echo "A descrição do pool retornou '$POOL_NAME', esperado '$CC_FLINK_POOL_NAME'. Interrompendo." >&2
   exit 1
 }
 POOL_STATUS=""
