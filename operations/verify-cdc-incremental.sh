@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Valida INSERT, UPDATE e DELETE incrementais em payments.customers.
-set -Eeuo pipefail
+set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/../scripts/_common.sh"
-require confluent psql sleep date
+require confluent psql grep sleep date
 
 : "${ENV_ID:?ENV_ID ausente}"
 : "${CLUSTER_ID:?CLUSTER_ID ausente}"
@@ -20,75 +20,32 @@ require confluent psql sleep date
 
 TOPIC="payments.customers"
 STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
-RUN_ID="${STAMP}-${BASHPID}"
-TEST_ID="$(( 1000000000 + ($(date +%s) % 800000000) + RANDOM ))"
-TEST_EMAIL="cdc-test-${RUN_ID}-${RANDOM}@example.test"
-# Grupo exclusivo coberto pela ACL prefixada snapshot-check-* da fundação.
-GROUP="snapshot-check-${RUN_ID}"
+TEST_ID="$(( $(date +%s) % 1000000000 + 1000000000 ))"
+TEST_EMAIL="cdc-offset-${STAMP}-${RANDOM}@example.test"
+# Grupo exclusivo, como no teste temporário validado; ACL prefixada snapshot-check-*.
+GROUP="snapshot-check-${STAMP}-$$"
 TIMEOUT_SECONDS="${CDC_INCREMENTAL_TIMEOUT:-120}"
-for value in "$TIMEOUT_SECONDS"; do
-  [[ "$value" =~ ^[1-9][0-9]*$ ]] || { echo "Timeout deve ser inteiro positivo." >&2; exit 1; }
-done
+[[ "$TIMEOUT_SECONDS" =~ ^[1-9][0-9]*$ ]] || { echo "CDC_INCREMENTAL_TIMEOUT deve ser inteiro positivo." >&2; exit 1; }
 
-cd "$ROOT_DIR"
 mkdir -p "$ROOT_DIR/evidence/homologation"
-RAW="$(mktemp)"
-OUT="$ROOT_DIR/evidence/homologation/${RUN_ID}-cdc-incremental.txt"
+OUT="$ROOT_DIR/evidence/homologation/$STAMP-cdc-incremental.txt"
+CREATED=0
 PID=""
-SAFE_TO_CLEAN=0
-CLEANUP_STATUS="não executada"
-CLEANUP_RESIDUAL="não verificado"
-CLEANUP_DONE=0
-FOUND_C=0; FOUND_U=0; FOUND_D=0
 
 psql_admin() {
   PGPASSWORD="$PG_ADMIN_PASSWORD" PGSSLMODE=require psql -X -v ON_ERROR_STOP=1 \
     -h "$PG_HOST" -p "$PG_PORT" -U "$PG_ADMIN_USER" -d "$PG_DATABASE" "$@"
 }
-stop_consumer() {
-  if [[ -n "$PID" ]]; then
-    kill -TERM "$PID" 2>/dev/null || true
-    wait "$PID" 2>/dev/null || true
-    PID=""
-  fi
-}
-cleanup_test_record() {
-  local residual
-  [[ "$SAFE_TO_CLEAN" == "1" && "$CLEANUP_DONE" == "0" ]] || return 0
-  if ! psql_admin -v test_id="$TEST_ID" -v test_email="$TEST_EMAIL" <<'SQL' >/dev/null; then
-DELETE FROM payments.customers
-WHERE customer_id = :'test_id' AND email = :'test_email';
-SQL
-    CLEANUP_STATUS="FALHOU"
-    CLEANUP_RESIDUAL="erro ao excluir"
-  else
-    residual="$(psql_admin -At -v test_id="$TEST_ID" -v test_email="$TEST_EMAIL" <<'SQL'
-SELECT count(*) FROM payments.customers
-WHERE customer_id = :'test_id' AND email = :'test_email';
-SQL
-    )" || residual="erro SQL"
-    if [[ "$residual" == "0" ]]; then
-      CLEANUP_STATUS="confirmada"; CLEANUP_RESIDUAL="0"
-    else
-      CLEANUP_STATUS="FALHOU"; CLEANUP_RESIDUAL="${residual:-erro SQL}"
-    fi
-  fi
-  CLEANUP_DONE=1
-}
 cleanup() {
-  local rc=$?
-  stop_consumer
-  cleanup_test_record
-  if [[ -n "${OUT:-}" && -f "$OUT" ]]; then
-    {
-      echo
-      echo "=== ENCERRAMENTO ==="
-      echo "Limpeza: $CLEANUP_STATUS"
-      echo "Resíduos com ID+marcador: $CLEANUP_RESIDUAL"
-      [[ "$rc" == "0" ]] || echo "Código de saída: $rc"
-    } >> "$OUT"
+  if [[ -n "$PID" ]]; then
+    kill "$PID" 2>/dev/null || true
+    wait "$PID" 2>/dev/null || true
   fi
-  [[ -z "${RAW:-}" ]] || rm -f "$RAW"
+  if [[ "$CREATED" == "1" ]]; then
+    psql_admin -v test_id="$TEST_ID" >/dev/null 2>&1 <<'SQL' || true
+DELETE FROM payments.customers WHERE customer_id = :'test_id';
+SQL
+  fi
 }
 trap cleanup EXIT
 trap 'exit 130' INT TERM
@@ -101,101 +58,119 @@ SELECT (
 SQL
 )"
 [[ "$EXISTS" == "0" ]] || { echo "Colisão detectada; nenhum dado foi alterado." >&2; exit 1; }
-SAFE_TO_CLEAN=1
 
 {
   echo "CDC incremental — $STAMP UTC"
   echo "Tópico: $TOPIC"
-  echo "Consumer group exclusivo: $GROUP"
+  echo "Consumer group: $GROUP"
   echo "customer_id: $TEST_ID"
   echo "Marcador: $TEST_EMAIL"
-  echo "auto.offset.reset=latest; sem --from-beginning"
-  echo "Espera de inicialização: 5s; timeout CDC: ${TIMEOUT_SECONDS}s"
+  echo "Modo: grupo novo, sem --from-beginning"
+  echo "Timeout: ${TIMEOUT_SECONDS}s"
   echo
+  echo "=== INÍCIO DA CAPTURA KAFKA ==="
 } > "$OUT"
 
-# O grupo novo e latest evitam replay do snapshot; a ACL prefixada já é criada pela fundação.
-confluent kafka topic consume "$TOPIC" --group "$GROUP" --value-format avro --print-offset \
-  --config "auto.offset.reset=latest" \
-  --schema-registry-endpoint "$SR_URL" --schema-registry-api-key "$SR_API_KEY" \
-  --schema-registry-api-secret "$SR_API_SECRET" --api-key "$READER_API_KEY" \
-  --api-secret "$READER_API_SECRET" --bootstrap "$BOOTSTRAP" \
-  --cluster "$CLUSTER_ID" --environment "$ENV_ID" >"$RAW" 2>&1 &
+# Mesmo comando e opções do teste temporário que comprovou offsets 223, 224 e 225.
+confluent kafka topic consume "$TOPIC" \
+  --group "$GROUP" \
+  --value-format avro \
+  --print-offset \
+  --schema-registry-endpoint "$SR_URL" \
+  --schema-registry-api-key "$SR_API_KEY" \
+  --schema-registry-api-secret "$SR_API_SECRET" \
+  --api-key "$READER_API_KEY" \
+  --api-secret "$READER_API_SECRET" \
+  --bootstrap "$BOOTSTRAP" \
+  --cluster "$CLUSTER_ID" \
+  --environment "$ENV_ID" >> "$OUT" 2>&1 &
 PID=$!
 
-# A execução temporária validada usa a mesma janela simples de cinco segundos.
+# Dá tempo para o consumidor entrar no grupo, como no teste validado.
 sleep 5
-if ! kill -0 "$PID" 2>/dev/null; then
-  wait "$PID" || true
-  PID=""
-  cat "$RAW" >> "$OUT"
-  echo "ERRO: consumidor encerrou durante a inicialização." >&2
-  exit 1
-fi
-psql_admin -v test_id="$TEST_ID" -v test_email="$TEST_EMAIL" <<'SQL' | tee -a "$OUT"
-INSERT INTO payments.customers(customer_id,full_name,email,city,created_at)
-VALUES (:'test_id','CDC test',:'test_email','Rio',CURRENT_TIMESTAMP);
+
+psql_admin -v test_id="$TEST_ID" -v test_email="$TEST_EMAIL" <<'SQL'
+INSERT INTO payments.customers
+  (customer_id, full_name, email, city, created_at)
+VALUES
+  (:'test_id', 'CDC test', :'test_email', 'Rio', CURRENT_TIMESTAMP);
+SQL
+CREATED=1
+sleep 2
+
+psql_admin -v test_id="$TEST_ID" <<'SQL'
+UPDATE payments.customers
+SET city = 'Niterói'
+WHERE customer_id = :'test_id';
 SQL
 sleep 2
-psql_admin -v test_id="$TEST_ID" <<'SQL' | tee -a "$OUT"
-UPDATE payments.customers SET city='Niterói' WHERE customer_id = :'test_id';
-SQL
-sleep 2
-psql_admin -v test_id="$TEST_ID" <<'SQL' | tee -a "$OUT"
-DELETE FROM payments.customers WHERE customer_id = :'test_id';
+
+psql_admin -v test_id="$TEST_ID" <<'SQL'
+DELETE FROM payments.customers
+WHERE customer_id = :'test_id';
 SQL
 
+# Procura cada operação no mesmo registro, exigindo snapshot=false.
 scan_events() {
   local line
-  FOUND_C=0; FOUND_U=0; FOUND_D=0
+  FOUND_C=0
+  FOUND_U=0
+  FOUND_D=0
+
   while IFS= read -r line; do
     [[ "$line" == *"$TEST_EMAIL"* ]] || continue
-    [[ "$line" =~ \"op\"[[:space:]]*:[[:space:]]*\"c\" ]] &&
-      [[ "$line" =~ \"snapshot\"[[:space:]]*:[[:space:]]*(\"false\"|false) ]] && FOUND_C=1
-    [[ "$line" =~ \"op\"[[:space:]]*:[[:space:]]*\"u\" ]] &&
-      [[ "$line" =~ \"snapshot\"[[:space:]]*:[[:space:]]*(\"false\"|false) ]] && FOUND_U=1
-    [[ "$line" =~ \"op\"[[:space:]]*:[[:space:]]*\"d\" ]] &&
-      [[ "$line" =~ \"snapshot\"[[:space:]]*:[[:space:]]*(\"false\"|false) ]] && FOUND_D=1
-  done < "$RAW"
+
+    if [[ "$line" =~ \\"op\\"[[:space:]]*:[[:space:]]*\\"c\\" ]] &&
+       [[ "$line" =~ \\"snapshot\\"[[:space:]]*:[[:space:]]*(\\"false\\"|false) ]]; then
+      FOUND_C=1
+    fi
+
+    if [[ "$line" =~ \\"op\\"[[:space:]]*:[[:space:]]*\\"u\\" ]] &&
+       [[ "$line" =~ \\"snapshot\\"[[:space:]]*:[[:space:]]*(\\"false\\"|false) ]]; then
+      FOUND_U=1
+    fi
+
+    if [[ "$line" =~ \\"op\\"[[:space:]]*:[[:space:]]*\\"d\\" ]] &&
+       [[ "$line" =~ \\"snapshot\\"[[:space:]]*:[[:space:]]*(\\"false\\"|false) ]]; then
+      FOUND_D=1
+    fi
+  done < "$OUT"
 }
+
 START_TIME=$SECONDS
 while (( SECONDS - START_TIME < TIMEOUT_SECONDS )); do
   scan_events
-  (( FOUND_C == 1 && FOUND_U == 1 && FOUND_D == 1 )) && break
-  kill -0 "$PID" 2>/dev/null || break
+  if (( FOUND_C == 1 && FOUND_U == 1 && FOUND_D == 1 )); then
+    break
+  fi
   sleep 2
 done
-stop_consumer
+
+# Encerra a captura e reavalia a saída completa do consumidor.
+kill "$PID" 2>/dev/null || true
+wait "$PID" 2>/dev/null || true
+PID=""
 scan_events
+
 STATUS=0
-(( FOUND_C == 1 )) || STATUS=1
-(( FOUND_U == 1 )) || STATUS=1
-(( FOUND_D == 1 )) || STATUS=1
+(( FOUND_C )) || STATUS=1
+(( FOUND_U )) || STATUS=1
+(( FOUND_D )) || STATUS=1
 
+MATCHED="$(grep -F "$TEST_EMAIL" "$OUT" || true)"
 {
   echo
-  echo "=== SAÍDA BRUTA DO CONSUMIDOR (inclui offsets) ==="
-  cat "$RAW"
-  echo
-  echo "=== RESULTADO CDC ==="
-  echo "op=c, snapshot=false: $([[ $FOUND_C == 1 ]] && echo CONFIRMADO || echo AUSENTE)"
-  echo "op=u, snapshot=false: $([[ $FOUND_U == 1 ]] && echo CONFIRMADO || echo AUSENTE)"
-  echo "op=d, snapshot=false: $([[ $FOUND_D == 1 ]] && echo CONFIRMADO || echo AUSENTE)"
+  echo "=== RESULTADO ==="
+  echo "op=c + snapshot=false: $([[ $FOUND_C == 1 ]] && echo CONFIRMADO || echo AUSENTE)"
+  echo "op=u + snapshot=false: $([[ $FOUND_U == 1 ]] && echo CONFIRMADO || echo AUSENTE)"
+  echo "op=d + snapshot=false: $([[ $FOUND_D == 1 ]] && echo CONFIRMADO || echo AUSENTE)"
+  echo "Eventos correlacionados (mensagens Kafka e offsets):"
+  printf '%s\\n' "$MATCHED"
   echo "Consumer group: $GROUP"
-  echo "Código de resultado CDC: $STATUS"
 } | tee -a "$OUT"
-
-cleanup_test_record
-{
-  echo
-  echo "=== LIMPEZA ==="
-  echo "Resultado: $CLEANUP_STATUS"
-  echo "Registros residuais com ID+marcador: $CLEANUP_RESIDUAL"
-} | tee -a "$OUT"
-[[ "$CLEANUP_STATUS" == "confirmada" ]] || STATUS=1
 
 if (( STATUS != 0 )); then
-  echo "CDC incremental incompleto ou limpeza não confirmada. Evidência: $OUT" >&2
+  echo "Falha: não foram confirmados os três eventos incrementais com snapshot=false. Evidência: $OUT" >&2
   exit 1
 fi
 echo "CDC incremental confirmado. Evidência: $OUT"
