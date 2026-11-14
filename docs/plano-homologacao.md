@@ -88,13 +88,13 @@ Após o snapshot inicial completo e antes de iniciar o Flink, valide alteraçõe
 ./operations/verify-cdc-incremental.sh
 ```
 
-O script cria um registro temporário exclusivo, executa INSERT/UPDATE/DELETE, procura os eventos `c`, `u` e `d` associados ao registro e tenta remover o registro no encerramento.
+O script usa um consumer group exclusivo `snapshot-check-*` (ACL prefixada provisionada pela fundação), inicia a leitura sem replay do histórico (`auto.offset.reset=latest`), cria um registro temporário, executa INSERT/UPDATE/DELETE, procura os eventos `c`, `u` e `d` associados ao marcador e confirma a limpeza do registro. A evidência inclui a saída bruta do consumidor e os offsets.
 
 **Evidência esperada:** arquivo datado `*-cdc-incremental.txt` em `evidence/homologation/`.
 
 **Critério:** correlacionar a linha de origem com os três eventos Debezium e confirmar `snapshot=false`. O teste deve ocorrer antes do Flink, como no Passo 5 da demonstração do mentor.
 
-**Estado em 13/11/2026:** pendente de comprovação nesta instância. Embora existam scripts para gerar INSERT, UPDATE e DELETE, não foi localizada no repositório evidência da execução atual que correlacione os três eventos (`op=c`, `op=u`, `op=d`) com `snapshot=false`. Resultados de projetos de estudo ou de ambientes anteriores não comprovam esta etapa.
+**Estado em 14/11/2026:** teste temporário executado com sucesso: INSERT, UPDATE e DELETE foram correlacionados ao mesmo marcador, com `op=c`, `op=u` e `op=d`, todos `snapshot=false`, nos offsets 223, 224 e 225. Evidência local: `evidence/homologation/20261114T001704Z-cdc-offset-test.txt`. Essa execução comprova tecnicamente o fluxo incremental. O verificador oficial `operations/verify-cdc-incremental.sh` foi corrigido para usar grupo exclusivo `snapshot-check-*` e registrar offsets/limpeza, mas ainda não foi executado; a homologação formal desta etapa permanece pendente até sua execução e inspeção da evidência versionável.
 
 ## 7. Evolução adicional do schema real do CDC (extensão do projeto)
 
