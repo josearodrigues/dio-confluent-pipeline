@@ -7,3 +7,6 @@ SELECT pg_drop_replication_slot('payments_slot')
 WHERE EXISTS (SELECT 1 FROM pg_replication_slots WHERE slot_name='payments_slot');
 DROP PUBLICATION IF EXISTS payments_pub;
 DROP SCHEMA IF EXISTS payments CASCADE;
+
+-- Tabela destino do Sink. A role alerts_sink é global ao cluster e permanece criada.
+DROP TABLE IF EXISTS public.fraud_alerts;
