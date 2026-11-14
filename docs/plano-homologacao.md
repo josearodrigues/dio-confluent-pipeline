@@ -554,4 +554,4 @@ A normalização aceita valores monetários JSON numéricos, strings decimais e 
 
 A Costs API agrega valores diariamente e pode atrasar até 72 horas. O resumo não representa necessariamente os encargos correntes do Console e não informa o saldo restante dos créditos promocionais. A evidência deve ser classificada como coleta automatizada de custos agregados, sem confundir com a Invoice Breakdown do Console. Referências: [Retrieve Invoices and Costs](https://docs.confluent.io/cloud/current/billing/invoices-and-costs.html), [CLI billing cost list](https://docs.confluent.io/confluent-cli/current/command-reference/billing/cost/confluent_billing_cost_list.html) e [Legacy Billing](https://docs.confluent.io/cloud/current/billing/legacy-billing.html).
 
-Nenhuma operação Cloud foi executada nesta preparação. A etapa de Billing permanece pendente até a execução e revisão da evidência.
+A consulta real anterior foi somente leitura e terminou com falha na renderização do resumo. Nenhuma operação Cloud foi executada para aplicar a correção do parser. A etapa de Billing permanece pendente até a nova execução e revisão da evidência.
