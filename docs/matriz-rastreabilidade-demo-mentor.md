@@ -136,3 +136,51 @@ O plano atual aplica sql.tables.scan.idle-timeout aos statements contínuos, mas
 - **Pendente:** antes de alterar o cenário de fraude, revisar a definição efetiva das tabelas Flink/timestamps, a estratégia de watermark e o particionamento do tópico de entrada; depois, em ambiente reconstruído e com autorização, testar separadamente o padrão de três eventos e o mecanismo de avanço da watermark, registrando os resultados observados.
 
 Não substituir o cenário positivo versionado database/seed/simulate-events.sql por estes palpites. O arquivo atual usa quatro INSERTs positivos em uma única instrução para o mesmo cartão e continua sendo uma implementação distinta da sequência descrita no vídeo.
+
+
+## Investigação do requisito de confiabilidade e destino dos alertas (14/11/2026)
+
+Esta seção registra a interpretação documental feita a partir dos materiais do desafio e da demonstração disponíveis até esta data. Não representa homologação de uma implementação.
+
+### Materiais examinados
+- `4.0.0.3-1-Desafio Final - Pipeline de pagamentos (entrega de exemplo).pdf`.
+- `4.0.0.3-Entendendo o Desafio.md`.
+- `4.0.0.2-Resolução do desafio de projeto.srt` (transcrição automática; sujeita a erros de reconhecimento).
+- `4.0.0.2-desafio-final-demo.md` (roteiro auxiliar derivado da demonstração; não equivale ao vídeo nem necessariamente ao README oficial citado pelo enunciado).
+
+### O que os materiais do desafio permitem afirmar
+- A entrega é organizada em quatro pilares: observabilidade, segurança, custos e confiabilidade.
+- Observabilidade pede evidência de pico de `received_bytes` e lag por grupo consumidor.
+- Segurança pede relacionar Service Accounts, ACLs e justificativas.
+- Custos pede consulta de Billing do período e duas alavancas concretas de redução.
+- Confiabilidade pede explicitar garantias trecho a trecho, com atenção ao efeito produzido pelo consumidor.
+- O exemplo de entrega resume o ponto crítico como “consumer → efeito” e esclarece que a idempotência desse efeito é responsabilidade do código da aplicação, não uma configuração automática do Kafka.
+- O material recuperado não especifica que o efeito precise ser persistido em PostgreSQL. A expressão “consumer → efeito” não determina, por si só, o uso de PostgreSQL Sink.
+- O PDF remete a uma tabela de garantias trecho a trecho no “README do desafio”. Esse README específico ainda não foi localizado. Não confundir com o README deste repositório.
+
+### O que a demonstração do mentor efetivamente apresenta nos materiais disponíveis
+1. Criação do Environment e cluster Basic.
+2. Criação/preparação do PostgreSQL Neon e dataset sintético.
+3. Criação/configuração do CDC Source V2 e observação de snapshot/eventos incrementais.
+4. Teste de compatibilidade/evolução de contrato Avro.
+5. Flink: chave primária, Temporal Join, append e MATCH_RECOGNIZE.
+6. Cenário de fraude: três INSERTs positivos do mesmo cartão e uma quarta transação inocente para avançar o watermark; consulta de verificação do resultado.
+7. Observabilidade, segurança e Billing.
+8. Teardown.
+
+O roteiro descreve como saída da detecção o tópico Kafka de alertas e uma consulta a esse tópico. A transcrição contém uma fala do mentor, por volta de 06:49, dizendo que o desafio seria criar conector, processar e “entregar de volta o dado para o postgres”. Entretanto, nos materiais de transcrição/roteiro disponíveis não aparece uma etapa concreta de criação, configuração, execução ou validação de PostgreSQL Sink. A transcrição automática pode omitir detalhes do vídeo; portanto, a conclusão correta é “Sink não demonstrado nos materiais examinados”, e não “o mentor definitivamente não usou Sink”.
+
+### Conclusão provisória
+- O fluxo mínimo demonstrado termina em alertas no Kafka.
+- A persistência em PostgreSQL permanece ambígua e não pode ser tratada como requisito confirmado.
+- O PostgreSQL Sink existente no projeto privado de estudos deve continuar classificado como extensão até que o enunciado original ou o README citado demonstre exigência explícita.
+- Não alterar os projetos nem implementar consumidor/Sink adicional com base apenas na fala isolada.
+
+### Pendência para a próxima sessão
+Localizar e examinar o README original do desafio que contém a tabela de garantias trecho a trecho. O usuário informou que adicionou outros arquivos do desafio com nomes iniciados por `4.0...`; esses arquivos ainda precisam ser inventariados e lidos antes de fechar a interpretação. Se a fonte não estiver disponível, registrar a lacuna e não preencher por inferência.
+
+### Próxima sequência acordada
+1. Inventariar e ler os novos materiais `4.0...`.
+2. Localizar a tabela/README original e interpretar as garantias por trecho.
+3. Consolidar o que foi pedido, o que o mentor demonstrou e o que permanece não demonstrado.
+4. Só depois cruzar esses resultados com os projetos público e privado e decidir, uma etapa por vez, se há mudanças necessárias.
