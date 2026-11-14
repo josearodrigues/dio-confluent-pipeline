@@ -1,0 +1,56 @@
+Set Kafka cluster lkc-rrwvjjk as the active cluster for environment env-mn3vgw.
+==> Verificando se o conector já existe
+==> Verificando se o tópico fraud_alerts existe
+==> Criando conector Postgres Sink
++------+----------------------------+
+| ID   | lcc-1260x85                |
+| Name | payments-fraud-alerts-sink |
++------+----------------------------+
+==> Aguardando conector ficar RUNNING (máx. 10 min)
+
+================ EVIDÊNCIA — SINK ================
+Connector Details
++--------+----------------------------+
+| ID     | lcc-1260x85                |
+| Name   | payments-fraud-alerts-sink |
+| Status | RUNNING                    |
+| Type   | sink                       |
++--------+----------------------------+
+
+
+Task Level Details
+  Task |  State   
+-------+----------
+     0 | RUNNING  
+
+
+Configuration Details
+           Config          |                          Value                           
+---------------------------+----------------------------------------------------------
+  auto.create              | false                                                    
+  auto.evolve              | false                                                    
+  cloud.environment        | prod                                                     
+  cloud.provider           | aws                                                      
+  connection.host          | ep-round-moon-bexugixe.c-9.us-east-2.aws.neon.tech       
+  connection.password      | ****************                                         
+  connection.port          | 5432                                                     
+  connection.user          | alerts_sink                                              
+  connector.class          | PostgresSink                                             
+  db.name                  | payments                                                 
+  errors.tolerance         | none                                                     
+  input.data.format        | AVRO                                                     
+  insert.mode              | UPSERT                                                   
+  kafka.auth.mode          | SERVICE_ACCOUNT                                          
+  kafka.endpoint           | SASL_SSL://pkc-921jm.us-east-2.aws.confluent.cloud:9092  
+  kafka.region             | us-east-2                                                
+  kafka.service.account.id | sa-kgwpp7g                                               
+  name                     | payments-fraud-alerts-sink                               
+  pk.fields                | card_id,first_txn                                        
+  pk.mode                  | record_value                                             
+  ssl.mode                 | require                                                  
+  table.name.format        | fraud_alerts                                             
+  tasks.max                | 1                                                        
+  topics                   | fraud_alerts                                             
+
+RUNNING não comprova persistência. Confira o destino:
+./scripts/run-sql.sh database/verify/alerts.sql

@@ -17,5 +17,6 @@
   "table.name.format": "fraud_alerts",
   "auto.create": "false",
   "auto.evolve": "false",
+  "errors.tolerance": "none",
   "tasks.max": "1"
 }
