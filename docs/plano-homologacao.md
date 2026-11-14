@@ -270,7 +270,7 @@ A resposta contém dois pontos para `io.confluent.kafka.server/received_bytes`, 
 
 Foi preparado `operations/verify-billing.sh`, que consulta a Costs API por meio da Confluent CLI em modo JSON, sem alterar recursos ou permissões. A consulta exige sessão autenticada na CLI e papel `OrganizationAdmin` ou `BillingAdmin`.
 
-Uso padrão: `./operations/verify-billing.sh`. O padrão consulta o mês UTC corrente até três dias antes da data atual para reduzir a defasagem de até 72 horas. Também aceita duas datas explícitas: `./operations/verify-billing.sh YYYY-MM-DD YYYY-MM-DD`, com início inclusivo e fim exclusivo, limitado a um mês.
+Uso padrão: `bash operations/verify-billing.sh`. O padrão consulta o mês UTC corrente até três dias antes da data atual para reduzir a defasagem de até 72 horas. Também aceita duas datas explícitas: `./operations/verify-billing.sh YYYY-MM-DD YYYY-MM-DD`, com início inclusivo e fim exclusivo, limitado a um mês.
 
 O script foi publicado, mas **ainda não está validado no ambiente local nem executado na Confluent Cloud**. Próxima ação: sincronizar `main`, executar `bash -n operations/verify-billing.sh` e, se passar, executar `./operations/verify-billing.sh`. Se a CLI retornar erro de autorização, interromper e verificar o papel efetivo; não criar credenciais ou permissões automaticamente. Revisar JSON e resumo gerados antes de versionar a evidência.
 
