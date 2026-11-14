@@ -181,3 +181,31 @@ A validação CDC incremental (Passo 5 do mentor) foi executada e confirmada em 
 ## Ordem didática e operacional
 
 A sequência conceitual da demonstração é: Passo 5 (CDC incremental: INSERT/UPDATE/DELETE), Passo 6 (compatibilidade de contrato Avro em subject isolado) e Passo 7 (Flink: Temporal Join, append e MATCH_RECOGNIZE). Neste projeto, o teste isolado do Passo 6 é executado na etapa 3, antes do CDC, porque `schema-registry.sh` combina provisionamento e teste de contrato. A evolução do subject CDC real, executada após o CDC incremental e antes do Flink, é uma extensão adicional e não deve ser chamada de Passo 6.
+
+## Método de trabalho para a etapa Flink: um arquivo por vez
+
+A etapa Flink será conduzida pelo mesmo método incremental já utilizado no projeto privado de estudos. **Não executar a sequência inteira de uma vez antes de revisar e compreender cada unidade.**
+
+Para cada script ou arquivo SQL, seguir este ciclo:
+
+1. **Localizar e ler:** consultar o arquivo ativo no GitHub e os documentos técnicos relacionados. Consultar também o arquivo equivalente no projeto privado de estudos, quando existir.
+2. **Comparar:** identificar diferenças entre a versão ativa e a versão de estudos; preservar o comportamento já exercitado e as decisões do projeto atual. Não copiar nem reescrever automaticamente.
+3. **Analisar:** explicar o objetivo, pré-requisitos, efeitos, riscos, dependências e critérios de sucesso. Separar claramente a transcrição do mentor das adaptações do projeto.
+4. **Propor correção mínima:** se houver problema comprovado, apresentar o diff e a justificativa antes de alterar. Não refatorar por preferência.
+5. **Validar localmente:** após a sincronização pelo usuário, executar as verificações estáticas pertinentes (por exemplo, `bash -n` para Bash). Sintaxe válida não significa execução operacional válida.
+6. **Executar uma unidade:** somente após revisão e autorização explícita, o usuário executa o script/comando daquela unidade. Não iniciar a próxima unidade na mesma tacada.
+7. **Inspecionar:** analisar a saída, consultar o estado efetivo do recurso/statement e conferir a evidência produzida. Em caso de falha, interromper a sequência e diagnosticar antes de tentar novamente.
+8. **Registrar:** classificar como preparado, validado estaticamente, executado, observado, homologado, falhou ou bloqueado, conforme a evidência disponível. Só então avançar.
+
+### Aplicação ao Passo 7
+
+A unidade inicial é a revisão do orquestrador `flink/scripts/run.sh` e dos SQLs que ele submete. A revisão deve identificar dependências e ordem de submissão, mas não implica executar o orquestrador.
+
+Os arquivos SQL devem ser tratados individualmente, na ordem de dependência definida após a revisão. A existência de um statement ou recurso na Confluent Cloud deve ser consultada antes de qualquer criação; não presumir que o ambiente está vazio ou que um comando pode ser repetido com segurança.
+
+O script `flink/scripts/run.sh` pode criar um compute pool e submeter vários statements em sequência. Portanto, **permanece fora de execução até que seus efeitos sejam compreendidos e que cada unidade relevante tenha sido revisada**. Nenhuma operação Cloud/Neon está autorizada por este registro.
+
+### Critério para avançar
+
+Só avançar quando a unidade atual tiver: (a) revisão concluída; (b) execução autorizada e realizada, se aplicável; (c) resultado observado; e (d) evidência/estado registrado. Uma falha interrompe o avanço. Não repetir etapas já homologadas de snapshot, CDC incremental ou evolução real do schema.
+
