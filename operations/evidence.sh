@@ -8,7 +8,7 @@ require confluent
 confluent environment use "$ENV_ID" >/dev/null
 confluent kafka cluster use "$CLUSTER_ID" >/dev/null
 STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
-OUT="$ROOT_DIR/evidence/cloud/operational-state-${STAMP}.txt"
+OUT="$ROOT_DIR/evidence/cloud/${STAMP}-operational-state.txt"
 mkdir -p "$ROOT_DIR/evidence/cloud"
 {
   echo "Coleta: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
