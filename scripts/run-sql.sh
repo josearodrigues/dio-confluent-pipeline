@@ -27,12 +27,18 @@ EXTRA=()
 if [[ "$SQL_RELATIVE" == database/init/01-database.sql ]]; then
   : "${PG_CDC_USER:?PG_CDC_USER ausente}"
   : "${PG_CDC_PASSWORD:?PG_CDC_PASSWORD ausente}"
+  : "${PG_SINK_USER:?PG_SINK_USER ausente}"
+  : "${PG_SINK_PASSWORD:?PG_SINK_PASSWORD ausente}"
+  [[ "$PG_SINK_USER" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] || {
+    echo "PG_SINK_USER contém caracteres inválidos para um nome de role." >&2
+    exit 1
+  }
   [[ "$PG_CDC_USER" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] || {
     echo "PG_CDC_USER contém caracteres inválidos para um nome de role." >&2
     exit 1
   }
   [[ "${CONFIRM_RESET:-}" == "yes" ]] || {
-    echo "A inicialização recria o schema payments. Use CONFIRM_RESET=yes após conferir o alvo." >&2
+    echo "A inicialização recria payments e public.fraud_alerts. Use CONFIRM_RESET=yes após conferir o alvo." >&2
     exit 1
   }
 
@@ -72,6 +78,8 @@ SQL
   echo "Pré-validação aprovada: wal_level=logical; role $PG_CDC_USER com LOGIN + REPLICATION e autenticação válida."
   EXTRA+=(-v reset_ok=1)
   EXTRA+=(-v "cdc_role=$PG_CDC_USER")
+  EXTRA+=(-v "sink_role=$PG_SINK_USER")
+  EXTRA+=(-v "sink_password=$PG_SINK_PASSWORD")
 fi
 
 if [[ "$SQL_RELATIVE" == database/cleanup/postgres-cleanup.sql ]]; then
