@@ -20,7 +20,7 @@
 | Kafka → Flink | SQL usa Temporal Join de transactions com accounts em `$rowtime`; declarações de PK são metadados `NOT ENFORCED`; há transformação append e `MATCH_RECOGNIZE`. | Foram observados estados de statements (PK/append COMPLETED; enrichment/fraude RUNNING) e consulta de linhas no catálogo. O Temporal Join usa o tempo do registro no stream, não necessariamente `created_at`. | Estado RUNNING não prova correção funcional, checkpoint/restart, recuperação de estado ou ausência de perda/duplicação. A PK `NOT ENFORCED` não valida unicidade na origem. A execução Flink registrada é parcial. |
 | Flink: enrichment/append/detecção | O SQL público converte `enriched_payments` para changelog append e detecta três ou mais eventos positivos por cartão em 60 s de `$rowtime`. | A submissão/execução dos statements foi observada parcialmente. A regra e o relógio usados estão explícitos no SQL. | Append não equivale a filtrar somente INSERT: updates podem contribuir como novas linhas e deletes não são propagados como novas linhas, conforme a documentação do próprio projeto. Não há homologação funcional do cenário positivo; os alertas consultados não foram correlacionados às transações de teste. |
 | Flink → tópico de alertas | A tabela Flink `fraud_alerts` representa a saída prevista; o README público declara o tópico Kafka como destino do fluxo principal. | A saída está planejada e documentada. | Não foi localizada evidência que comprove a mensagem de alerta do cenário positivo no tópico, com chave, partition, offset e correlação com as transações. Portanto, a entrega de alertas não está homologada. |
-| Tópico de alertas → consumidor/efeito | No projeto público não há consumidor downstream nem Sink no fluxo principal. No projeto privado há template PostgresSink, script e DDL da tabela destino. | No privado, UPSERT com chave `(card_id, first_tx_time)` está preparado. A configuração corresponde aos campos emitidos pelo SQL privado e à PK da tabela de destino. UPSERT pode tornar reentregas idempotentes para essa chave, desde que a chave seja estável e o efeito seja determinístico. | Não há evidência Git rastreável atual de criação/execução do Sink: `evidence/cloud/05-sink-connector.txt` retorna 404 no branch `main`. A própria configuração não prova consumo, persistência ou exactly-once. O script comenta entrega at-least-once; não transformar isso em garantia validada do conector/efeito. |
+| Tópico de alertas → PostgreSQL Sink | O projeto público agora contém configuração `PostgresSink` em Avro, UPSERT, tabela pré-criada `public.fraud_alerts`, role `alerts_sink`, script protegido de criação e consulta read-only de privilégios/persistência. A chave composta é `(card_id, first_txn)`, alinhada ao SQL Flink público. | O Sink está preparado no código. UPSERT pode tornar reentregas com a mesma chave idempotentes no destino, se o schema e a chave forem compatíveis. | Não foi executado nem homologado. O schema Avro efetivo do tópico `fraud_alerts`, a suficiência dos privilégios e a persistência real ainda precisam ser verificados. `RUNNING` não comprova escrita; não afirmar exactly-once. |
 | Consumidor → efeito | O exemplo do desafio destaca que a idempotência do efeito é responsabilidade da aplicação. | Pode-se afirmar o princípio: se a entrega puder ser repetida, o consumidor/efeito precisa tolerar reprocessamento, por exemplo com chave idempotente e operação UPSERT. | Não há consumidor de aplicação implementado/homologado no projeto público. No privado, o Sink está preparado, mas sem prova de execução. Não há evidência de commit de offsets coordenado transacionalmente com o efeito. |
 
 ## Leitura comparativa dos projetos
@@ -29,22 +29,21 @@
 
 - PostgreSQL → CDC → Kafka: snapshot, CDC incremental e evolução do subject real têm homologações documentadas.
 - Flink: execução parcial observada; detecção do cenário positivo e publicação correlacionada no tópico não homologadas.
-- Destino: tópico Kafka previsto; consumidor/efeito downstream não implementado no fluxo principal.
+- Destino: tópico Kafka `fraud_alerts` e PostgreSQL Sink preparados no código; a execução do Sink e a persistência ainda não foram homologadas.
 - Conclusão: não declarar pipeline end-to-end funcional/homologada enquanto a saída de alertas não for demonstrada e correlacionada.
 
 ### Projeto privado — `josearodrigues/dio-confluent-pipeline-pagamentos-estudos`
 
-- Arquitetura, decisões, DDL, template e script preparam PostgreSQL Sink com UPSERT.
-- O plano de homologação define a Etapa 6, mas não há registro de aprovação.
-- O caminho exato `evidence/cloud/05-sink-connector.txt` não existe no branch `main` consultado (404).
-- Conclusão: Sink planejado e preparado em arquivos; execução e persistência não comprovadas.
+- Os sete commits adicionais do projeto de estudos foram analisados; as proteções do script, a auditoria SQL e os critérios de homologação foram adaptados ao contrato e aos caminhos do projeto público.
+- O projeto público contém DDL, role, configuração, script de criação, verificação read-only, proteção de teardown e documentação do PostgreSQL Sink.
+- Conclusão: Sink preparado no projeto público; execução e persistência não comprovadas. O repositório privado permanece como referência e não foi alterado nesta transferência.
 
 ## Conclusão sobre o requisito de saída
 
 O material do desafio exige conceitualmente entregar o resultado a um destino/consumidor; PostgreSQL é recomendado, mas não obrigatório. O mecanismo concreto não está especificado nos materiais disponíveis. Um tópico Kafka é um destino tecnicamente consumível, mas a documentação introdutória sugere uma etapa de entrega ao destino após o processamento. A matriz de confiabilidade também destaca o elo “consumer → efeito”.
 
-Assim, a interpretação mais segura é: **publicar o alerta no tópico é necessário para disponibilizá-lo, mas não há base documental suficiente para afirmar que isso, isoladamente, satisfaz a entrega end-to-end**. É preciso demonstrar um consumidor/efeito ou justificar claramente o tópico como destino final consumido. Não se conclui que PostgreSQL Sink seja obrigatório.
+Para este projeto, foi adotado PostgreSQL Sink como etapa downstream: o tópico é a saída intermediária do Flink e a tabela `public.fraud_alerts` é o destino relacional. Essa decisão amplia o fluxo implementado sem afirmar que o Sink seja exigência universal do desafio. A entrega end-to-end só será considerada homologada após correlação de mensagem Kafka e registro persistido.
 
 ## Próximo passo
 
-Antes de escolher entre tópico como destino final, Sink ou consumidor próprio, fechar a análise do contrato de saída e dos critérios de aceite existentes; depois revisar estaticamente a implementação correspondente. Nenhum Sink, consumidor, SQL ou recurso Cloud/Neon deve ser executado nesta etapa.
+Próxima etapa: obter o schema Avro real do tópico `fraud_alerts`, auditar os privilégios efetivos de `alerts_sink` e confirmar compatibilidade antes de qualquer criação do conector. Nenhuma operação Cloud/Neon foi executada durante a transferência.
