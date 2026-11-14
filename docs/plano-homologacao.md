@@ -119,7 +119,7 @@ Com snapshot, CDC incremental e evolução do schema real homologados por evidê
 ./flink/scripts/run.sh
 ```
 
-O script seleciona o contexto Flink, pode criar um compute pool se não encontrar um disponível com o nome configurado e submete, em sequência, os statements de startup offset, PKs, enrichment, append e detecção. Ele interrompe a sequência se um statement com o mesmo nome já existir; não sobrescreve automaticamente.
+O script seleciona o contexto Flink e reutiliza o compute pool configurado. Na primeira execução, se o pool de destino ainda não existir, reconhece somente o pool legado previamente identificado (`lfcp-2268w8o` / `default.env-mn3vgw.us-east-2`), valida ID, nome, environment, cloud, região, status e capacidade, e o renomeia para o nome configurado preservando o `max_cfu`. Não cria compute pools automaticamente; em caso de ausência, duplicidade ou incompatibilidade, interrompe. Depois, submete em sequência os statements de startup offset, PKs, enrichment, append e detecção. Interrompe se um statement com o mesmo nome já existir; não sobrescreve automaticamente.
 
 **Evidência esperada:** `evidence/cloud/04-flink.txt`.
 
