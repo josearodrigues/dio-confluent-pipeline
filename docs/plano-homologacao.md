@@ -252,7 +252,7 @@ Só avançar quando a unidade atual tiver: (a) revisão concluída; (b) execuç�
 
 O script `operations/verify-metrics.sh` foi preparado para coletar a métrica `io.confluent.kafka.server/received_bytes` pela Metrics API, filtrada pelo cluster configurado, e salvar a resposta original e um resumo datado em `evidence/observability/`. A operação é somente leitura e reutiliza as credenciais locais existentes. Consulte `operations/cost-and-metrics.md`.
 
-**Estado:** verificador sincronizado, validado sintaticamente e executado pelo usuário em 14/11/2026; evidências versionadas em `evidence/observability/20261114T100354Z-metrics.{json,md}`. A coleta automatizada está validada nesta execução. Próximas unidades: verificador read-only de ACLs e role binding MetricsViewer; consulta de Billing; verificações de confiabilidade. O orquestrador `operations/verify-observability.sh` será criado após os verificadores individuais. Não executar qualquer rotina que altere permissões ou recursos.
+**Estado:** verificador sincronizado, validado sintaticamente e executado pelo usuário em 14/11/2026; evidências versionadas em `evidence/observability/20261114T100354Z-metrics.{json,md}`. A coleta automatizada está validada nesta execução. ACLs e role binding MetricsViewer foram verificados e aprovados; o verificador de Billing está preparado, aguardando validação local e execução; confiabilidade permanece pendente. O orquestrador `operations/verify-observability.sh` será criado após os verificadores individuais. Não executar qualquer rotina que altere permissões ou recursos.
 
 ## 13. Observabilidade — coleta automatizada de métricas (14/11/2026)
 
@@ -263,7 +263,7 @@ O verificador `operations/verify-metrics.sh` foi sincronizado pelo usuário, pas
 
 A resposta contém dois pontos para `io.confluent.kafka.server/received_bytes`, cluster `lkc-rrwvjjk`, janela solicitada `PT6H/now` e granularidade `PT1H`: 133.168 bytes às 05:00 UTC (≈130,05 KiB) e 1.250 bytes às 06:00 UTC (≈1,22 KiB). A métrica é um contador em bytes agregado na granularidade; representa tráfego recebido pelo cluster, sem identificar isoladamente o produtor. A ausência de outros pontos não significa tráfego zero nem comprova cobertura contínua da janela.
 
-**Classificação:** coleta automatizada executada e evidência observada. O funcionamento deste verificador está validado para esta execução; o Passo 8 de observabilidade permanece parcial, pois ACLs, Billing e confiabilidade ainda precisam de verificações próprias. Nenhuma permissão ou recurso Cloud foi alterado.
+**Classificação:** coleta automatizada executada e evidência observada. O funcionamento deste verificador está validado para esta execução; o Passo 8 de observabilidade permanece parcial: ACLs/RBAC foram aprovados; Billing está preparado, mas aguarda execução; confiabilidade ainda precisa de verificação própria. Nenhuma permissão ou recurso Cloud foi alterado.
 
 
 ## 14. Observabilidade — preparação do verificador de Billing
