@@ -255,3 +255,20 @@ Não há outros arquivos 4.0 na listagem atual da pasta. Também existem materia
 ### Próximo encaminhamento
 O material disponível é suficiente para estabelecer o requisito conceitual end-to-end e a necessidade de uma saída consumível. Não é suficiente para exigir especificamente PostgreSQL Sink nem para reproduzir uma tabela oficial de garantias trecho a trecho. A análise deve avançar usando essa distinção, sem pedir ao usuário arquivos inexistentes nem buscar uma fonte alternativa que ele já informou não possuir.
 A próxima etapa, quando autorizada, será confrontar esses requisitos com a demonstração do mentor e os dois projetos, identificando a solução de saída efetivamente implementada e as lacunas de confiabilidade. Não alterar implementação antes desse confronto.
+
+
+## Comparação inicial: requisito de saída versus projeto público (14/11/2026)
+
+Com o inventário Dropbox encerrado, foi iniciada a confrontação documental com o projeto público.
+
+### Evidências do projeto público
+- `README.md` (blob `dcc370b4dfae04761158adfa1f8d84f72ddd9603`) declara explicitamente que o fluxo termina no tópico Kafka `fraud_alerts` e que não há PostgreSQL Sink no fluxo principal.
+- `docs/decisoes-tecnicas.md` (blob `4572a58233e2d399045fc9857899183c440d16c0`) registra a decisão de manter `fraud_alerts` como saída no Kafka, sem persistência em banco.
+- O README registra snapshot CDC, CDC incremental e evolução do subject real como homologados. O Flink foi parcialmente observado, mas o cenário positivo não foi correlacionado com os alertas; a saída no tópico Kafka e a validação funcional da janela/watermark permanecem pendentes.
+- Assim, o projeto público tem a saída Kafka planejada/documentada, mas a entrega funcional de alertas ainda não está homologada. A documentação deve evitar afirmar que o pipeline end-to-end está concluído.
+
+### Leitura provisória frente ao enunciado
+O enunciado pede que o resultado seja entregue a quem vai consumir e o mentor recomenda PostgreSQL, permitindo outro destino. Um tópico Kafka de saída pode ser um destino consumível em termos arquiteturais, mas a fala introdutória do mentor sugere também uma etapa de entrega após o processamento. Os documentos disponíveis não definem com precisão se publicar no tópico de saída basta para cumprir o requisito de “entregar o resultado”, ou se é necessário demonstrar um efeito/consumidor downstream. Essa ambiguidade deve permanecer explícita.
+
+### Limite desta comparação
+Ainda não é decisão recomendar Sink no projeto público. Primeiro é necessário confrontar o projeto privado de estudos e distinguir configuração preparada de execução/homologação. Não inferir aprovação funcional apenas pela presença de scripts ou configuração.
