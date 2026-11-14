@@ -116,7 +116,7 @@ A evolução real do schema é uma validação adicional deste projeto e anteced
 
 ## Segurança e custos
 
-Não versione `.env`, `.state.env`, arquivos renderizados ou segredos. O `.state.env` local contém IDs e credenciais, deve permanecer privado (permissão 600) e não deve ser compartilhado. A automação redescobre os recursos Confluent pelo nome; se uma API key já existir sem que seu segredo esteja disponível localmente, interrompe a execução para evitar duplicação. Execute em ambiente dedicado. Compute pool Flink e conectores gerenciados podem gerar custos enquanto provisionados/ativos. Consulte `operations/cost-and-metrics.md` antes e depois do laboratório.
+Não versione `.env`, `.state.env`, arquivos renderizados ou segredos. O `.state.env` local contém IDs e credenciais, deve permanecer privado (permissão 600) e não deve ser compartilhado. A senha `PG_SINK_PASSWORD` é lida pelo `psql` diretamente do ambiente e não é passada como argumento de processo. A role `alerts_sink` é criada ou atualizada na inicialização; atributos e memberships preexistentes devem ser auditados antes de autorizar o Sink. A limpeza PostgreSQL remove a tabela `public.fraud_alerts`, mas não remove automaticamente a role global. A automação redescobre os recursos Confluent pelo nome; se uma API key já existir sem que seu segredo esteja disponível localmente, interrompe a execução para evitar duplicação. Execute em ambiente dedicado. Compute pool Flink e conectores gerenciados podem gerar custos enquanto provisionados/ativos. Consulte `operations/cost-and-metrics.md` antes e depois do laboratório.
 
 ## Estado da entrega
 
