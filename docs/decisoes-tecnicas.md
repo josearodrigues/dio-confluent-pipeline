@@ -17,7 +17,7 @@ Este documento registra as decisões refletidas nos artefatos versionados do pro
 | Chaves primárias NOT ENFORCED | Declaram metadados de chave ao Flink; não verificam unicidade dos registros na origem. |
 | Append após enriquecimento | Reproduz a etapa didática do mentor e habilita a entrada append-only para o padrão. Não equivale a filtrar exclusivamente INSERTs. |
 | MATCH_RECOGNIZE por card_id | Detecta três ou mais registros positivos do mesmo cartão em até 60 segundos de `$rowtime`. |
-| Tópico fraud_alerts como saída | O fluxo termina no Kafka. PostgreSQL Sink não faz parte do escopo principal. |
+| PostgreSQL Sink como destino downstream | O tópico `fraud_alerts` alimenta um Sink Avro com UPSERT na tabela pré-criada `public.fraud_alerts`; chave composta `(card_id, first_txn)`. |
 
 ## Ordem de homologação
 
@@ -36,18 +36,21 @@ Na execução atual, não iniciar Flink antes de concluir snapshot, CDC incremen
 - O append configurado no SQL trata eventos CDC de criação (`c`), snapshot (`r`) e atualização (`u`) como novas linhas e ignora exclusões (`d`), conforme documentado no SQL do projeto. Assim, UPDATE pode contribuir para a contagem do padrão. Isso não é uma reconstrução do estado atual nem uma contagem estrita de INSERTs de negócio.
 - A regra positiva usa INSERTs novos para demonstrar o padrão, mas essa escolha não remove a limitação geral do append.
 - `NOT ENFORCED` não valida integridade referencial ou unicidade real.
-- O cenário é didático: não implementa deduplicação/reconciliação completa, motor de risco ou persistência em banco de destino.
+- O cenário é didático: não implementa deduplicação/reconciliação completa nem motor de risco. O Sink foi preparado para persistência downstream, mas ainda não foi executado ou homologado.
 - A janela é baseada no tempo de evento Kafka. Não deve ser descrita como janela baseada em `created_at` ou como garantia de emissão imediata em relógio de parede.
 - A execução de `MATCH_RECOGNIZE` depende do comportamento temporal/watermark do Flink e deve ser observada na homologação.
 
 ## Segurança operacional
 
 - Arquivos `.env`, `.state.env`, configurações renderizadas e segredos não devem ser versionados.
-- O conector usa identidade Kafka dedicada e credenciais PostgreSQL fornecidas por ambiente/configuração local.
+- O Sink reutiliza a Service Account `app-reader`, com ACL de leitura no tópico `fraud_alerts` e autorização READ no grupo `connect-` por prefixo.
+- O Sink autentica no PostgreSQL com a role dedicada `alerts_sink`; a configuração desabilita criação e evolução automáticas da tabela.
+- A inicialização não normaliza atributos privilegiados nem memberships de uma role `alerts_sink` preexistente; a auditoria read-only deve preceder a criação do conector.
+- A senha `PG_SINK_PASSWORD` é lida do ambiente pelo `psql`, sem ser incluída nos argumentos do processo.
 - A role PostgreSQL de replicação deve ter apenas os privilégios exigidos pela origem e pelo conector.
 - Scripts de fundação, execução e teardown podem criar, alterar ou remover recursos. Revisar variáveis, contexto e escopo antes de executá-los.
 - Recursos Confluent podem gerar custos enquanto provisionados/ativos; consultar Billing e os limites reais antes e depois do laboratório.
 
 ## Estado de validação
 
-As decisões acima descrevem o desenho e os artefatos atuais. A matriz de rastreabilidade documenta a diferença entre a ordem da demo e a ordem atual dos scripts do projeto. Os resultados cloud devem ser classificados somente com evidências produzidas e verificadas durante a execução real.
+As decisões acima descrevem o desenho e os artefatos atuais. A matriz de rastreabilidade documenta a diferença entre a ordem da demo e a ordem atual dos scripts do projeto. O Sink está configurado no repositório, mas sua execução, compatibilidade do schema Avro de saída, suficiência dos privilégios e persistência continuam pendentes de evidência real. UPSERT não é garantia exactly-once. Os resultados cloud devem ser classificados somente com evidências produzidas e verificadas durante a execução real.
