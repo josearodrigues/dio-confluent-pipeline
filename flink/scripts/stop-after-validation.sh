@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Para somente enrichment e detecsão após a validação funcional bem-sucedida.
+# Para somente enrichment e detecção após a validação funcional bem-sucedida.
 set -euo pipefail
 
 source "$(dirname "${BASH_SOURCE[0]}")/../../scripts/_common.sh"
@@ -10,9 +10,8 @@ require confluent jq realpath grep stat date
 : "${CC_CLOUD:?CC_CLOUD ausente}"
 : "${CC_REGION:?CC_REGION ausente}"
 
-
-[ $# -eq 1 ]] || {
-  echo "Usagem: $0 <evidence/homologation/<timestamp>-fraud-alerts-validation.txt" >&2
+[[ $# -eq 1 ]] || {
+  echo "Uso: $0 evidence/homologation/<timestamp>-fraud-alerts-validation.txt" >&2
   exit 2
 }
 VALIDATION_EVIDENCE="$(realpath -e "$1")" || {
@@ -24,11 +23,11 @@ EXPECTED_DIR="$(realpath -e "$ROOT_DIR/evidence/homologation")"
   echo "Informe uma evidência de validação de fraude dentro de evidence/homologation/." >&2
   exit 2
 }
-grep -q '^VALIDAÇÃO APROVADA$' "$VALIDATION_EVIDENDCE" || {
+grep -q '^VALIDAÇÃO APROVADA$' "$VALIDATION_EVIDENCE" || {
   echo "A evidência informada não contém VALIDAÇÃO APROVADA. Statements preservados." >&2
   exit 1
 }
-EVIDENCE_AGE="$(($(date +%s) - $(stat -c %Y "$VALIDATION_EVIDENCE"))"
+EVIDENCE_AGE="$(( $(date +%s) - $(stat -c %Y "$VALIDATION_EVIDENCE") ))"
 (( EVIDENCE_AGE >= 0 && EVIDENCE_AGE <= 7200 )) || {
   echo "A evidência tem mais de duas horas ou data inválida. Execute nova validação antes de parar." >&2
   exit 1
@@ -37,7 +36,8 @@ EVIDENCE_AGE="$(($(date +%s) - $(stat -c %Y "$VALIDATION_EVIDENCE"))"
 confluent environment use "$ENV_ID" >/dev/null
 confluent flink region use --cloud "$CC_CLOUD" --region "$CC_REGION" >/dev/null
 
-STAMP="$(date -u +%Y%m%dT%H%M%SZ)"*OUT="$ROOT_DIR/evidence/homologation/${STAMP}-flink-statements-stop.txt"
+STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
+OUT="$ROOT_DIR/evidence/homologation/${STAMP}-flink-statements-stop.txt"
 mkdir -p "$(dirname "$OUT")"
 
 {
@@ -49,8 +49,6 @@ mkdir -p "$(dirname "$OUT")"
 
   statements="$(confluent flink statement list --compute-pool "$FLINK_POOL_ID" --environment "$ENV_ID" -o json)"
 
-  # Compatibilidade com os nomes históricos terminados em -test. Se os dois
-  # aliases de uma mesma função coexistirem, a seleção é ambígua e aborta.
   resolve_name() {
     local role="$1" canonical="$2" legacy="$3" count name
     count="$(jq --arg a "$canonical" --arg b "$legacy" '[.[] | select(.name==$a or .name==$b)] | length' <<<"$statements")"
@@ -67,7 +65,7 @@ mkdir -p "$(dirname "$OUT")"
 
   describe_status() {
     local name="$1" data
-    data="$(confluent flink statement describe "$name" --environment "$ENV_ID" --cloud "$CC_CLOUD" --region "$CC_REGION" -o json)"
+    data="$(confluent flink statement describe "$name" -o json)"
     jq -er '.status // .phase // empty' <<<"$data"
   }
 
@@ -76,7 +74,6 @@ mkdir -p "$(dirname "$OUT")"
   echo "Enrichment: $ENRICHMENT_NAME — $ENRICHMENT_STATUS"
   echo "Fraud detection: $FRAUD_NAME — $FRAUD_STATUS"
 
-  # Pré-valida ambos antes de qualquer mutação para evitar parada parcial previsível.
   for status in "$ENRICHMENT_STATUS" "$FRAUD_STATUS"; do
     [[ "$status" == RUNNING || "$status" == STOPPED ]] || {
       echo "Estado inesperado '$status'. Nenhuma parada foi solicitada." >&2
@@ -90,11 +87,8 @@ mkdir -p "$(dirname "$OUT")"
       echo "Já estava STOPPED: $name"
       return 0
     fi
-
     echo "Solicitando parada: $name"
-    confluent flink statement stop "$name" \
-      --environment "$ENV_ID" --cloud "$CC_CLOUD" --region "$CC_REGION"
-
+    confluent flink statement stop "$name"
     for attempt in $(seq 1 60); do
       current="$(describe_status "$name")"
       [[ "$current" == STOPPED ]] && {
