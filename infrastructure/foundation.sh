@@ -66,7 +66,7 @@ ensure_key(){
   save_api_key_credentials "$json" "$keyvar" "$secretvar"
 }
 ensure_metrics_role(){
-  local principal="$1" bindings normalized
+  local principal="$1" bindings normalized count
   bindings="$(confluent iam rbac role-binding list \
     --principal "$principal" --role MetricsViewer -o json)"
   normalized="$(jq -ce '
@@ -74,14 +74,40 @@ ensure_metrics_role(){
     elif type == "object" and (.data | type) == "array" then .data
     else error("formato JSON de role-binding não reconhecido")
     end
-  ' <<<"$bindings")"
-  if jq -e 'length > 0' <<<"$normalized" >/dev/null; then
+    | if all(.[]; type == "object") then .
+      else error("lista de role-bindings contém item que não é objeto")
+      end
+  ' <<<"$bindings")" || fail "não foi possível interpretar a lista de role-bindings MetricsViewer."
+
+  count="$(jq -er 'length' <<<"$normalized")" ||
+    fail "não foi possível contar os role-bindings MetricsViewer."
+  if [[ "$count" -gt 0 ]]; then
     echo "MetricsViewer já atribuído a $principal."
     return
   fi
+
   confluent iam rbac role-binding create \
     --principal "$principal" --role MetricsViewer >/dev/null
-  echo "MetricsViewer atribuído a $principal."
+
+  # Confirmar que o vínculo criado aparece na listagem; não confiar apenas
+  # no código de saída do comando de criação.
+  bindings="$(confluent iam rbac role-binding list \
+    --principal "$principal" --role MetricsViewer -o json)"
+  normalized="$(jq -ce '
+    if type == "array" then .
+    elif type == "object" and (.data | type) == "array" then .data
+    else error("formato JSON de role-binding não reconhecido")
+    end
+    | if all(.[]; type == "object") then .
+      else error("lista de role-bindings contém item que não é objeto")
+      end
+  ' <<<"$bindings")" || fail "não foi possível validar o role-binding MetricsViewer criado."
+  count="$(jq -er 'length' <<<"$normalized")" ||
+    fail "não foi possível contar os role-bindings MetricsViewer após a criação."
+  [[ "$count" -gt 0 ]] ||
+    fail "o role-binding MetricsViewer não apareceu na listagem após a criação."
+
+  echo "MetricsViewer atribuído e confirmado para $principal."
 }
 ensure_topic_acl(){
   local sa="$1" ops="$2" topic="$3" acls op
