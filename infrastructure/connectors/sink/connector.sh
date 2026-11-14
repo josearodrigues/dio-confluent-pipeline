@@ -66,7 +66,8 @@ main() {
   echo "./scripts/run-sql.sh database/verify/alerts.sql"
 }
 
-LOG="$ROOT_DIR/evidence/cloud/05-sink-connector.txt"
+STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
+LOG="$ROOT_DIR/evidence/cloud/$STAMP-05-sink-connector.txt"
 : > "$LOG"
 exec > >(tee "$LOG") 2>&1
 main
