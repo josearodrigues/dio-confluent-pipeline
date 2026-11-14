@@ -1,0 +1,25 @@
+CDC incremental — 20261114T005129Z UTC
+Tópico: payments.customers
+Consumer group: snapshot-check-20261114T005129Z-55949
+customer_id: 1794617489
+Marcador: cdc-offset-20261114T005129Z-31547@example.test
+Modo: grupo novo, sem --from-beginning
+Timeout: 120s
+
+=== INÍCIO DA CAPTURA KAFKA ===
+Starting Kafka Consumer. Use Ctrl-C to exit.
+Partition:0 Offset:231	{"after":{"payments.payments.customers.Value":{"city":"Rio","created_at":"2026-11-14T00:51:36.689728Z","customer_id":1794617489,"email":"cdc-offset-20261114T005129Z-31547@example.test","full_name":"CDC test"}},"before":null,"op":"c","source":{"connector":"postgresql","db":"payments","lsn":32150824,"name":"payments","schema":"payments","sequence":"[\"32126688\",\"32150824\"]","snapshot":"false","table":"customers","ts_ms":1794617496690,"txId":10413,"version":"3.2.5.Final","xmin":null},"transaction":null,"ts_ms":1794617496877}
+Partition:0 Offset:232	{"after":{"payments.payments.customers.Value":{"city":"Niterói","created_at":"2026-11-14T00:51:36.689728Z","customer_id":1794617489,"email":"cdc-offset-20261114T005129Z-31547@example.test","full_name":"CDC test"}},"before":{"payments.payments.customers.Value":{"city":"Rio","created_at":"2026-11-14T00:51:36.689728Z","customer_id":1794617489,"email":"cdc-offset-20261114T005129Z-31547@example.test","full_name":"CDC test"}},"op":"u","source":{"connector":"postgresql","db":"payments","lsn":32151176,"name":"payments","schema":"payments","sequence":"[\"32151176\",\"32151176\"]","snapshot":"false","table":"customers","ts_ms":1794617499787,"txId":10414,"version":"3.2.5.Final","xmin":null},"transaction":null,"ts_ms":1794617500076}
+Partition:0 Offset:233	{"after":null,"before":{"payments.payments.customers.Value":{"city":"Niterói","created_at":"2026-11-14T00:51:36.689728Z","customer_id":1794617489,"email":"cdc-offset-20261114T005129Z-31547@example.test","full_name":"CDC test"}},"op":"d","source":{"connector":"postgresql","db":"payments","lsn":32151464,"name":"payments","schema":"payments","sequence":"[\"32151464\",\"32151464\"]","snapshot":"false","table":"customers","ts_ms":1794617502900,"txId":10415,"version":"3.2.5.Final","xmin":null},"transaction":null,"ts_ms":1794617503110}
+Partition:0 Offset:234	{}
+
+=== RESULTADO ===
+op=c + snapshot=false: CONFIRMADO
+op=u + snapshot=false: CONFIRMADO
+op=d + snapshot=false: CONFIRMADO
+Eventos correlacionados (mensagens Kafka e offsets):
+Marcador: cdc-offset-20261114T005129Z-31547@example.test
+Partition:0 Offset:231	{"after":{"payments.payments.customers.Value":{"city":"Rio","created_at":"2026-11-14T00:51:36.689728Z","customer_id":1794617489,"email":"cdc-offset-20261114T005129Z-31547@example.test","full_name":"CDC test"}},"before":null,"op":"c","source":{"connector":"postgresql","db":"payments","lsn":32150824,"name":"payments","schema":"payments","sequence":"[\"32126688\",\"32150824\"]","snapshot":"false","table":"customers","ts_ms":1794617496690,"txId":10413,"version":"3.2.5.Final","xmin":null},"transaction":null,"ts_ms":1794617496877}
+Partition:0 Offset:232	{"after":{"payments.payments.customers.Value":{"city":"Niterói","created_at":"2026-11-14T00:51:36.689728Z","customer_id":1794617489,"email":"cdc-offset-20261114T005129Z-31547@example.test","full_name":"CDC test"}},"before":{"payments.payments.customers.Value":{"city":"Rio","created_at":"2026-11-14T00:51:36.689728Z","customer_id":1794617489,"email":"cdc-offset-20261114T005129Z-31547@example.test","full_name":"CDC test"}},"op":"u","source":{"connector":"postgresql","db":"payments","lsn":32151176,"name":"payments","schema":"payments","sequence":"[\"32151176\",\"32151176\"]","snapshot":"false","table":"customers","ts_ms":1794617499787,"txId":10414,"version":"3.2.5.Final","xmin":null},"transaction":null,"ts_ms":1794617500076}
+Partition:0 Offset:233	{"after":null,"before":{"payments.payments.customers.Value":{"city":"Niterói","created_at":"2026-11-14T00:51:36.689728Z","customer_id":1794617489,"email":"cdc-offset-20261114T005129Z-31547@example.test","full_name":"CDC test"}},"op":"d","source":{"connector":"postgresql","db":"payments","lsn":32151464,"name":"payments","schema":"payments","sequence":"[\"32151464\",\"32151464\"]","snapshot":"false","table":"customers","ts_ms":1794617502900,"txId":10415,"version":"3.2.5.Final","xmin":null},"transaction":null,"ts_ms":1794617503110}
+Consumer group: snapshot-check-20261114T005129Z-55949
