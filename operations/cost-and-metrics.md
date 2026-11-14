@@ -31,3 +31,15 @@ Não estimar custo sem configuração e tabela de preços vigentes. Recursos pro
 - Esta coleta é evidência inicial de observabilidade; não comprova cobertura completa das seis horas, ausência de tráfego nos demais intervalos nem estado atual do cluster.
 - Nenhum recurso Cloud foi criado, alterado ou removido nesta consulta.
 - Próxima ação: confirmar na documentação/descriptors oficiais a unidade e a semântica de `received_bytes`; depois registrar a interpretação validada. Em seguida, avançar para a verificação read-only das ACLs, sem alterar permissões nesta etapa.
+
+### Interpretação confirmada da métrica (14/11/2026)
+
+A documentação oficial da Metrics API classifica `io.confluent.kafka.server/received_bytes` como contador (`COUNTER_INT64`), unidade `By` (bytes), cuja amostra representa o delta de bytes recebidos da rede desde a amostra anterior, coletada a cada 60 segundos. Contadores são somados quando agregados ao longo do tempo. Com granularidade `PT1H`, os pontos observados correspondem a bytes agregados nos intervalos horários, não a bytes/s.
+
+Conversão binária apenas para leitura:
+- 05:00 UTC: 133.168 bytes ≈ 130,05 KiB.
+- 06:00 UTC: 1.250 bytes ≈ 1,22 KiB.
+
+A métrica representa tráfego recebido pelo cluster Kafka; não isola o tráfego do conector CDC nem identifica, por si só, qual produtor originou os bytes. A consulta retornou somente dois pontos; não inferir que os demais intervalos da janela tiveram tráfego zero.
+
+Fonte oficial: https://api.telemetry.confluent.cloud/docs (descritor `io.confluent.kafka.server/received_bytes`, tipo, unidade, frequência e agregação).
