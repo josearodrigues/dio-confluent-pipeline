@@ -235,3 +235,13 @@ O script `operations/verify-metrics.sh` foi preparado para coletar a métrica `i
 
 **Estado:** script publicado; ainda não sincronizado/validado no clone local nem executado pelo usuário. Portanto, a coleta manual anterior permanece a única execução observada. Próximas unidades: verificador read-only de ACLs e role binding MetricsViewer; consulta de Billing; verificações de confiabilidade. O orquestrador `operations/verify-observability.sh` será criado após os verificadores individuais. Não executar qualquer rotina que altere permissões ou recursos.
 
+## 13. Observabilidade — coleta automatizada de métricas (14/11/2026)
+
+O verificador `operations/verify-metrics.sh` foi sincronizado pelo usuário, passou em `bash -n` e foi executado com sucesso. A execução consultou somente leitura a Confluent Metrics API e gerou:
+
+- JSON original: `evidence/observability/20261114T100354Z-metrics.json`.
+- Resumo: `evidence/observability/20261114T100354Z-metrics.md`.
+
+A resposta contém dois pontos para `io.confluent.kafka.server/received_bytes`, cluster `lkc-rrwvjjk`, janela solicitada `PT6H/now` e granularidade `PT1H`: 133.168 bytes às 05:00 UTC (≈130,05 KiB) e 1.250 bytes às 06:00 UTC (≈1,22 KiB). A métrica é um contador em bytes agregado na granularidade; representa tráfego recebido pelo cluster, sem identificar isoladamente o produtor. A ausência de outros pontos não significa tráfego zero nem comprova cobertura contínua da janela.
+
+**Classificação:** coleta automatizada executada e evidência observada. O funcionamento deste verificador está validado para esta execução; o Passo 8 de observabilidade permanece parcial, pois ACLs, Billing e confiabilidade ainda precisam de verificações próprias. Nenhuma permissão ou recurso Cloud foi alterado.
