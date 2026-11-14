@@ -147,62 +147,103 @@ ensure_metrics_role(){
 
   echo "MetricsViewer atribuído e confirmado para $principal."
 }
+# Classifica uma ACL exata para a operação solicitada.
+# Só considera host wildcard (*), que é o host usado pelas ACLs criadas aqui.
+acl_state(){
+  local acls="$1" principal="$2" resource_type="$3" resource="$4" pattern="$5" operation="$6"
+  jq -er --arg p "$principal" --arg rt "$resource_type" --arg r "$resource" \
+    --arg pt "$pattern" --arg op "$operation" '
+    [ .[] | select(
+      ((.principal // "") == $p) and
+      ((.resource_type // .resourceType // "" | ascii_upcase) == ($rt | ascii_upcase)) and
+      ((.resource_name // .resourceName // "") == $r) and
+      ((.pattern_type // .patternType // "" | ascii_upcase) == ($pt | ascii_upcase)) and
+      ((.operation // "" | ascii_upcase) == ($op | ascii_upcase)) and
+      ((.host // "*") == "*")
+    ) ] as $matches
+    | if any($matches[]; ((.permission // "" | ascii_upcase) == "DENY")) then "DENY"
+      elif any($matches[]; ((.permission // "" | ascii_upcase) == "ALLOW")) then "ALLOW"
+      else "MISSING"
+      end
+  ' <<<"$acls"
+}
+
 ensure_topic_acl(){
-  local sa="$1" ops="$2" topic="$3" acls op
+  local sa="$1" ops="$2" topic="$3" acls op state
   acls="$(confluent kafka acl list -o json)"
   acls="$(normalize_json_list "$acls")" ||
     fail "não foi possível interpretar a listagem de ACLs."
   for op in ${ops//,/ }; do
-    if jq -e --arg p "User:$sa" --arg r "$topic" --arg op "$op" '
-      any(.[];
-        (.principal==$p) and ((.resource_name // .resourceName // "")==$r) and
-        ((.operation // "" | ascii_upcase)==($op|ascii_upcase)) and
-        ((.permission // "" | ascii_upcase)=="ALLOW") and
-        ((.pattern_type // .patternType // "" | ascii_upcase)=="PREFIXED")
-      )' <<<"$acls" >/dev/null; then continue; fi
+    state="$(acl_state "$acls" "User:$sa" TOPIC "$topic" PREFIXED "$op")" ||
+      fail "não foi possível classificar ACL TOPIC PREFIXED ($topic/$op)."
+    case "$state" in
+      ALLOW) continue ;;
+      DENY) fail "existe ACL DENY equivalente: User:$sa $op TOPIC PREFIXED:$topic. Resolva-a explicitamente." ;;
+      MISSING) ;;
+      *) fail "estado de ACL inesperado: $state" ;;
+    esac
     confluent kafka acl create --allow --service-account "$sa" --operations "$op" --topic "$topic" --prefix >/dev/null
     acls="$(confluent kafka acl list -o json)"
     acls="$(normalize_json_list "$acls")" ||
       fail "não foi possível interpretar a listagem de ACLs após a criação."
+    state="$(acl_state "$acls" "User:$sa" TOPIC "$topic" PREFIXED "$op")" ||
+      fail "não foi possível validar ACL TOPIC PREFIXED ($topic/$op)."
+    [[ "$state" == ALLOW ]] ||
+      fail "ACL TOPIC PREFIXED não foi confirmada após a criação ($topic/$op; estado: $state)."
   done
 }
+
 ensure_literal_topic_acl(){
-  local sa="$1" ops="$2" topic="$3" acls op
+  local sa="$1" ops="$2" topic="$3" acls op state
   acls="$(confluent kafka acl list -o json)"
   acls="$(normalize_json_list "$acls")" ||
     fail "não foi possível interpretar a listagem de ACLs."
   for op in ${ops//,/ }; do
-    if jq -e --arg p "User:$sa" --arg r "$topic" --arg op "$op" '
-      any(.[];
-        (.principal==$p) and ((.resource_name // .resourceName // "")==$r) and
-        ((.operation // "" | ascii_upcase)==($op|ascii_upcase)) and
-        ((.permission // "" | ascii_upcase)=="ALLOW") and
-        ((.pattern_type // .patternType // "" | ascii_upcase)=="LITERAL")
-      )' <<<"$acls" >/dev/null; then continue; fi
+    state="$(acl_state "$acls" "User:$sa" TOPIC "$topic" LITERAL "$op")" ||
+      fail "não foi possível classificar ACL TOPIC LITERAL ($topic/$op)."
+    case "$state" in
+      ALLOW) continue ;;
+      DENY) fail "existe ACL DENY equivalente: User:$sa $op TOPIC LITERAL:$topic. Resolva-a explicitamente." ;;
+      MISSING) ;;
+      *) fail "estado de ACL inesperado: $state" ;;
+    esac
     confluent kafka acl create --allow --service-account "$sa" --operations "$op" --topic "$topic" >/dev/null
     acls="$(confluent kafka acl list -o json)"
     acls="$(normalize_json_list "$acls")" ||
       fail "não foi possível interpretar a listagem de ACLs após a criação."
+    state="$(acl_state "$acls" "User:$sa" TOPIC "$topic" LITERAL "$op")" ||
+      fail "não foi possível validar ACL TOPIC LITERAL ($topic/$op)."
+    [[ "$state" == ALLOW ]] ||
+      fail "ACL TOPIC LITERAL não foi confirmada após a criação ($topic/$op; estado: $state)."
   done
 }
+
 ensure_group_acl(){
-  local sa="$1" group="$2" prefix="$3" acls pt
+  local sa="$1" group="$2" prefix="$3" acls pt state
   pt="$([[ "$prefix" == yes ]] && echo PREFIXED || echo LITERAL)"
   acls="$(confluent kafka acl list -o json)"
   acls="$(normalize_json_list "$acls")" ||
     fail "não foi possível interpretar a listagem de ACLs."
-  if jq -e --arg p "User:$sa" --arg r "$group" --arg pt "$pt" '
-    any(.[];
-      (.principal==$p) and ((.resource_name // .resourceName // "")==$r) and
-      ((.resource_type // .resourceType // "" | ascii_upcase)=="GROUP") and
-      ((.pattern_type // .patternType // "" | ascii_upcase)==$pt) and
-      ((.operation // "" | ascii_upcase)=="READ") and ((.permission // "" | ascii_upcase)=="ALLOW")
-    )' <<<"$acls" >/dev/null; then return; fi
+  state="$(acl_state "$acls" "User:$sa" GROUP "$group" "$pt" READ)" ||
+    fail "não foi possível classificar ACL GROUP ($group/READ)."
+  case "$state" in
+    ALLOW) return ;;
+    DENY) fail "existe ACL DENY equivalente: User:$sa READ GROUP $pt:$group. Resolva-a explicitamente." ;;
+    MISSING) ;;
+    *) fail "estado de ACL inesperado: $state" ;;
+  esac
   if [[ "$prefix" == yes ]]; then
     confluent kafka acl create --allow --service-account "$sa" --operations read --consumer-group "$group" --prefix >/dev/null
   else
     confluent kafka acl create --allow --service-account "$sa" --operations read --consumer-group "$group" >/dev/null
   fi
+  acls="$(confluent kafka acl list -o json)"
+  acls="$(normalize_json_list "$acls")" ||
+    fail "não foi possível interpretar a listagem de ACLs após a criação."
+  state="$(acl_state "$acls" "User:$sa" GROUP "$group" "$pt" READ)" ||
+    fail "não foi possível validar ACL GROUP ($group/READ)."
+  [[ "$state" == ALLOW ]] ||
+    fail "ACL GROUP não foi confirmada após a criação ($group/READ; estado: $state)."
 }
 
 PREV_CLUSTER_ID="${CLUSTER_ID:-}"
