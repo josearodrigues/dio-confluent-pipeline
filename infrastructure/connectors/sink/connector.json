@@ -1,0 +1,21 @@
+{
+  "name": "payments-fraud-alerts-sink",
+  "connector.class": "PostgresSink",
+  "input.data.format": "AVRO",
+  "kafka.auth.mode": "SERVICE_ACCOUNT",
+  "kafka.service.account.id": "${SA_READER_ID}",
+  "topics": "fraud_alerts",
+  "connection.host": "${PG_HOST}",
+  "connection.port": "${PG_PORT}",
+  "connection.user": "${PG_SINK_USER}",
+  "connection.password": "${PG_SINK_PASSWORD}",
+  "db.name": "${PG_DATABASE}",
+  "ssl.mode": "require",
+  "insert.mode": "UPSERT",
+  "pk.mode": "record_value",
+  "pk.fields": "card_id,first_txn",
+  "table.name.format": "fraud_alerts",
+  "auto.create": "false",
+  "auto.evolve": "false",
+  "tasks.max": "1"
+}
