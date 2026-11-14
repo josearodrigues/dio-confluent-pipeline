@@ -98,7 +98,7 @@ O verificador inicia os quatro consumidores em paralelo e acompanha cada tópico
 8. Execute o cenário positivo: `./scripts/run-sql.sh database/seed/simulate-events.sql`.
 9. Consulte os resultados no tópico `fraud_alerts` e registre as evidências.
 10. Antes de criar o Sink, confira o schema Avro real do tópico e execute a auditoria read-only da role com `./scripts/run-sql.sh database/verify/alerts.sql`.
-11. Somente após aprovar contrato e privilégios, execute `./infrastructure/connectors/sink/connector.sh`; depois correlacione uma mensagem conhecida com a linha persistida usando a mesma consulta SQL.
+11. Somente após aprovar contrato e privilégios, execute `bash ./infrastructure/connectors/sink/connector.sh`; depois correlacione uma mensagem conhecida com a linha persistida usando a mesma consulta SQL.
 
 A evolução real do schema é uma validação adicional deste projeto e antecede o Flink. O Passo 6 da demonstração do mentor é o teste de compatibilidade no subject isolado `contract.transactions-value`, atualmente executado dentro da preparação do Schema Registry (etapa 2), antes do CDC. As duas validações não são intercambiáveis.
 
