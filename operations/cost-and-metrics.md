@@ -67,7 +67,7 @@ O usuário sincronizou `main`, validou a sintaxe de `operations/verify-metrics.s
 - `evidence/observability/20261114T100354Z-metrics.json` — resposta original da API.
 - `evidence/observability/20261114T100354Z-metrics.md` — resumo com valores e conversões.
 
-Foram retornados dois pontos: 133.168 bytes às 05:00 UTC (≈130,05 KiB) e 1.250 bytes às 06:00 UTC (≈1,22 KiB), para o cluster `lkc-rrwvjjk`, com janela solicitada `PT6H/now` e granularidade `PT1H`. A consulta confirma a coleta de dados para os pontos retornados, mas não cobertura contínua das seis horas. A coleta automatizada está validada nesta execução; a observabilidade geral permanece parcial até a verificação read-only de ACLs, Billing e confiabilidade.
+Foram retornados dois pontos: 133.168 bytes às 05:00 UTC (≈130,05 KiB) e 1.250 bytes às 06:00 UTC (≈1,22 KiB), para o cluster `lkc-rrwvjjk`, com janela solicitada `PT6H/now` e granularidade `PT1H`. A consulta confirma a coleta de dados para os pontos retornados, mas não cobertura contínua das seis horas. A coleta automatizada está validada nesta execução; a observabilidade geral permanece parcial: ACLs/RBAC foram aprovados; Billing está preparado, mas aguarda execução; confiabilidade ainda está pendente.
 
 
 ## Coleta automatizada de Billing — preparação
