@@ -575,6 +575,7 @@ A execução também revelou uma falha de quoting na linha explicativa do Markdo
 - Confirmar que `public.fraud_alerts` existe com PK `(card_id, first_txn)` e colunas compatíveis. A inicialização recria essa tabela.
 - Executar `./scripts/run-sql.sh database/verify/alerts.sql` e revisar os atributos da role `alerts_sink`, seus memberships, privilégios efetivos e ownership.
 - A role criada pela inicialização recebe CONNECT, USAGE em `public` e SELECT/INSERT/UPDATE na tabela. Se a role já existir, a senha é atualizada, mas atributos elevados e memberships preexistentes não são normalizados. Não presumir privilégio mínimo sem auditar o resultado.
+- A documentação Confluent lista como pré-requisitos gerais DDL CREATE/ALTER/DROP e DML SELECT/INSERT/UPDATE/DELETE. Como esta configuração desabilita `auto.create` e `auto.evolve`, a suficiência dos privilégios reduzidos concedidos pelo SQL não está comprovada; não ampliar permissões sem teste controlado e justificativa. Referência: https://docs.confluent.io/cloud/current/connectors/cc-postgresql-sink.html.
 - A Service Account `app-reader` recebe leitura no tópico `fraud_alerts` e autorização READ no grupo `connect-` por prefixo. A fundação aplica essa ACL de forma idempotente.
 - `ssl.mode=require` cifra a conexão PostgreSQL, mas não valida hostname/cadeia do certificado. Não afirmar validação de identidade TLS.
 
@@ -589,7 +590,7 @@ A configuração corresponde aos aliases existentes no SQL Flink público. Não 
 Somente após aprovar contrato Avro, conectividade e privilégios:
 
 ```bash
-./infrastructure/connectors/sink/connector.sh
+bash ./infrastructure/connectors/sink/connector.sh
 ```
 
 O script seleciona Environment e cluster explicitamente, valida o formato JSON da listagem, interrompe se o conector `payments-fraud-alerts-sink` já existir, verifica a existência do tópico, cria o Sink e aguarda até dez minutos por `RUNNING`. Não sobrescreve nem exclui um conector preexistente. O ID observado é salvo em `.state.env` para o teardown.
@@ -600,7 +601,7 @@ Depois de produzir um alerta conhecido, execute:
 ./scripts/run-sql.sh database/verify/alerts.sql
 ```
 
-**Homologação exige:** schema Avro compatível; role e privilégios aprovados; conector e task sem falhas; mensagem Kafka identificada por chave/partition/offset; registro correspondente em `public.fraud_alerts`; e reentrega controlada atualizando a mesma chave sem duplicação. Estado `RUNNING` não comprova persistência. UPSERT não prova exactly-once ponta a ponta.
+**Homologação exige:** schema Avro compatível; role e privilégios aprovados; conector e task sem falhas; mensagem Kafka identificada por chave/partition/offset; registro correspondente em `public.fraud_alerts`; e reentrega controlada atualizando a mesma chave sem duplicação. Estado `RUNNING` não comprova persistência. A documentação Confluent declara entrega at-least-once para o conector; UPSERT com chave estável pode tornar reentregas idempotentes no destino, mas não prova exactly-once ponta a ponta. Referência: https://docs.confluent.io/cloud/current/connectors/cc-postgresql-sink.html.
 
 ### Limpeza
 
