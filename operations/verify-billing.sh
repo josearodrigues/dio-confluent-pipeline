@@ -155,18 +155,30 @@ TOTALS="$(jq -r '
   echo "| Data inicial | Produto | Tipo | Ambiente | Recurso | Quantidade | Unidade | Valor original (USD) | Desconto (USD) | Líquido (USD) |"
   echo "|---|---|---|---|---|---:|---|---:|---:|---:|"
   jq -r '
-    def s: if . == null then "" else tostring | gsub("[|\r\n]"; " ") end;
+    def s: if . == null then "" else tostring | gsub("[|\\r\\n]"; " ") end;
+    def get($value; $key):
+      if ($value | type) == "object" then $value[$key] else null end;
     .[] |
-    "| " + ((.start_date // "") | s) +
-    " | " + ((.product // "") | s) +
-    " | " + ((.line_type // .lineType // "") | s) +
-    " | " + ((.resource.environment.id // .environment.id // .environment // "") | s) +
-    " | " + ((.resource.id // .resource_id // .resource_name // "") | s) +
-    " | " + ((.quantity // "") | s) +
-    " | " + ((.unit // "") | s) +
-    " | " + ((.original_amount // "") | s) +
-    " | " + ((.discount_amount // "") | s) +
-    " | " + ((.amount // "") | s) + " |"
+    . as $item |
+    ($item.resource as $resource |
+     $item.environment as $environment |
+     "| " + (($item.start_date // "") | s) +
+     " | " + (($item.product // "") | s) +
+     " | " + (($item.line_type // $item.lineType // "") | s) +
+     " | " + ((get(get($resource; "environment"); "id")
+                // get($resource; "environment")
+                // get($environment; "id")
+                // $environment // "") | s) +
+     " | " + ((get($resource; "id")
+                // $item.resource_id
+                // $item.resource_name
+                // (if ($resource | type) == "string" then $resource else "" end)) | s) +
+     " | " + (($item.quantity // "") | s) +
+     " | " + (($item.unit // "") | s) +
+     " | " + (($item.original_amount // "") | s) +
+     " | " + (($item.discount_amount // "") | s) +
+     " | " + (($item.amount // "") | s) + " |")
+
   ' "$TMP_ROWS"
   if [[ "$ROW_COUNT" -eq 0 ]]; then
     echo
