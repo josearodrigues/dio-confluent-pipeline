@@ -184,3 +184,46 @@ Localizar e examinar o README original do desafio que contém a tabela de garant
 2. Localizar a tabela/README original e interpretar as garantias por trecho.
 3. Consolidar o que foi pedido, o que o mentor demonstrou e o que permanece não demonstrado.
 4. Só depois cruzar esses resultados com os projetos público e privado e decidir, uma etapa por vez, se há mudanças necessárias.
+
+
+## Complemento: escopo end-to-end e destino dos dados (14/11/2026)
+
+A análise dos materiais adicionais `4.0.0.1` e `4.0.0.4` refinou a conclusão provisória anterior.
+
+### Novos materiais examinados
+- `4.0.0.1-Desafio de projeto- Construindo um pipeline rela-time end-to-end com Confluent Cloud.srt`: transcrição automática da apresentação do desafio.
+- `4.0.0.4-Informações.md`: descrição resumida oficial do desafio.
+- `4.0.0.0-Confluent Cloud- Desafio Final com Pipeline Real-Time End-to-End.png`: arquivo localizado e disponibilizado em pré-visualização; seu conteúdo visual ainda não foi interpretado tecnicamente nesta revisão.
+- Inventário da pasta Dropbox `Bootcamp IBM Confluent` concluído: listagem direta retornou `has_more=false`; não há README entre os arquivos atualmente nessa pasta.
+
+### O que os novos materiais acrescentam
+A transcrição introdutória do desafio afirma:
+- O pipeline deve estar funcional.
+- A entrega deve ser publicada em repositório público GitHub.
+- O repositório deve conter código, SQL, scripts e processo completo, com README bem documentado.
+- Cada camada deve ter evidências, outputs e comandos.
+- Deve haver processo de setup e teardown para permitir reprodução por terceiros.
+- O fluxo proposto é trazer tabelas do PostgreSQL por CDC, processá-las, aplicar regras de fraude e produzir uma saída.
+- Sobre o destino, a fala é explícita: devolver os dados ao PostgreSQL **ou a outro lugar**, sendo PostgreSQL a recomendação do mentor.
+
+O arquivo `4.0.0.4-Informações.md` descreve cinco camadas, da fundação do ambiente à operação com métricas e custo, e reforça que o README deve documentar cada camada com evidência de execução.
+
+### Ajuste de interpretação
+- O desafio não se limita a produzir um alerta dentro do Kafka: a apresentação introdutória descreve uma etapa de saída/entrega para um destino consumidor.
+- PostgreSQL é destino recomendado, mas não obrigatório pela fala transcrita: outro destino é expressamente permitido.
+- Os materiais ainda não identificam de forma conclusiva o mecanismo dessa entrega (PostgreSQL Sink gerenciado, consumidor de aplicação, outro conector ou outro destino).
+- A transcrição da resolução do mentor/roteiro operacional disponível continua sem mostrar os passos concretos de configuração e validação desse destino. Portanto, a formulação correta é: **o destino externo faz parte do escopo pretendido do desafio; o mecanismo e a implementação demonstrada permanecem não esclarecidos nos materiais operacionais examinados**.
+- A afirmação anterior de que “o fluxo mínimo do desafio termina em Kafka” deve ser considerada corrigida: a demonstração operacional recuperada valida a detecção/alerta no Kafka, mas a introdução do desafio descreve também a entrega do resultado a um destino.
+- Os quatro pilares (observabilidade, segurança, custos e confiabilidade) são critérios operacionais/de avaliação; as cinco camadas mencionadas em `4.0.0.4` são a organização do pipeline/entrega. Não confundir as duas classificações.
+
+### README de garantias
+A listagem completa da pasta Dropbox não encontrou o README citado pelo PDF. Busca pública no GitHub localizou repositório de terceiro `AlsS99/desafioDIOcomIBM` com uma tabela “Confiabilidade” por trecho, incluindo “Consumer → efeito”, entrega at-least-once e idempotência implementada na aplicação. É um trabalho de participante, não fonte oficial; serve apenas como referência comparativa e não comprova o conteúdo do README original do desafio. Não copiar nem tratar como requisito oficial.
+A tabela original continua não localizada.
+
+### Próxima etapa
+1. Identificar a origem/link do README oficial mencionado pelo PDF (possivelmente no ambiente do curso/DIO ou em material ainda não fornecido).
+2. Interpretar a imagem `4.0.0.0` e verificar se contém diagrama/indicação explícita do destino.
+3. Examinar a demonstração operacional completa para procurar a etapa de entrega do alerta ao destino.
+4. Só então definir se a implementação deve usar Sink gerenciado, consumidor de aplicação ou outro mecanismo.
+
+Nenhuma implementação foi alterada e nenhuma operação Confluent/Neon foi executada nesta revisão.
