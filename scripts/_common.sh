@@ -34,12 +34,14 @@ save_state() {
 
 save_api_key_credentials() {
   local json="$1" keyvar="$2" secretvar="$3" key secret
-  key="$(jq -er '.api_key | select(type == "string" and length > 0)' <<<"$json")" || {
-    echo "ERRO: resposta da Confluent CLI sem api_key válida; credenciais não foram persistidas." >&2
+  # A CLI documenta "key"/"secret"; aliases api_key/api_secret são aceitos
+  # para compatibilidade com respostas já usadas pelo laboratório.
+  key="$(jq -er '(.api_key // .key) | select(type == "string" and length > 0)' <<<"$json")" || {
+    echo "ERRO: resposta da Confluent CLI sem campo key/api_key válido; credenciais não foram persistidas." >&2
     return 1
   }
-  secret="$(jq -er '.api_secret | select(type == "string" and length > 0)' <<<"$json")" || {
-    echo "ERRO: resposta da Confluent CLI sem api_secret válida; credenciais não foram persistidas." >&2
+  secret="$(jq -er '(.api_secret // .secret) | select(type == "string" and length > 0)' <<<"$json")" || {
+    echo "ERRO: resposta da Confluent CLI sem campo secret/api_secret válido; credenciais não foram persistidas." >&2
     return 1
   }
   save_state "$keyvar" "$key"
