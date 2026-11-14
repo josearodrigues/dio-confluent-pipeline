@@ -562,3 +562,46 @@ A consulta real anterior foi somente leitura e terminou com falha na renderizaç
 O usuário executou a consulta para 2026-11-01 a 2026-11-11 (fim exclusivo). A Costs API retornou 12 itens e foram gerados os arquivos `20261114T112054Z-billing.json` e `20261114T112054Z-billing.md` em `evidence/observability/`. O resumo apresentou total original e líquido de USD `-0.00009999999999976694`; a soma global de descontos não foi consolidada porque 4 de 12 itens tinham `discount_amount` nulo/ausente. Foram observados lançamentos CONNECT, FLINK, KAFKA e PROMO_CREDIT em dois IDs de ambiente distintos. A evidência ainda precisa ser revisada e commitada pelo usuário.
 
 A execução também revelou uma falha de quoting na linha explicativa do Markdown: Bash tentou executar `discount_amount` como comando, gerando a mensagem `discount_amount: comando não encontrado` e omitindo o nome do campo naquela frase. Os dados da tabela e totais foram gerados; a frase do relatório deve ser corrigida antes do commit. O script foi corrigido no commit `e65d9415bcfe67501515ce55186010be2302de9f`, escapando os backticks. Ainda não foi validado localmente com `bash -n`. A etapa de Billing tem coleta executada e evidência local gerada, mas o registro versionado permanece pendente.
+
+
+## 15. PostgreSQL Sink — persistência dos alertas
+
+**Estado:** configuração, DDL, script de criação, auditoria read-only e teardown preparados no repositório. O conector não foi criado, executado ou homologado nesta etapa. Nenhuma operação Confluent Cloud ou Neon foi realizada.
+
+### Contrato e pré-requisitos
+
+- A saída Flink definida em `flink/sql/04-fraud-detection.sql` contém `card_id`, `first_txn`, `last_txn` e `txn_count`.
+- Antes de criar o Sink, consultar o schema Avro efetivamente registrado para o tópico `fraud_alerts`. Confirmar nomes, nullability, tipos primitivos e tipos lógicos; em especial, os timestamps emitidos por `$rowtime`.
+- Confirmar que `public.fraud_alerts` existe com PK `(card_id, first_txn)` e colunas compatíveis. A inicialização recria essa tabela.
+- Executar `./scripts/run-sql.sh database/verify/alerts.sql` e revisar os atributos da role `alerts_sink`, seus memberships, privilégios efetivos e ownership.
+- A role criada pela inicialização recebe CONNECT, USAGE em `public` e SELECT/INSERT/UPDATE na tabela. Se a role já existir, a senha é atualizada, mas atributos elevados e memberships preexistentes não são normalizados. Não presumir privilégio mínimo sem auditar o resultado.
+- A Service Account `app-reader` recebe leitura no tópico `fraud_alerts` e autorização READ no grupo `connect-` por prefixo. A fundação aplica essa ACL de forma idempotente.
+- `ssl.mode=require` cifra a conexão PostgreSQL, mas não valida hostname/cadeia do certificado. Não afirmar validação de identidade TLS.
+
+### Configuração preparada
+
+`infrastructure/connectors/sink/connector.json` define `PostgresSink`, formato de entrada Avro, tópico `fraud_alerts`, autenticação Kafka pela Service Account `app-reader`, role PostgreSQL `alerts_sink`, UPSERT com chave composta `(card_id, first_txn)`, tabela pré-criada e `auto.create=false`/`auto.evolve=false`.
+
+A configuração corresponde aos aliases existentes no SQL Flink público. Não foram adicionados campos de saída nem alterada a regra Flink para acomodar o Sink.
+
+### Execução e critérios de homologação
+
+Somente após aprovar contrato Avro, conectividade e privilégios:
+
+```bash
+./infrastructure/connectors/sink/connector.sh
+```
+
+O script seleciona Environment e cluster explicitamente, valida o formato JSON da listagem, interrompe se o conector `payments-fraud-alerts-sink` já existir, verifica a existência do tópico, cria o Sink e aguarda até dez minutos por `RUNNING`. Não sobrescreve nem exclui um conector preexistente. O ID observado é salvo em `.state.env` para o teardown.
+
+Depois de produzir um alerta conhecido, execute:
+
+```bash
+./scripts/run-sql.sh database/verify/alerts.sql
+```
+
+**Homologação exige:** schema Avro compatível; role e privilégios aprovados; conector e task sem falhas; mensagem Kafka identificada por chave/partition/offset; registro correspondente em `public.fraud_alerts`; e reentrega controlada atualizando a mesma chave sem duplicação. Estado `RUNNING` não comprova persistência. UPSERT não prova exactly-once ponta a ponta.
+
+### Limpeza
+
+O `teardown/cleanup.sh` valida o nome do Sink pelo ID persistido e remove o conector antes do CDC e do cluster. A limpeza PostgreSQL remove `public.fraud_alerts`; a role `alerts_sink` é global ao cluster e permanece criada, salvo remoção manual futura após auditoria de dependências.
