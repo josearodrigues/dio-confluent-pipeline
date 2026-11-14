@@ -94,7 +94,7 @@ O script usa um consumer group exclusivo `snapshot-check-*` (ACL prefixada provi
 
 **Critério:** correlacionar a linha de origem com os três eventos Debezium e confirmar `snapshot=false`. O teste deve ocorrer antes do Flink, como no Passo 5 da demonstração do mentor.
 
-**Estado em 14/11/2026:** teste temporário executado com sucesso: INSERT, UPDATE e DELETE foram correlacionados ao mesmo marcador, com `op=c`, `op=u` e `op=d`, todos `snapshot=false`, nos offsets 223, 224 e 225. Evidência local: `evidence/homologation/20261114T001704Z-cdc-offset-test.txt`. Essa execução comprova tecnicamente o fluxo incremental. A primeira execução do verificador oficial realizou INSERT/UPDATE/DELETE e confirmou a limpeza, mas não registrou mensagens Kafka/offsets e terminou com código 1; portanto, não comprovou CDC. O arquivo oficial foi adaptado in-place para reproduzir o comando consumidor do teste temporário, sem `--config auto.offset.reset=latest`. A nova versão ainda não foi executada; a homologação formal permanece pendente.
+**Estado em 14/11/2026:** verificador oficial executado com sucesso. INSERT (`op=c`, offset 231), UPDATE (`op=u`, offset 232) e DELETE (`op=d`, offset 233) foram correlacionados ao mesmo marcador na partição 0, todos com `snapshot=false`. Evidência local: `evidence/homologation/20261114T005129Z-cdc-incremental.txt`. O resultado confirma a captura incremental do Debezium no Kafka nesta execução. O teste temporário anterior (offsets 223–225) permanece como evidência complementar, não como substituto da homologação pelo verificador oficial.
 
 ## 7. Evolução adicional do schema real do CDC (extensão do projeto)
 
