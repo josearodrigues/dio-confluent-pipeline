@@ -24,6 +24,10 @@ if [[ "$#" -eq 0 ]]; then
   TODAY_UTC="$(date -u +%F)"
   START_DATE="$(date -u -d "$TODAY_UTC" +%Y-%m-01)"
   END_DATE="$(date -u -d "$TODAY_UTC -3 days" +%F)"
+  [[ "$END_DATE" > "$START_DATE" ]] || {
+    echo "Ainda não há uma janela mensal com três dias completos de atraso. Informe explicitamente um intervalo de datas." >&2
+    exit 2
+  }
 elif [[ "$#" -eq 2 ]]; then
   START_DATE="$1"
   END_DATE="$2"
@@ -114,7 +118,7 @@ TOTALS="$(jq -r '
   echo "- Coletado em (UTC): $STAMP"
   echo "- Período consultado: $START_DATE (inclusivo) até $END_DATE (exclusivo)"
   echo "- Itens retornados: $ROW_COUNT"
-  echo "- Origem: `confluent billing cost list -o json`"
+  echo "- Origem: \`confluent billing cost list -o json\`"
   echo "- Escopo: custos agregados diariamente pela Costs API."
   echo
   echo "## Totais retornados pela API"
@@ -159,8 +163,8 @@ TOTALS="$(jq -r '
   echo
   echo "## Arquivos"
   echo
-  echo "- JSON original: `evidence/observability/$(basename "$JSON_FILE")`"
-  echo "- Resumo: `evidence/observability/$(basename "$SUMMARY_FILE")`"
+  echo "- JSON original: \`evidence/observability/$(basename "$JSON_FILE")\`"
+  echo "- Resumo: \`evidence/observability/$(basename "$SUMMARY_FILE")\`"
 } >"$SUMMARY_FILE"
 chmod 600 "$SUMMARY_FILE"
 
