@@ -77,7 +77,7 @@ O verificador `operations/verify-billing.sh` consulta os custos agregados pela C
 Uso:
 
 ```bash
-./operations/verify-billing.sh
+bash operations/verify-billing.sh
 ./operations/verify-billing.sh 2026-11-01 2026-11-11
 ```
 
