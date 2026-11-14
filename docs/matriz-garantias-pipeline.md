@@ -40,9 +40,9 @@
 
 ## Conclusão sobre o requisito de saída
 
-O material do desafio exige conceitualmente entregar o resultado a um destino/consumidor; PostgreSQL é recomendado, mas não obrigatório. O mecanismo concreto não está especificado nos materiais disponíveis. Um tópico Kafka é um destino tecnicamente consumível, mas a documentação introdutória sugere uma etapa de entrega ao destino após o processamento. A matriz de confiabilidade também destaca o elo “consumer → efeito”.
+O material do desafio não determina PostgreSQL como único destino possível. Neste repositório, a decisão de arquitetura foi acrescentar PostgreSQL Sink como etapa downstream: Flink publica no tópico `fraud_alerts`, e o Sink está preparado para persistir os registros em `public.fraud_alerts` por UPSERT. Essa decisão amplia o fluxo do projeto, mas não significa que o Sink seja requisito universal do desafio.
 
-Para este projeto, foi adotado PostgreSQL Sink como etapa downstream: o tópico é a saída intermediária do Flink e a tabela `public.fraud_alerts` é o destino relacional. Essa decisão amplia o fluxo implementado sem afirmar que o Sink seja exigência universal do desafio. A entrega end-to-end só será considerada homologada após correlação de mensagem Kafka e registro persistido.
+A implementação está preparada no código, não executada. A entrega end-to-end só será considerada homologada após verificar o schema Avro real, os privilégios efetivos, a mensagem Kafka correlacionada e a linha persistida no PostgreSQL. UPSERT não comprova exactly-once.
 
 ## Próximo passo
 
