@@ -83,7 +83,7 @@ fi
 
 if [[ "$SQL_RELATIVE" == database/cleanup/postgres-cleanup.sql ]]; then
   [[ "${CONFIRM_CLEANUP:-}" == "yes" ]] || {
-    echo "A limpeza remove o schema payments e a publication. Use CONFIRM_CLEANUP=yes após conferir o alvo." >&2
+    echo "A limpeza remove o schema payments, a publication e a tabela public.fraud_alerts. Use CONFIRM_CLEANUP=yes após conferir o alvo." >&2
     exit 1
   }
 fi
