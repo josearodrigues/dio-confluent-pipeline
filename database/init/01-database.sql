@@ -48,7 +48,7 @@ CREATE TABLE public.fraud_alerts (
 -- memberships de uma role preexistente; audite-os antes de criar o conector.
 SELECT format('CREATE ROLE %I LOGIN PASSWORD %L', :'sink_role', :'sink_password')
 WHERE NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = :'sink_role')
-\\gexec
+\gexec
 ALTER ROLE :"sink_role" WITH LOGIN PASSWORD :'sink_password';
 
 CREATE TABLE customers (
