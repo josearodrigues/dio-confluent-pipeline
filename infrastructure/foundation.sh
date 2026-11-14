@@ -36,6 +36,24 @@ ensure_key(){
   json="$(confluent api-key create --resource "$resource" --service-account "$sa" --description "payments-lab-$keyvar" -o json)"
   save_api_key_credentials "$json" "$keyvar" "$secretvar"
 }
+ensure_metrics_role(){
+  local principal="$1" bindings normalized
+  bindings="$(confluent iam rbac role-binding list \
+    --principal "$principal" --role MetricsViewer -o json)"
+  normalized="$(jq -ce '
+    if type == "array" then .
+    elif type == "object" and (.data | type) == "array" then .data
+    else error("formato JSON de role-binding não reconhecido")
+    end
+  ' <<<"$bindings")"
+  if jq -e 'length > 0' <<<"$normalized" >/dev/null; then
+    echo "MetricsViewer já atribuído a $principal."
+    return
+  fi
+  confluent iam rbac role-binding create \
+    --principal "$principal" --role MetricsViewer >/dev/null
+  echo "MetricsViewer atribuído a $principal."
+}
 ensure_topic_acl(){
   local sa="$1" ops="$2" topic="$3" acls op
   acls="$(confluent kafka acl list -o json)"
@@ -89,6 +107,8 @@ PREV_SA_WRITER_ID="${SA_WRITER_ID:-}"
 PREV_SA_READER_ID="${SA_READER_ID:-}"
 PREV_SA_WRITER_CREATED="${SA_WRITER_CREATED:-no}"
 PREV_SA_READER_CREATED="${SA_READER_CREATED:-no}"
+PREV_SA_METRICS_ID="${SA_METRICS_ID:-}"
+PREV_SA_METRICS_CREATED="${SA_METRICS_CREATED:-no}"
 confluent environment list >/dev/null 2>&1 || confluent login --save
 ENVS="$(confluent environment list -o json)"
 # Sempre redescobrir por nome; IDs locais podem apontar para recursos excluídos.
@@ -129,6 +149,12 @@ SA_READER_ID="$SA_RESULT_ID"
 if [[ "$PREV_SA_READER_ID" == "$SA_READER_ID" && "$PREV_SA_READER_CREATED" == yes ]]; then SA_CREATED=yes; fi
 save_state SA_READER_ID "$SA_READER_ID"
 save_state SA_READER_CREATED "$SA_CREATED"
+ensure_sa metrics-reader 'Leitura da Confluent Metrics API'
+SA_METRICS_ID="$SA_RESULT_ID"
+if [[ "$PREV_SA_METRICS_ID" == "$SA_METRICS_ID" && "$PREV_SA_METRICS_CREATED" == yes ]]; then SA_CREATED=yes; fi
+save_state SA_METRICS_ID "$SA_METRICS_ID"
+save_state SA_METRICS_CREATED "$SA_CREATED"
+ensure_metrics_role "User:$SA_METRICS_ID"
 # Não confiar em API Keys antigas do arquivo de estado.
 # Reutiliza segredos somente se cluster e service accounts continuam os mesmos.
 if [[ "$PREV_CLUSTER_ID" != "$CLUSTER_ID" || "$PREV_SA_WRITER_ID" != "$SA_WRITER_ID" ]]; then
@@ -137,8 +163,12 @@ fi
 if [[ "$PREV_CLUSTER_ID" != "$CLUSTER_ID" || "$PREV_SA_READER_ID" != "$SA_READER_ID" ]]; then
   unset READER_API_KEY READER_API_SECRET
 fi
+if [[ "$PREV_SA_METRICS_ID" != "$SA_METRICS_ID" ]]; then
+  unset METRICS_API_KEY METRICS_API_SECRET
+fi
 ensure_key "$CLUSTER_ID" "$SA_WRITER_ID" WRITER_API_KEY WRITER_API_SECRET
 ensure_key "$CLUSTER_ID" "$SA_READER_ID" READER_API_KEY READER_API_SECRET
+ensure_key cloud "$SA_METRICS_ID" METRICS_API_KEY METRICS_API_SECRET
 ensure_topic_acl "$SA_WRITER_ID" create,write,describe "payments."
 ensure_topic_acl "$SA_WRITER_ID" create,write,describe "__debezium-heartbeat"
 ensure_topic_acl "$SA_READER_ID" read,describe "payments."
@@ -152,5 +182,6 @@ mkdir -p "$ROOT_DIR/evidence/cloud"
   echo "Bootstrap: $BOOTSTRAP"
   echo "Writer service account: $SA_WRITER_ID"
   echo "Reader service account: $SA_READER_ID"
+  echo "Metrics service account: $SA_METRICS_ID"
   confluent kafka acl list
 } | tee "$ROOT_DIR/evidence/cloud/01-foundation.txt"
