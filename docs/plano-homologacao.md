@@ -110,10 +110,10 @@ Esta é uma extensão do projeto, não o Passo 6 da demonstração do mentor. O 
 
 **Critério:** comprovar a publicação do novo schema pelo CDC e a captura do evento no tópico. Não corresponde ao Passo 6 da demonstração; é uma validação adicional do subject real.
 
-**Estado em 13/11/2026:** pendente de comprovação nesta instância. Não foi localizada evidência da execução atual que demonstre a evolução do subject `payments.transactions-value`, a compatibilidade BACKWARD e a captura do evento correspondente no Kafka. A existência do script e resultados de projetos de estudo ou ambientes anteriores não comprovam esta etapa.
+**Estado em 14/11/2026:** **homologado**. Execução de `infrastructure/schema-evolution.sh` concluída com sucesso. O subject `payments.transactions-value` evoluiu da versão 1 para a 2; a compatibilidade efetiva permaneceu `BACKWARD` e `is_compatible=true`; o schema novo contém `channel`; o conector `payments-postgres-cdc` permaneceu `RUNNING`; e o evento correlacionado `schema-evolution-20261114T012247Z-27263` foi observado no tópico `payments.transactions`, partição 0, offset 2000, com `op=c` e `snapshot=false`. Evidência versionada: `evidence/homologation/20261114T012247Z-real-schema-evolution.txt` (commit `22182874a9f3059e18c038ad4e778ee9fca3cac7`).
 ## 8. Flink SQL
 
-Somente após comprovar o snapshot, o CDC incremental e a evolução do schema real por evidências da instância atual, revise e execute:
+Com snapshot, CDC incremental e evolução do schema real homologados por evidências da instância atual, a próxima etapa é revisar e, mediante autorização explícita, executar:
 
 ```bash
 ./flink/scripts/run.sh
@@ -158,7 +158,7 @@ Execute somente com os statements Flink ativos:
 
 ## 11. Verificações complementares opcionais
 
-A validação CDC incremental (Passo 5 do mentor) foi executada e confirmada em 14/11/2026: INSERT (`op=c`, offset 231), UPDATE (`op=u`, offset 232) e DELETE (`op=d`, offset 233), todos com `snapshot=false`, correlacionados pelo mesmo marcador na partição 0. Evidência local: `evidence/homologation/20261114T005129Z-cdc-incremental.txt`. Isso comprova CDC incremental nessa execução; não comprova a evolução adicional do subject CDC real, que permanece pendente. O teste isolado de contrato Avro (Passo 6 do mentor) é executado pelo script da etapa 3 e só deve ser considerado concluído com evidência correspondente.
+A validação CDC incremental (Passo 5 do mentor) foi executada e confirmada em 14/11/2026: INSERT (`op=c`, offset 231), UPDATE (`op=u`, offset 232) e DELETE (`op=d`, offset 233), todos com `snapshot=false`, correlacionados pelo mesmo marcador na partição 0. Evidência: `evidence/homologation/20261114T005129Z-cdc-incremental.txt`. A evolução adicional do subject CDC real também foi homologada em 14/11/2026: subject da versão 1 para 2, `BACKWARD`, campo `channel` e evento `op=c` observado no tópico, partição 0, offset 2000. Evidência: `evidence/homologation/20261114T012247Z-real-schema-evolution.txt`. O teste isolado de contrato Avro (Passo 6 do mentor) é distinto e executado pelo script da etapa 3.
 
 ## 12. Registro, custos e encerramento
 
