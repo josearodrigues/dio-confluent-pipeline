@@ -46,6 +46,7 @@ Na execução atual, não iniciar Flink antes de concluir snapshot, CDC incremen
 - O Sink reutiliza a Service Account `app-reader`, com ACL de leitura no tópico `fraud_alerts` e autorização READ no grupo `connect-` por prefixo.
 - O Sink autentica no PostgreSQL com a role dedicada `alerts_sink`; a configuração desabilita criação e evolução automáticas da tabela.
 - A inicialização não normaliza atributos privilegiados nem memberships de uma role `alerts_sink` preexistente; a auditoria read-only deve preceder a criação do conector.
+- A documentação Confluent declara entrega at-least-once para o PostgreSQL Sink. UPSERT com chave estável pode tornar reentregas idempotentes no destino, sem equivaler a exactly-once ponta a ponta. Referência: https://docs.confluent.io/cloud/current/connectors/cc-postgresql-sink.html.
 - A senha `PG_SINK_PASSWORD` é lida do ambiente pelo `psql`, sem ser incluída nos argumentos do processo.
 - A role PostgreSQL de replicação deve ter apenas os privilégios exigidos pela origem e pelo conector.
 - Scripts de fundação, execução e teardown podem criar, alterar ou remover recursos. Revisar variáveis, contexto e escopo antes de executá-los.
@@ -53,4 +54,4 @@ Na execução atual, não iniciar Flink antes de concluir snapshot, CDC incremen
 
 ## Estado de validação
 
-As decisões acima descrevem o desenho e os artefatos atuais. A matriz de rastreabilidade documenta a diferença entre a ordem da demo e a ordem atual dos scripts do projeto. O Sink está configurado no repositório, mas sua execução, compatibilidade do schema Avro de saída, suficiência dos privilégios e persistência continuam pendentes de evidência real. UPSERT não é garantia exactly-once. Os resultados cloud devem ser classificados somente com evidências produzidas e verificadas durante a execução real.
+As decisões acima descrevem o desenho e os artefatos atuais. A matriz de rastreabilidade documenta a diferença entre a ordem da demo e a ordem atual dos scripts do projeto. O Sink está configurado no repositório, mas sua execução, compatibilidade do schema Avro de saída, suficiência dos privilégios e persistência continuam pendentes de evidência real. A entrega at-least-once é declarada pela documentação do conector; UPSERT não é garantia exactly-once ponta a ponta. Os resultados cloud devem ser classificados somente com evidências produzidas e verificadas durante a execução real.
