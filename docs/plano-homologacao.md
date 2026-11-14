@@ -158,7 +158,7 @@ Execute somente com os statements Flink ativos:
 
 ## 11. Verificações complementares opcionais
 
-A validação CDC incremental (Passo 5 do mentor) e a evolução adicional do subject CDC real estão planejadas antes do Flink, mas permanecem pendentes de comprovação nesta instância. O teste isolado de contrato Avro (Passo 6 do mentor) é executado pelo script da etapa 3; a execução na instância atual só deve ser considerada concluída se houver evidência correspondente.
+A validação CDC incremental (Passo 5 do mentor) foi executada e confirmada em 14/11/2026: INSERT (`op=c`, offset 231), UPDATE (`op=u`, offset 232) e DELETE (`op=d`, offset 233), todos com `snapshot=false`, correlacionados pelo mesmo marcador na partição 0. Evidência local: `evidence/homologation/20261114T005129Z-cdc-incremental.txt`. Isso comprova CDC incremental nessa execução; não comprova a evolução adicional do subject CDC real, que permanece pendente. O teste isolado de contrato Avro (Passo 6 do mentor) é executado pelo script da etapa 3 e só deve ser considerado concluído com evidência correspondente.
 
 ## 12. Registro, custos e encerramento
 
