@@ -1,30 +1,30 @@
 #!/usr/bin/env bash
 # Valida INSERT, UPDATE e DELETE incrementais em payments.customers.
 set -euo pipefail
-source "$(dirname "\${BASH_SOURCE[0]}")/../scripts/_common.sh"
+source "$(dirname "${BASH_SOURCE[0]}")/../scripts/_common.sh"
 require confluent psql grep sleep date
 
-: "\${ENV_ID:?ENV_ID ausente}"
-: "\${CLUSTER_ID:?CLUSTER_ID ausente}"
-: "\${BOOTSTRAP:?BOOTSTRAP ausente}"
-: "\${READER_API_KEY:?READER_API_KEY ausente}"
-: "\${READER_API_SECRET:?READER_API_SECRET ausente}"
-: "\${SR_URL:?SR_URL ausente}"
-: "\${SR_API_KEY:?SR_API_KEY ausente}"
-: "\${SR_API_SECRET:?SR_API_SECRET ausente}"
-: "\${PG_HOST:?PG_HOST ausente}"
-: "\${PG_PORT:?PG_PORT ausente}"
-: "\${PG_DATABASE:?PG_DATABASE ausente}"
-: "\${PG_ADMIN_USER:?PG_ADMIN_USER ausente}"
-: "\${PG_ADMIN_PASSWORD:?PG_ADMIN_PASSWORD ausente}"
+: "${ENV_ID:?ENV_ID ausente}"
+: "${CLUSTER_ID:?CLUSTER_ID ausente}"
+: "${BOOTSTRAP:?BOOTSTRAP ausente}"
+: "${READER_API_KEY:?READER_API_KEY ausente}"
+: "${READER_API_SECRET:?READER_API_SECRET ausente}"
+: "${SR_URL:?SR_URL ausente}"
+: "${SR_API_KEY:?SR_API_KEY ausente}"
+: "${SR_API_SECRET:?SR_API_SECRET ausente}"
+: "${PG_HOST:?PG_HOST ausente}"
+: "${PG_PORT:?PG_PORT ausente}"
+: "${PG_DATABASE:?PG_DATABASE ausente}"
+: "${PG_ADMIN_USER:?PG_ADMIN_USER ausente}"
+: "${PG_ADMIN_PASSWORD:?PG_ADMIN_PASSWORD ausente}"
 
 TOPIC="payments.customers"
 STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
 TEST_ID="$(( $(date +%s) % 1000000000 + 1000000000 ))"
-TEST_EMAIL="cdc-offset-\${STAMP}-\${RANDOM}@example.test"
+TEST_EMAIL="cdc-offset-${STAMP}-${RANDOM}@example.test"
 # Grupo exclusivo, como no teste temporário validado; ACL prefixada snapshot-check-*.
-GROUP="snapshot-check-\${STAMP}-$$"
-TIMEOUT_SECONDS="\${CDC_INCREMENTAL_TIMEOUT:-120}"
+GROUP="snapshot-check-${STAMP}-$$"
+TIMEOUT_SECONDS="${CDC_INCREMENTAL_TIMEOUT:-120}"
 [[ "$TIMEOUT_SECONDS" =~ ^[1-9][0-9]*$ ]] || { echo "CDC_INCREMENTAL_TIMEOUT deve ser inteiro positivo." >&2; exit 1; }
 
 mkdir -p "$ROOT_DIR/evidence/homologation"
@@ -66,7 +66,7 @@ SQL
   echo "customer_id: $TEST_ID"
   echo "Marcador: $TEST_EMAIL"
   echo "Modo: grupo novo, sem --from-beginning"
-  echo "Timeout: \${TIMEOUT_SECONDS}s"
+  echo "Timeout: ${TIMEOUT_SECONDS}s"
   echo
   echo "=== INÍCIO DA CAPTURA KAFKA ==="
 } > "$OUT"
