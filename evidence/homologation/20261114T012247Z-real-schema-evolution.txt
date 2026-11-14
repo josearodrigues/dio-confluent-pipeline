@@ -1,0 +1,11 @@
+Evolução do subject CDC real — 20261114T012247Z UTC
+Subject: payments.transactions-value
+Tópico: payments.transactions
+Versões antes/depois: 1/2
+Versão anterior/nova: 1/2
+Compatibilidade efetiva: BACKWARD
+is_compatible: true
+Campo channel no schema novo: confirmado
+Conector payments-postgres-cdc: RUNNING
+Evento correlacionado: schema-evolution-20261114T012247Z-27263
+Partition:0 Offset:2000	{"after":{"payments.payments.transactions.Value":{"account_id":1,"amount":"617/50","card_id":1,"channel":"schema-evolution-20261114T012247Z-27263","created_at":"2026-11-14T01:23:00.891371Z","currency":"BRL","merchant_id":1,"status":"approved","transaction_id":2001}},"before":null,"op":"c","source":{"connector":"postgresql","db":"payments","lsn":32207416,"name":"payments","schema":"payments","sequence":"[\"32151664\",\"32207416\"]","snapshot":"false","table":"transactions","ts_ms":1794619380909,"txId":10460,"version":"3.2.5.Final","xmin":null},"transaction":null,"ts_ms":1794619381212}
