@@ -2,17 +2,22 @@
 -- Camada 4a — Enriquecimento com TEMPORAL JOIN
 -- transactions ⋈ accounts (versão da dimensão no instante do evento)
 --
--- O atributo temporal da fonte CDC (`t.$rowtime`) é usado somente como
--- referência do instante no Temporal Join. Não o projetamos como metadata
--- na tabela de saída: essa propagação esteve associada à falha do planner.
--- A saída mantém o contrato do projeto (`enriched_payments` e seus campos).
+-- Adaptação da sequência demonstrada pelo mentor:
+-- 1. materializa a tabela enriquecida por Temporal Join;
+-- 2. em 02-append-only.sql, altera seu changelog para append antes do
+--    MATCH_RECOGNIZE.
+--
+-- Mantemos os nomes e o contrato do projeto (`payments.*` e
+-- `enriched_payments`), sem copiar os identificadores do ambiente do mentor.
+-- `$rowtime` da fonte CDC é usado somente como instante do Temporal Join;
+-- não é projetado explicitamente como coluna da tabela de saída.
 -- ============================================================
 CREATE TABLE enriched_payments AS
 SELECT
   t.transaction_id,
   t.card_id,
   t.amount,
-  t.account_id,
+  a.account_id,
   a.status AS account_status
 FROM `payments.transactions` AS t
 JOIN `payments.accounts` FOR SYSTEM_TIME AS OF t.`$rowtime` AS a
