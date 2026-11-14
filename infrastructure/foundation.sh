@@ -322,6 +322,8 @@ ensure_topic_acl "$SA_WRITER_ID" create,write,describe "__debezium-heartbeat"
 ensure_topic_acl "$SA_READER_ID" read,describe "payments."
 ensure_literal_topic_acl "$SA_READER_ID" read,describe "fraud_alerts"
 ensure_group_acl "$SA_READER_ID" app-reader no
+# Consumer group usado pelo PostgreSQL Sink gerenciado.
+ensure_group_acl "$SA_READER_ID" connect- yes
 ensure_group_acl "$SA_READER_ID" snapshot-check- yes
 mkdir -p "$ROOT_DIR/evidence/cloud"
 {
