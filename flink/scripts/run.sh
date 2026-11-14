@@ -126,13 +126,23 @@ done
   echo "Compute pool não ficou disponível (status=$POOL_STATUS)." >&2; exit 1;
 }
 
+# Preflight global: evita iniciar a sequência se qualquer nome já estiver ocupado.
+# Esta consulta ocorre antes da primeira submissão; nenhum statement é removido ou sobrescrito.
+existing_statements="$(confluent flink statement list --compute-pool "$FLINK_POOL_ID" --environment "$ENV_ID" -o json)"
+for name in \
+  payments-transactions-startup \
+  payments-pk-accounts \
+  payments-enrichment \
+  payments-append-only \
+  payments-fraud-detection; do
+  if jq -e --arg n "$name" 'any(.[]; .name==$n)' <<<"$existing_statements" >/dev/null; then
+    echo "Statement '$name' já existe no pool. Preflight reprovado; nenhum statement será submetido." >&2
+    exit 1
+  fi
+done
+
 submit() {
   local name="$1" file="$2" expected="$3" status="" detail="" data
-  data="$(confluent flink statement list --compute-pool "$FLINK_POOL_ID" --environment "$ENV_ID" -o json)"
-  if jq -e --arg n "$name" 'any(.[]; .name==$n)' <<<"$data" >/dev/null; then
-    echo "Statement '$name' já existe. Interrompendo sem sobrescrever." >&2
-    return 1
-  fi
   echo "Submetendo $name"
   local -a property_args=()
   if [[ -n "$FLINK_IDLE_TIMEOUT" ]]; then
