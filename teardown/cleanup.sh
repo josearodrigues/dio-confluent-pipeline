@@ -20,6 +20,13 @@ if [[ -n "${CDC_CONNECTOR_ID:-}" ]]; then
     exit 1
   }
 fi
+if [[ -n "${SINK_CONNECTOR_ID:-}" ]]; then
+  SINK_NAME="$(confluent connect cluster describe "$SINK_CONNECTOR_ID" -o json | jq -r '.name // empty')"
+  [[ "$SINK_NAME" == "payments-fraud-alerts-sink" ]] || {
+    echo "SINK_CONNECTOR_ID não corresponde ao conector esperado (payments-fraud-alerts-sink)." >&2
+    exit 1
+  }
+fi
 if [[ -n "${FLINK_POOL_ID:-}" ]]; then
   : "${CC_FLINK_POOL_NAME:?CC_FLINK_POOL_NAME ausente; não é seguro remover o compute pool}"
   FLINK_POOL_NAME="$(confluent flink compute-pool describe "$FLINK_POOL_ID" -o json | jq -r '.name // empty')"
@@ -39,6 +46,9 @@ for statement in payments-fraud-detection payments-append-only payments-enrichme
   payments-pk-accounts payments-transactions-startup; do
   confluent flink statement delete "$statement" --force 2>/dev/null || true
 done
+if [[ -n "${SINK_CONNECTOR_ID:-}" ]]; then
+  confluent connect cluster delete "$SINK_CONNECTOR_ID" --force
+fi
 if [[ -n "${CDC_CONNECTOR_ID:-}" ]]; then
   confluent connect cluster delete "$CDC_CONNECTOR_ID" --force
 fi
