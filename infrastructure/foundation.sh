@@ -19,21 +19,50 @@ ensure_sa(){
   SA_RESULT_ID="$id"
 }
 ensure_key(){
-  local resource="$1" sa="$2" keyvar="$3" secretvar="$4" json existing
+  local resource="$1" sa="$2" keyvar="$3" secretvar="$4"
+  local json normalized existing
+
+  json="$(confluent api-key list \
+    --resource "$resource" \
+    --service-account "$sa" -o json)"
+
+  normalized="$(jq -ce '
+    if type == "array" then .
+    elif type == "object" and (.data | type) == "array" then .data
+    else error("formato JSON de API key list não reconhecido")
+    end
+    | if all(.[]; type == "object") then .
+      else error("lista de API keys contém item que não é objeto")
+      end
+  ' <<<"$json")" || fail "não foi possível interpretar a lista de API Keys."
+
   if [[ -n "${!keyvar:-}" && -n "${!secretvar:-}" &&
         "${!keyvar}" != null && "${!secretvar}" != null ]]; then
-    if confluent api-key list --resource "$resource" --service-account "$sa" -o json |
-      jq -e --arg k "${!keyvar}" 'any(.[]; (.key // .api_key // .id)==$k)' >/dev/null; then
+    if jq -e --arg k "${!keyvar}" '
+      any(.[];
+        ((.key // .api_key // .id) | type == "string") and
+        ((.key // .api_key // .id) == $k)
+      )
+    ' <<<"$normalized" >/dev/null; then
       return
     fi
   fi
-  # Estado ausente/inválido (inclusive o literal "null") não é reutilizável.
+
+  # Estado ausente/inválido: não reutilizar segredo antigo.
   unset "$keyvar" "$secretvar"
-  existing="$(confluent api-key list --resource "$resource" --service-account "$sa" -o json | jq 'length')"
+
+  existing="$(jq -er 'length' <<<"$normalized")" ||
+    fail "não foi possível contar as API Keys existentes."
+
   if [[ "$existing" -gt 0 ]]; then
     fail "já existem $existing API key(s) para $keyvar, mas o segredo não está salvo. Recupere o estado ou revise as chaves antes de criar outra."
   fi
-  json="$(confluent api-key create --resource "$resource" --service-account "$sa" --description "payments-lab-$keyvar" -o json)"
+
+  json="$(confluent api-key create \
+    --resource "$resource" \
+    --service-account "$sa" \
+    --description "payments-lab-$keyvar" -o json)"
+
   save_api_key_credentials "$json" "$keyvar" "$secretvar"
 }
 ensure_metrics_role(){
