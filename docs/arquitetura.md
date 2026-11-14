@@ -2,7 +2,7 @@
 
 ## Visão geral
 
-A solução captura alterações do PostgreSQL por logical replication, publica eventos Debezium em Kafka e processa transações com Flink SQL.
+A solução captura alterações do PostgreSQL por logical replication, publica eventos Debezium em Kafka, processa transações com Flink SQL e prepara a persistência dos alertas em PostgreSQL por Sink.
 
 ```mermaid
 flowchart LR
@@ -13,10 +13,12 @@ flowchart LR
   ENR[Temporal Join]
   APP[Append]
   FRAUD[MATCH_RECOGNIZE]
-  ALERT[(fraud_alerts)]
+  ALERT[(Kafka fraud_alerts)]
+  SINK[PostgreSQL Sink]
+  DEST[(public.fraud_alerts)]
   DB --> SRC --> TOPICS
   TOPICS --- SR
-  TOPICS --> ENR --> APP --> FRAUD --> ALERT
+  TOPICS --> ENR --> APP --> FRAUD --> ALERT --> SINK --> DEST
 ```
 
 ## Componentes
@@ -28,7 +30,9 @@ flowchart LR
 | Kafka | Transporte dos eventos e tópicos de saída do Flink |
 | Schema Registry | Contratos Avro e compatibilidade |
 | Flink SQL | Startup offset, chaves primárias, Temporal Join, append e detecção |
-| fraud_alerts | Tópico de saída da detecção |
+| `fraud_alerts` | Tópico Kafka de saída da detecção |
+| PostgreSQL Sink | Consome `fraud_alerts` em Avro e aplica UPSERT |
+| `public.fraud_alerts` | Destino PostgreSQL com PK `(card_id, first_txn)` |
 
 ## Sequência de processamento
 
@@ -38,7 +42,8 @@ flowchart LR
 4. Temporal Join associa cada transação à versão da conta válida no `$rowtime` do evento.
 5. A tabela enriquecida é alterada para `changelog.mode=append`, como na demonstração de referência.
 6. MATCH_RECOGNIZE procura pelo menos três transações positivas do mesmo cartão em até 60 segundos.
-7. O resultado é publicado em `fraud_alerts`.
+7. O resultado é publicado no tópico Kafka `fraud_alerts`.
+8. O PostgreSQL Sink consome o tópico em Avro e aplica UPSERT em `public.fraud_alerts`, usando `(card_id, first_txn)` como chave.
 
 ## Semântica temporal
 
@@ -49,3 +54,12 @@ O modo `latest-offset` em transactions impede que os registros históricos do sn
 ## Limites do modo append
 
 O modo append não é um filtro de INSERT. Eventos Debezium de criação (`c`), leitura de snapshot (`r`) e atualização (`u`) são tratados como novas linhas; eventos de exclusão (`d`) são ignorados. Portanto, atualizações CDC podem contribuir para a contagem de eventos em `MATCH_RECOGNIZE`, enquanto exclusões não geram uma linha de saída. A implementação didática valida a regra com INSERTs novos, mas não oferece reconciliação completa de estado nem semântica de changelog.
+
+
+## Persistência e semântica do Sink
+
+A tabela `public.fraud_alerts` é criada pelo SQL de inicialização com os campos `card_id`, `first_txn`, `last_txn` e `txn_count`; a chave primária é `(card_id, first_txn)`, alinhada aos campos emitidos pelo SQL Flink e à configuração `pk.fields` do conector. O Sink usa `insert.mode=UPSERT`, `auto.create=false` e `auto.evolve=false`.
+
+A role PostgreSQL `alerts_sink` recebe CONNECT no banco, USAGE em `public` e SELECT/INSERT/UPDATE na tabela de destino. A Service Account `app-reader` tem leitura no tópico e autorização de grupo `connect-` por prefixo. A role é criada ou tem a senha atualizada pela inicialização, mas atributos elevados e memberships de uma role preexistente não são normalizados; a consulta de auditoria deve ser revisada antes de criar o conector.
+
+UPSERT pode tornar reentregas com a mesma chave idempotentes no destino; não demonstra exactly-once ponta a ponta. O estado `RUNNING` do conector também não prova persistência. A homologação exige correlacionar mensagem conhecida no Kafka com registro no PostgreSQL e testar reentrega controlada.
