@@ -48,7 +48,7 @@ O roteiro operacional detalhado permanece em `docs/plano-homologacao.md`; a rast
 ## Atualização: preflight global do orquestrador (14/11/2026)
 
 - Na revisão estática do flink/scripts/run.sh, foi identificado que a checagem de nomes ocorria apenas imediatamente antes de cada submissão. Um nome ocupado mais adiante poderia deixar a sequência parcialmente submetida.
-- Correção mínima publicada: antes de qualquer submissão, consultar os statements do pool e verificar os cinco nomes planejados. Se algum já existir, abortar o preflight antes da primeira criação. A proteção individual de submit() foi mantida.
+- Correção mínima publicada: depois de resolver/validar o compute pool e antes de qualquer submissão, consultar os statements do pool e verificar os cinco nomes planejados. Se algum já existir, abortar o preflight antes da primeira criação. A proteção individual de submit() foi mantida.
 - O preflight não exclui, altera nem sobrescreve statements existentes. Ele apenas bloqueia a sequência quando detecta colisão.
 - Comparação prévia com o script do projeto de estudos já realizada na revisão anterior; a versão de estudos continua não sendo referência para copiar, pois contém exclusão forçada de statements.
 - Commit público do script: 4dfe1228f91f4cbd383c041cdbfcba9dabe3a58f.
