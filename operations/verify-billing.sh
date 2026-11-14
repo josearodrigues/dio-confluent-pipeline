@@ -190,7 +190,7 @@ TOTALS="$(jq -r '
   echo "- A Costs API pode levar até 72 horas para disponibilizar os dados; os valores não representam necessariamente os encargos correntes do Console."
   echo "- A consulta padrão termina três dias antes da data UTC atual para reduzir a exposição ao atraso. Datas explícitas podem ser informadas como argumentos."
   echo "- A API agrega os itens diariamente. O campo \`amount\` é o valor após os descontos discriminados pela API."
-  echo "- Quando `discount_amount` vier nulo/ausente em qualquer item, o resumo não apresenta uma soma global de descontos como se estivesse completa."
+  echo "- Quando \`discount_amount\` vier nulo/ausente em qualquer item, o resumo não apresenta uma soma global de descontos como se estivesse completa."
   echo "- O resultado não informa o saldo restante de créditos promocionais nem substitui a tela de Invoice Breakdown."
   echo "- A consulta exige papel OrganizationAdmin ou BillingAdmin. A autenticação é a sessão já configurada na Confluent CLI; o script não cria nem altera credenciais."
   echo "- Nenhum recurso, permissão, método de pagamento ou configuração Cloud foi alterado."
