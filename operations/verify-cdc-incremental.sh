@@ -33,7 +33,7 @@ CREATED=0
 PID=""
 
 psql_admin() {
-  PGPASSWORD="$PG_ADMIN_PASSWORD" PGSSLMODE=require psql -X -v ON_ERROR_STOP=1 \\
+  PGPASSWORD="$PG_ADMIN_PASSWORD" PGSSLMODE=require psql -X -v ON_ERROR_STOP=1 \
     -h "$PG_HOST" -p "$PG_PORT" -U "$PG_ADMIN_USER" -d "$PG_DATABASE" "$@"
 }
 cleanup() {
@@ -72,17 +72,17 @@ SQL
 } > "$OUT"
 
 # Mesmo comando e opções do teste temporário que comprovou offsets 223, 224 e 225.
-confluent kafka topic consume "$TOPIC" \\
-  --group "$GROUP" \\
-  --value-format avro \\
-  --print-offset \\
-  --schema-registry-endpoint "$SR_URL" \\
-  --schema-registry-api-key "$SR_API_KEY" \\
-  --schema-registry-api-secret "$SR_API_SECRET" \\
-  --api-key "$READER_API_KEY" \\
-  --api-secret "$READER_API_SECRET" \\
-  --bootstrap "$BOOTSTRAP" \\
-  --cluster "$CLUSTER_ID" \\
+confluent kafka topic consume "$TOPIC" \
+  --group "$GROUP" \
+  --value-format avro \
+  --print-offset \
+  --schema-registry-endpoint "$SR_URL" \
+  --schema-registry-api-key "$SR_API_KEY" \
+  --schema-registry-api-secret "$SR_API_SECRET" \
+  --api-key "$READER_API_KEY" \
+  --api-secret "$READER_API_SECRET" \
+  --bootstrap "$BOOTSTRAP" \
+  --cluster "$CLUSTER_ID" \
   --environment "$ENV_ID" >> "$OUT" 2>&1 &
 PID=$!
 
