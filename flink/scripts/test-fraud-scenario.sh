@@ -16,11 +16,11 @@ mkdir -p "$(dirname "$OUT")"
 
 {
   echo "Consulta de alertas Flink — $(date -u +%Y-%m-%dT%H:%M:%SZ)"
-  echo 'SELECT * FROM `desafio.fraud.detected`;'
+  echo 'SELECT * FROM `fraud_alerts`;'
   echo
   confluent flink query \
     --sql 'SELECT *
-FROM `desafio.fraud.detected`;' \
+FROM `fraud_alerts`;' \
     --compute-pool "$FLINK_POOL_ID" \
     --database "$CLUSTER_ID" \
     --environment "$ENV_ID" \
