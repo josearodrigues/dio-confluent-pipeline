@@ -162,6 +162,23 @@ Os IDs de cartão/conta/merchant foram conferidos no PostgreSQL do ambiente atua
 
 A consulta `SELECT * FROM fraud_alerts` foi executada às 06:52:41 UTC e retornou resultados, incluindo `card_id=1`, `txn_count=3`, com `first_txn=05:03:20.542` e `last_txn=05:03:22.758` UTC. Esses timestamps são anteriores aos INSERTs do cenário positivo (06:11:29 UTC); portanto, os resultados não podem ser atribuídos a esses quatro registros com a evidência disponível. Evidência: `evidence/homologation/20261114T065241Z-fraud-detected-query.txt`. **Classificação:** cenário positivo executado; consulta observada; correlação e homologação funcional pendentes. Não afirmar que a regra detectou o cenário positivo.
 
+**Validação e encerramento automatizados:** após executar o cenário positivo, informe ao verificador a janela UTC esperada dos timestamps Flink `$rowtime` (formato `YYYY-MM-DD HH:MM:SS.mmm`):
+
+```bash
+./operations/verify-fraud-alerts.sh '2026-11-14 06:11:00.000' '2026-11-14 06:20:00.000'
+```
+
+O exemplo de horário é ilustrativo; use os limites do cenário da execução atual. O verificador consulta somente os alertas do cartão 1, limita a leitura aos 100 registros mais recentes, exige `txn_count >= 3` e confere se `first_txn` e `last_txn` estão dentro da janela informada. A consulta é pontual e limitada; não substitui a leitura direta do tópico Kafka. Se não houver correspondência, o script reprova e orienta preservar os statements para diagnóstico.
+
+Somente quando a evidência terminar com `VALIDAÇÃO APROVADA`, execute o encerramento passando o caminho exato do arquivo gerado:
+
+```bash
+./flink/scripts/stop-after-validation.sh evidence/homologation/<timestamp>-fraud-alerts-validation.txt
+```
+
+O encerrador exige evidência aprovada recente (até duas horas), identifica sem ambiguidade os statements de enrichment e fraude no compute pool configurado, solicita a parada e consulta novamente cada estado até confirmar `STOPPED`. Reconhece os nomes atuais e os aliases históricos terminados em `-test`; se encontrar ausência, duplicidade ou estado inesperado, aborta sem iniciar as paradas. A operação não exclui os statements. Se a validação falhar, não execute o encerrador.
+
+
 **Estado operacional às 07:16:44 UTC:** cluster Kafka `UP`, conector `payments-postgres-cdc` `RUNNING`, compute pool `desafio-pool` `PROVISIONED` com `Current CFU=2`, `Max CFU=50`; evidência `evidence/cloud/20261114T071644Z-operational-state.txt`. A coleta registra inventário operacional e estados de statements; não comprova a correlação funcional nem a publicação do alerta no tópico Kafka.
 
 ## 10. Cenário negativo opcional
