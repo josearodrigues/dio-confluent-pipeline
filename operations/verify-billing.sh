@@ -83,6 +83,15 @@ fi
 # A CLI normalmente retorna a coleção JSON; também aceitamos o envelope data
 # documentado pela Costs API, incluindo organizações no formato legado.
 jq -e '
+  # A CLI Confluent serializa valores monetários como strings com prefixo USD.
+  # Aceitamos também números JSON e strings decimais sem prefixo para compatibilidade.
+  def money:
+    if type == "number" then .
+    elif type == "string" then
+      if test("^\\$-?[0-9]+([.][0-9]+)?$") then ltrimstr("$") | tonumber
+      elif test("^-?[0-9]+([.][0-9]+)?$") then tonumber
+      else error("valor monetário em formato não reconhecido") end
+    else error("valor monetário ausente ou com tipo inválido") end;
   (if type == "array" then .
    elif type == "object" and (.data | type) == "array" then .data
    else error("formato JSON não reconhecido: esperada lista ou objeto com data[]")
@@ -90,10 +99,14 @@ jq -e '
   | if all(.[]; type == "object") then .
     else error("a coleção contém item que não é objeto")
     end
-  | if all(.[]; ((.amount | type) == "number") or
-                    ((.amount | type) == "string" and (.amount | test("^-?[0-9]+([.][0-9]+)?$"))))
-    then . else error("há item sem amount numérico; revisar o formato retornado")
-    end
+  | map(
+      if has("amount") then .amount = (.amount | money)
+      else error("item sem amount") end
+      | if .original_amount == null then .
+        else .original_amount = (.original_amount | money) end
+      | if .discount_amount == null then .
+        else .discount_amount = (.discount_amount | money) end
+    )
 ' "$TMP_JSON" >"$TMP_ROWS" || {
   echo "Resposta de Billing não passou na validação; JSON bruto preservado apenas temporariamente." >&2
   exit 1
@@ -104,11 +117,13 @@ chmod 600 "$JSON_FILE"
 
 ROW_COUNT="$(jq 'length' "$TMP_ROWS")"
 TOTALS="$(jq -r '
-  def n: if . == null then 0 else tonumber end;
   {
-    original: ([.[] | (.original_amount // 0 | n)] | add // 0),
-    discount: ([.[] | (.discount_amount // 0 | n)] | add // 0),
-    amount: ([.[] | (.amount | n)] | add // 0)
+    original: ([.[] | (.original_amount // 0)] | add // 0),
+    discount: (if all(.[]; .discount_amount? != null)
+               then ([.[] | .discount_amount] | add // 0)
+               else null end),
+    discount_missing_count: ([.[] | select(.discount_amount? == null)] | length),
+    amount: ([.[] | .amount] | add // 0)
   }
 ' "$TMP_ROWS")"
 
@@ -125,9 +140,14 @@ TOTALS="$(jq -r '
   echo
   echo "| Campo | USD |"
   echo "|---|---:|"
-  jq -r '"| Valor original | " + (.original | tostring) + " |",
-         "| Descontos/créditos discriminados | " + (.discount | tostring) + " |",
-         "| Valor líquido (amount) | " + (.amount | tostring) + " |' <<<"$TOTALS"
+  jq -r '
+    "| Valor original | " + (.original | tostring) + " |",
+    (if .discount == null
+     then "| Descontos/créditos discriminados | Não consolidado: campo nulo/ausente em " + (.discount_missing_count | tostring) + " de " + (env.ROW_COUNT // "0") + " itens |"
+     else "| Descontos/créditos discriminados | " + (.discount | tostring) + " |"
+     end),
+    "| Valor líquido (amount) | " + (.amount | tostring) + " |"
+  ' <<<"$TOTALS"
   echo
   echo "## Itens de custo"
   echo
@@ -157,6 +177,7 @@ TOTALS="$(jq -r '
   echo "- A Costs API pode levar até 72 horas para disponibilizar os dados; os valores não representam necessariamente os encargos correntes do Console."
   echo "- A consulta padrão termina três dias antes da data UTC atual para reduzir a exposição ao atraso. Datas explícitas podem ser informadas como argumentos."
   echo "- A API agrega os itens diariamente. O campo \`amount\` é o valor após os descontos discriminados pela API."
+  echo "- Quando `discount_amount` vier nulo/ausente em qualquer item, o resumo não apresenta uma soma global de descontos como se estivesse completa."
   echo "- O resultado não informa o saldo restante de créditos promocionais nem substitui a tela de Invoice Breakdown."
   echo "- A consulta exige papel OrganizationAdmin ou BillingAdmin. A autenticação é a sessão já configurada na Confluent CLI; o script não cria nem altera credenciais."
   echo "- Nenhum recurso, permissão, método de pagamento ou configuração Cloud foi alterado."
