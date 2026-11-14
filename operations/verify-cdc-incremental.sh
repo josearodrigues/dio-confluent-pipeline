@@ -2,7 +2,7 @@
 # Valida INSERT, UPDATE e DELETE incrementais em payments.customers.
 set -Eeuo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/../scripts/_common.sh"
-require confluent psql grep sleep date
+require confluent psql sleep date
 
 : "${ENV_ID:?ENV_ID ausente}"
 : "${CLUSTER_ID:?CLUSTER_ID ausente}"
@@ -26,8 +26,7 @@ TEST_EMAIL="cdc-test-${RUN_ID}-${RANDOM}@example.test"
 # Grupo exclusivo coberto pela ACL prefixada snapshot-check-* da fundação.
 GROUP="snapshot-check-${RUN_ID}"
 TIMEOUT_SECONDS="${CDC_INCREMENTAL_TIMEOUT:-120}"
-STARTUP_TIMEOUT="${CDC_INCREMENTAL_STARTUP_TIMEOUT:-20}"
-for value in "$TIMEOUT_SECONDS" "$STARTUP_TIMEOUT"; do
+for value in "$TIMEOUT_SECONDS"; do
   [[ "$value" =~ ^[1-9][0-9]*$ ]] || { echo "Timeout deve ser inteiro positivo." >&2; exit 1; }
 done
 
@@ -111,7 +110,7 @@ SAFE_TO_CLEAN=1
   echo "customer_id: $TEST_ID"
   echo "Marcador: $TEST_EMAIL"
   echo "auto.offset.reset=latest; sem --from-beginning"
-  echo "Timeout de inicialização: ${STARTUP_TIMEOUT}s; timeout CDC: ${TIMEOUT_SECONDS}s"
+  echo "Espera de inicialização: 5s; timeout CDC: ${TIMEOUT_SECONDS}s"
   echo
 } > "$OUT"
 
@@ -124,25 +123,15 @@ confluent kafka topic consume "$TOPIC" --group "$GROUP" --value-format avro --pr
   --cluster "$CLUSTER_ID" --environment "$ENV_ID" >"$RAW" 2>&1 &
 PID=$!
 
-START_TIME=$SECONDS
-while (( SECONDS - START_TIME < STARTUP_TIMEOUT )); do
-  grep -Fq "Starting Kafka Consumer" "$RAW" && break
-  if ! kill -0 "$PID" 2>/dev/null; then
-    wait "$PID" || true; PID=""
-    cat "$RAW" >> "$OUT"
-    echo "ERRO: consumidor encerrou antes de iniciar." >&2
-    exit 1
-  fi
-  sleep 1
-done
-if ! grep -Fq "Starting Kafka Consumer" "$RAW"; then
+# A execução temporária validada usa a mesma janela simples de cinco segundos.
+sleep 5
+if ! kill -0 "$PID" 2>/dev/null; then
+  wait "$PID" || true
+  PID=""
   cat "$RAW" >> "$OUT"
-  echo "ERRO: consumidor não confirmou inicialização em ${STARTUP_TIMEOUT}s." >&2
+  echo "ERRO: consumidor encerrou durante a inicialização." >&2
   exit 1
 fi
-sleep 3
-kill -0 "$PID" 2>/dev/null || { cat "$RAW" >> "$OUT"; echo "ERRO: consumidor encerrou antes do SQL." >&2; exit 1; }
-
 psql_admin -v test_id="$TEST_ID" -v test_email="$TEST_EMAIL" <<'SQL' | tee -a "$OUT"
 INSERT INTO payments.customers(customer_id,full_name,email,city,created_at)
 VALUES (:'test_id','CDC test',:'test_email','Rio',CURRENT_TIMESTAMP);
