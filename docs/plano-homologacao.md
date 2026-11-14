@@ -566,14 +566,14 @@ A execução também revelou uma falha de quoting na linha explicativa do Markdo
 
 ## 15. PostgreSQL Sink — persistência dos alertas
 
-**Estado:** configuração, DDL, script de criação, auditoria read-only e teardown preparados no repositório. O conector não foi criado, executado ou homologado nesta etapa. Nenhuma operação Confluent Cloud ou Neon foi realizada.
+**Estado atualizado em 14/11/2026:** configuração, DDL, script de criação, auditoria read-only e teardown estão preparados. Conforme resultados de Schema Registry e PostgreSQL apresentados pelo usuário, a compatibilidade estrutural do contrato Avro efetivo de `fraud_alerts` com `public.fraud_alerts` foi confirmada. O conector ainda não foi criado, executado ou homologado. A confirmação estrutural não comprova conectividade independente, privilégios efetivos suficientes nem conversão temporal em execução.
 
 ### Contrato e pré-requisitos
 
 - A saída Flink definida em `flink/sql/04-fraud-detection.sql` contém `card_id`, `first_txn`, `last_txn` e `txn_count`.
-- Antes de criar o Sink, consultar o schema Avro efetivamente registrado para o tópico `fraud_alerts`. Confirmar nomes, nullability, tipos primitivos e tipos lógicos; em especial, os timestamps emitidos por `$rowtime`.
+- **Contrato Avro e tabela — compatibilidade estrutural confirmada em 14/11/2026, conforme resultados apresentados pelo usuário:** `card_id` Avro `int` ↔ PostgreSQL `integer`; `first_txn` e `last_txn` Avro `long` com `logicalType=timestamp-millis` ↔ PostgreSQL `timestamp with time zone`; `txn_count` Avro `long` ↔ PostgreSQL `bigint`. Os quatro campos são obrigatórios no Avro e `NOT NULL` no Neon. O tópico `fraud_alerts` foi reportado com 6 partições e fator de replicação 3. A configuração do Sink usa a chave composta `(card_id, first_txn)`, correspondente à chave prevista no destino. Não repetir a comparação estrutural.
 - Confirmar que `public.fraud_alerts` existe com PK `(card_id, first_txn)` e colunas compatíveis. A inicialização recria essa tabela.
-- Executar `./scripts/run-sql.sh database/verify/alerts.sql` e revisar os atributos da role `alerts_sink`, seus memberships, privilégios efetivos e ownership.
+- A auditoria read-only de `./scripts/run-sql.sh database/verify/alerts.sql` deve ser concluída pela revisão dos atributos da role `alerts_sink`, memberships, privilégios efetivos e ownership. **O resultado específico da consulta de memberships ainda não foi registrado**; não presumir zero linhas.
 - A role criada pela inicialização recebe CONNECT, USAGE em `public` e SELECT/INSERT/UPDATE na tabela. Se a role já existir, a senha é atualizada, mas atributos elevados e memberships preexistentes não são normalizados. Não presumir privilégio mínimo sem auditar o resultado.
 - A documentação Confluent lista como pré-requisitos gerais DDL CREATE/ALTER/DROP e DML SELECT/INSERT/UPDATE/DELETE. Como esta configuração desabilita `auto.create` e `auto.evolve`, a suficiência dos privilégios reduzidos concedidos pelo SQL não está comprovada; não ampliar permissões sem teste controlado e justificativa. Referência: https://docs.confluent.io/cloud/current/connectors/cc-postgresql-sink.html.
 - A Service Account `app-reader` recebe leitura no tópico `fraud_alerts` e autorização READ no grupo `connect-` por prefixo. A fundação aplica essa ACL de forma idempotente.
@@ -587,7 +587,7 @@ A configuração corresponde aos aliases existentes no SQL Flink público. Não 
 
 ### Execução e critérios de homologação
 
-Somente após aprovar contrato Avro, conectividade e privilégios:
+Com a compatibilidade estrutural já confirmada, somente após registrar o resultado da auditoria de memberships, aprovar os privilégios efetivos e comprovar a autenticação/conectividade independente da role `alerts_sink`:
 
 ```bash
 bash ./infrastructure/connectors/sink/connector.sh
