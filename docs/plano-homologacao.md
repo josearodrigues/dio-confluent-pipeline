@@ -106,7 +106,7 @@ CONFIRM_SCHEMA_EVOLUTION=yes ./infrastructure/schema-evolution.sh
 
 Esta é uma extensão do projeto, não o Passo 6 da demonstração do mentor. O Passo 6 testa compatibilidade em um subject Avro isolado (`contract.transactions-value`), por meio de `infrastructure/schema-registry.sh`, atualmente executado na etapa 3 deste plano. Esta etapa adicional altera a tabela `payments.transactions`, adiciona a coluna `channel` e insere um registro para provocar nova versão no subject real `payments.transactions-value`. Exige confirmação explícita e deve ser executada somente após conferir o banco e o subject.
 
-**Evidência esperada:** `evidence/homologation/07-real-schema-evolution.txt`.
+**Evidência esperada:** arquivo datado `evidence/homologation/<timestamp>-real-schema-evolution.txt`, gerado pelo próprio script.
 
 **Critério:** comprovar a publicação do novo schema pelo CDC e a captura do evento no tópico. Não corresponde ao Passo 6 da demonstração; é uma validação adicional do subject real.
 
