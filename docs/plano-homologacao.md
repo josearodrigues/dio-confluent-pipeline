@@ -119,7 +119,7 @@ Com snapshot, CDC incremental e evolução do schema real homologados por evidê
 ./flink/scripts/run.sh
 ```
 
-O script seleciona o contexto Flink e reutiliza o compute pool configurado. Na primeira execução, se o pool de destino ainda não existir, reconhece somente o pool legado previamente identificado (`lfcp-2268w8o` / `default.env-mn3vgw.us-east-2`), valida ID, nome, environment, cloud, região, status e capacidade, e o renomeia para o nome configurado preservando o `max_cfu`. Não cria compute pools automaticamente; em caso de ausência, duplicidade ou incompatibilidade, interrompe. Depois, submete em sequência as PKs de `accounts` e `transactions`, enrichment, append e detecção. O `sql.tables.scan.idle-timeout` é aplicado a cada statement por propriedade da CLI, com padrão de `5 s`; não há statement separado de `SET`. Interrompe se um statement com o mesmo nome já existir; não sobrescreve automaticamente.
+O script seleciona o contexto Flink e reutiliza o compute pool configurado. Na primeira execução, se o pool de destino ainda não existir, reconhece somente o pool legado previamente identificado (`lfcp-2268w8o` / `default.env-mn3vgw.us-east-2`), valida ID, nome, environment, cloud, região, status e capacidade, e o renomeia para o nome configurado preservando o `max_cfu`. Não cria compute pools automaticamente; em caso de ausência, duplicidade ou incompatibilidade, interrompe. Depois, submete em sequência as PKs de `accounts` e `transactions`, enrichment, append e detecção. A propriedade `sql.tables.scan.idle-timeout` é aplicada às consultas contínuas de enrichment e detecção por `--property` da CLI, com padrão de `5 s`; isso reproduz o efeito do `SET` do mentor em cada statement criado separadamente. Não há statement separado de `SET`. Interrompe se um statement com o mesmo nome já existir; não sobrescreve automaticamente.
 
 **Evidência esperada:** `evidence/cloud/04-flink.txt`.
 
@@ -209,7 +209,7 @@ A unidade inicial é a revisão do orquestrador `flink/scripts/run.sh` e dos SQL
 
 Os arquivos SQL devem ser tratados individualmente, na ordem de dependência definida após a revisão. A existência de um statement ou recurso na Confluent Cloud deve ser consultada antes de qualquer criação; não presumir que o ambiente está vazio ou que um comando pode ser repetido com segurança.
 
-O script `flink/scripts/run.sh` pode criar um compute pool e submeter vários statements em sequência. Portanto, **permanece fora de execução até que seus efeitos sejam compreendidos e que cada unidade relevante tenha sido revisada**. Nenhuma operação Cloud/Neon está autorizada por este registro.
+O script `flink/scripts/run.sh` pode renomear o pool legado previamente identificado e submeter vários statements em sequência; não cria compute pools. Portanto, **permanece fora de execução até que seus efeitos sejam compreendidos e que cada unidade relevante tenha sido revisada**. Nenhuma operação Cloud/Neon está autorizada por este registro.
 
 ### Critério para avançar
 
