@@ -158,6 +158,12 @@ Os IDs de cartão/conta/merchant foram conferidos no PostgreSQL do ambiente atua
 
 **Critério:** após a execução, observar no tópico `fraud_alerts` um alerta novo correlacionável ao cartão 1, com `txn_count = 3`, e registrar a mensagem/offset/timestamps como evidência. A execução dos INSERTs, a espera ou a consulta ao PostgreSQL não comprovam, isoladamente, a emissão do alerta.
 
+**Execução observada em 14/11/2026:** `database/seed/simulate-events.sql` foi executado com sucesso. Os INSERTs produziram `transaction_id` 2002, 2003 e 2004 para `card_id=1` (R$ 100,00 cada) e `transaction_id=2005` para `card_id=320` (R$ 10,00), todos às 06:11:29 UTC. Evidência: `evidence/homologation/20261114T061128Z-simulate-events.log`.
+
+A consulta `SELECT * FROM fraud_alerts` foi executada às 06:52:41 UTC e retornou resultados, incluindo `card_id=1`, `txn_count=3`, com `first_txn=05:03:20.542` e `last_txn=05:03:22.758` UTC. Esses timestamps são anteriores aos INSERTs do cenário positivo (06:11:29 UTC); portanto, os resultados não podem ser atribuídos a esses quatro registros com a evidência disponível. Evidência: `evidence/homologation/20261114T065241Z-fraud-detected-query.txt`. **Classificação:** cenário positivo executado; consulta observada; correlação e homologação funcional pendentes. Não afirmar que a regra detectou o cenário positivo.
+
+**Estado operacional às 07:16:44 UTC:** cluster Kafka `UP`, conector `payments-postgres-cdc` `RUNNING`, compute pool `desafio-pool` `PROVISIONED` com `Current CFU=2`, `Max CFU=50`; evidência `evidence/cloud/20261114T071644Z-operational-state.txt`. A coleta registra inventário operacional e estados de statements; não comprova a correlação funcional nem a publicação do alerta no tópico Kafka.
+
 ## 10. Cenário negativo opcional
 
 O arquivo `database/seed/slow-pattern.sql` insere três transações positivas para o cartão 4, com intervalos de aproximadamente 35 segundos entre elas; o primeiro e o terceiro eventos ficam separados por mais de 60 segundos.
