@@ -133,3 +133,8 @@ FLINK_IDLE_TIMEOUT="5 s"
 O script `flink/scripts/run.sh` transmite essa configuração como propriedade de cada statement criado. Para voltar ao comportamento progressivo, deixe `FLINK_IDLE_TIMEOUT` vazio. A propriedade é aplicada somente a statements novos; o script não sobrescreve statements existentes e interrompe se encontrar nomes duplicados.
 
 O timeout fixo pode fazer uma partição ser excluída mais cedo do cálculo de watermark. Se ela voltar a produzir eventos atrasados, o watermark pode já ter avançado. Compare watermarks e resultados antes de escolher a configuração.
+
+### Verificações operacionais
+
+`operations/verify-metrics.sh` automatiza a coleta read-only de `received_bytes` pela Confluent Metrics API e salva o JSON original e um resumo datado em `evidence/observability/`. Requer `METRICS_API_KEY`, `METRICS_API_SECRET` e `CLUSTER_ID` no ambiente local. Consulte `operations/cost-and-metrics.md` para parâmetros, interpretação e limites. O orquestrador geral de observabilidade será adicionado após a implementação dos verificadores de ACLs, custos e confiabilidade.
+
