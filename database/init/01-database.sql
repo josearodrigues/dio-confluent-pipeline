@@ -1,7 +1,10 @@
 -- Inicializa o banco do laboratório com dataset determinístico.
 -- Destrutivo: recria o schema payments e a tabela de destino public.fraud_alerts.
--- Execute após habilitar logical replication e preparar a role cdc:
+-- Execute após habilitar logical replication e configurar as credenciais CDC/Sink:
 -- CONFIRM_RESET=yes ./scripts/run-sql.sh database/init/01-database.sql
+
+\getenv sink_role PG_SINK_USER
+\getenv sink_password PG_SINK_PASSWORD
 
 \if :{?reset_ok}
   \echo 'Reset autorizado: removendo o schema payments.'
