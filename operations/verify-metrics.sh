@@ -64,6 +64,12 @@ jq -e '.data | type == "array"' "$TMP_FILE" >/dev/null || {
 mv "$TMP_FILE" "$JSON_FILE"
 chmod 600 "$JSON_FILE"
 
+# Consulta consumer lag e estado dos consumer groups via Confluent CLI / Metrics
+echo "Consultando estado dos Consumer Groups..."
+GROUPS_TMP="$(mktemp)"
+trap 'rm -f "$TMP_FILE" "$GROUPS_TMP"' EXIT
+confluent kafka consumer group list -o json > "$GROUPS_TMP" 2>/dev/null || echo "[]" > "$GROUPS_TMP"
+
 {
   echo "# Coleta da Confluent Metrics API"
   echo
@@ -75,7 +81,7 @@ chmod 600 "$JSON_FILE"
   echo "- Unidade: bytes (By); contador agregado na granularidade solicitada."
   echo "- Escopo: tráfego recebido pelo cluster Kafka; não identifica isoladamente o produtor."
   echo
-  echo "## Pontos retornados"
+  echo "## Pontos retornados (Throughput / Received Bytes)"
   echo
   echo "| Timestamp UTC | Bytes | KiB |"
   echo "|---|---:|---:|"
@@ -84,6 +90,12 @@ chmod 600 "$JSON_FILE"
     echo
     echo "A API respondeu corretamente, mas não retornou pontos para o filtro e intervalo solicitados."
   fi
+  echo
+  echo "## Estado dos Consumer Groups e Lag"
+  echo
+  echo "| Consumer Group | Estado | Coordinator |"
+  echo "|---|---|---:|"
+  jq -r '.[] | "| " + (.consumer_group // "-") + " | " + (.state // "-") + " | " + ((.coordinator // "-") | tostring) + " |"' "$GROUPS_TMP" 2>/dev/null || echo "| - | - | - |"
   echo
   echo "## Arquivos"
   echo
