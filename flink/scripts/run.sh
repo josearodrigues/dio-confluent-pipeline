@@ -9,7 +9,7 @@ require confluent jq
 : "${CC_REGION:?Defina CC_REGION em .env}"
 : "${CC_FLINK_POOL_NAME:?Defina CC_FLINK_POOL_NAME em .env}"
 FLINK_DIR="$ROOT_DIR/flink/sql"
-FLINK_IDLE_TIMEOUT="${FLINK_IDLE_TIMEOUT:-5 s}"
+FLINK_IDLE_TIMEOUT="${FLINK_IDLE_TIMEOUT-5 s}"
 OUT="$ROOT_DIR/evidence/cloud/04-flink.txt"
 mkdir -p "$(dirname "$OUT")"
 
@@ -145,7 +145,10 @@ submit() {
   local name="$1" file="$2" expected="$3" status="" detail="" data
   echo "Submetendo $name"
   local -a property_args=()
-  if [[ -n "$FLINK_IDLE_TIMEOUT" ]]; then
+  # O SET do mentor foi aplicado antes das consultas contínuas; como cada
+  # statement é criado separadamente pela CLI, a propriedade acompanha
+  # individualmente as consultas que leem os tópicos.
+  if [[ -n "$FLINK_IDLE_TIMEOUT" && ( "$name" == "payments-enrichment" || "$name" == "payments-fraud-detection" ) ]]; then
     property_args=(--property "sql.tables.scan.idle-timeout=$FLINK_IDLE_TIMEOUT")
   fi
   confluent flink statement create "$name" --sql "$(cat "$file")" \
