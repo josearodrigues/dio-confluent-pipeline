@@ -47,7 +47,7 @@ mkdir -p "$(dirname "$OUT")"
   echo "Evidência de validação aprovada: ${VALIDATION_EVIDENCE#"$ROOT_DIR"/}"
   echo
 
-  statements="$(confluent flink statement list --compute-pool "$FLINK_POOL_ID" --environment "$ENV_ID" -o json)"
+  statements="$(confluent flink statement list --compute-pool "$FLINK_POOL_ID" --environment "$ENV_ID" --cloud "$CC_CLOUD" --region "$CC_REGION" -o json)"
 
   resolve_name() {
     local role="$1" canonical="$2" legacy="$3" count name
@@ -65,7 +65,7 @@ mkdir -p "$(dirname "$OUT")"
 
   describe_status() {
     local name="$1" data
-    data="$(confluent flink statement describe "$name" -o json)"
+    data="$(confluent flink statement describe "$name" --environment "$ENV_ID" --cloud "$CC_CLOUD" --region "$CC_REGION" -o json)"
     jq -er '.status // .phase // empty' <<<"$data"
   }
 
@@ -88,7 +88,7 @@ mkdir -p "$(dirname "$OUT")"
       return 0
     fi
     echo "Solicitando parada: $name"
-    confluent flink statement stop "$name"
+    confluent flink statement stop "$name" --environment "$ENV_ID" --cloud "$CC_CLOUD" --region "$CC_REGION"
     for attempt in $(seq 1 60); do
       current="$(describe_status "$name")"
       [[ "$current" == STOPPED ]] && {
