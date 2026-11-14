@@ -14,6 +14,7 @@ Este documento define o escopo funcional e técnico do laboratório e os critér
 | RF-06 | Identificar três ou mais transações positivas do mesmo cartão em até 60 segundos de `$rowtime` Kafka. | `flink/sql/04-fraud-detection.sql` |
 | RF-07 | Publicar o resultado da detecção no tópico Kafka `fraud_alerts`. | `flink/sql/04-fraud-detection.sql` |
 | RF-08 | Permitir verificar etapas e preservar evidências da execução. | `operations/`, `evidence/` |
+| RF-09 | Persistir os alertas publicados pelo Flink em PostgreSQL por Sink com UPSERT. | `infrastructure/connectors/sink/`, `database/init/01-database.sql`, `database/verify/alerts.sql` |
 
 ## Requisitos técnicos
 
@@ -22,6 +23,7 @@ Este documento define o escopo funcional e técnico do laboratório e os critér
 - Confluent CLI autenticada e compatível com os comandos usados pelos scripts.
 - Ferramentas locais: Bash, `psql`, `jq` e `curl`.
 - Configurações e segredos mantidos fora do Git; arquivos locais devem respeitar as regras de `.gitignore`.
+- PostgreSQL de destino acessível ao Sink, com role `alerts_sink` e tabela pré-criada `public.fraud_alerts`.
 - Dados sintéticos determinísticos: 200 customers, 240 accounts, 320 cards e 2.000 transactions. A tabela merchants é auxiliar e não integra a publication CDC.
 
 ## Critérios de aceite
@@ -38,6 +40,7 @@ Os critérios abaixo devem ser avaliados com evidências do ambiente efetivament
 | CA-06 | Três ou mais transações positivas do mesmo cartão em até 60 segundos produzem alerta. | Mensagem observada no tópico `fraud_alerts`, com cartão, contagem e tempos suficientes para demonstrar o padrão. |
 | CA-07 | As evidências identificam data, ambiente e escopo realmente testado, sem expor segredos. | Arquivos em `evidence/` e registro do resultado/limitações. |
 | CA-08 | O contrato Avro aceita a evolução compatível e rejeita a evolução incompatível configuradas no exercício. | `evidence/cloud/02-schema-registry.txt`, distinguindo o subject isolado `contract.transactions-value` do subject CDC real. |
+| CA-09 | O Sink persiste um alerta conhecido no PostgreSQL e tolera reentrega com a mesma chave. | Schema Avro real compatível, conector/task operacionais, mensagem correlacionada no Kafka e linha em `public.fraud_alerts`; repetir a chave e confirmar UPSERT sem duplicação. |
 
 ## Critério complementar
 
@@ -50,5 +53,5 @@ A verificação de CDC incremental (`INSERT`, `UPDATE`, `DELETE`) e a evolução
 - `NOT ENFORCED` declara metadados de chave ao Flink, mas não verifica unicidade real na origem.
 - `$rowtime` representa o timestamp de evento Kafka utilizado pelo Flink, não o timestamp de negócio `created_at`.
 - Append não equivale a filtrar exclusivamente INSERTs: eventos CDC de criação, snapshot e atualização podem entrar como novas linhas; exclusões são ignoradas conforme o SQL versionado.
-- A regra é demonstrativa. Não implementa reconciliação completa de estado, deduplicação, avaliação de risco de produção ou persistência em PostgreSQL.
+- A regra é demonstrativa. Não implementa reconciliação completa de estado, deduplicação ou avaliação de risco de produção. O Sink está preparado para persistência, mas não foi executado nem homologado; a configuração não comprova entrega.
 - A presença de scripts, SQL e documentação no repositório não comprova execução cloud. Critérios sem evidência permanecem pendentes.
