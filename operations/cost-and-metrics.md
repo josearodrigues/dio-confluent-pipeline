@@ -88,3 +88,15 @@ O script preserva a saída JSON original e cria resumo Markdown datado em `evide
 **Limitações:** a Costs API agrega os itens diariamente e pode levar até 72 horas para disponibilizar os dados. Portanto, não substitui o valor de encargos correntes do Console. O resultado não comprova o saldo restante de créditos promocionais nem substitui a Invoice Breakdown. Não interpretar ausência de itens como prova de custo zero fora do período consultado.
 
 **Estado:** a primeira execução real consultou a Costs API para 2026-11-01 a 2026-11-11 e recebeu 12 itens, mas falhou ao renderizar a tabela; o JSON original foi preservado e o resumo Markdown não foi concluído. O parser foi corrigido e testado isoladamente com jq 1.7 em amostras sintéticas. Ainda depende de `bash -n` no clone local, nova execução pelo usuário e inspeção da evidência final. Nenhuma operação Cloud foi executada para aplicar a correção.
+
+
+### Primeira execução concluída do verificador (14/11/2026)
+
+O usuário executou `operations/verify-billing.sh` para 2026-11-01 (inclusivo) a 2026-11-11 (exclusivo). A CLI retornou 12 itens e o script gerou o resumo e o JSON bruto:
+
+- `evidence/observability/20261114T112054Z-billing.json`
+- `evidence/observability/20261114T112054Z-billing.md`
+
+O resumo reportou valor original total de USD `-0.00009999999999976694` e valor líquido total (`amount`) igual, sem consolidar descontos porque o campo estava nulo/ausente em 4 dos 12 itens. Foram listados custos de CONNECT, FLINK e KAFKA, além de lançamentos `PROMO_CREDIT`. O resultado é o agregado diário retornado pela Costs API para o período, não o saldo de créditos promocionais nem a Invoice Breakdown. Os ambientes retornados incluem `env-3kyr6j` e `env-9o15y0`; não presumir que correspondam a um único ambiente do desafio sem conferir o mapeamento.
+
+**Ressalva de execução:** o resumo foi gerado, mas o shell emitiu `discount_amount: comando não encontrado` ao construir uma linha de texto. A causa foi uso de backticks não escapados dentro de uma string Bash com aspas duplas. A falha afetou somente a frase explicativa no Markdown: a linha saiu com o nome do campo omitido. O script foi corrigido no commit `e65d9415bcfe67501515ce55186010be2302de9f`, escapando os backticks. A evidência gerada continua aproveitável para registrar os dados da consulta; a frase incompleta do Markdown deve ser corrigida localmente antes do commit, ou o resumo deve ser regenerado após sincronizar a correção. A correção do script ainda depende de `bash -n` no clone local. Nenhuma alteração Cloud foi realizada.
