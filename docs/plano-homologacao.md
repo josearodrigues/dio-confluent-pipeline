@@ -233,7 +233,7 @@ Só avançar quando a unidade atual tiver: (a) revisão concluída; (b) execuç�
 
 O script `operations/verify-metrics.sh` foi preparado para coletar a métrica `io.confluent.kafka.server/received_bytes` pela Metrics API, filtrada pelo cluster configurado, e salvar a resposta original e um resumo datado em `evidence/observability/`. A operação é somente leitura e reutiliza as credenciais locais existentes. Consulte `operations/cost-and-metrics.md`.
 
-**Estado:** script publicado; ainda não sincronizado/validado no clone local nem executado pelo usuário. Portanto, a coleta manual anterior permanece a única execução observada. Próximas unidades: verificador read-only de ACLs e role binding MetricsViewer; consulta de Billing; verificações de confiabilidade. O orquestrador `operations/verify-observability.sh` será criado após os verificadores individuais. Não executar qualquer rotina que altere permissões ou recursos.
+**Estado:** verificador sincronizado, validado sintaticamente e executado pelo usuário em 14/11/2026; evidências versionadas em `evidence/observability/20261114T100354Z-metrics.{json,md}`. A coleta automatizada está validada nesta execução. Próximas unidades: verificador read-only de ACLs e role binding MetricsViewer; consulta de Billing; verificações de confiabilidade. O orquestrador `operations/verify-observability.sh` será criado após os verificadores individuais. Não executar qualquer rotina que altere permissões ou recursos.
 
 ## 13. Observabilidade — coleta automatizada de métricas (14/11/2026)
 
