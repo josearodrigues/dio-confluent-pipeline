@@ -88,13 +88,13 @@ Após o snapshot inicial completo e antes de iniciar o Flink, valide alteraçõe
 ./operations/verify-cdc-incremental.sh
 ```
 
-O script usa um consumer group exclusivo `snapshot-check-*` (ACL prefixada provisionada pela fundação), inicia a leitura sem replay do histórico (`auto.offset.reset=latest`), cria um registro temporário, executa INSERT/UPDATE/DELETE, procura os eventos `c`, `u` e `d` associados ao marcador e confirma a limpeza do registro. A evidência inclui a saída bruta do consumidor e os offsets.
+O script usa um consumer group exclusivo `snapshot-check-*` (ACL prefixada provisionada pela fundação), sem `--from-beginning`, cria um registro temporário, executa INSERT/UPDATE/DELETE e procura os eventos `c`, `u` e `d` associados ao marcador. A evidência deve preservar as mensagens Kafka e os offsets.
 
 **Evidência esperada:** arquivo datado `*-cdc-incremental.txt` em `evidence/homologation/`.
 
 **Critério:** correlacionar a linha de origem com os três eventos Debezium e confirmar `snapshot=false`. O teste deve ocorrer antes do Flink, como no Passo 5 da demonstração do mentor.
 
-**Estado em 14/11/2026:** teste temporário executado com sucesso: INSERT, UPDATE e DELETE foram correlacionados ao mesmo marcador, com `op=c`, `op=u` e `op=d`, todos `snapshot=false`, nos offsets 223, 224 e 225. Evidência local: `evidence/homologation/20261114T001704Z-cdc-offset-test.txt`. Essa execução comprova tecnicamente o fluxo incremental. O verificador oficial `operations/verify-cdc-incremental.sh` foi corrigido para usar grupo exclusivo `snapshot-check-*` e registrar offsets/limpeza, mas ainda não foi executado; a homologação formal desta etapa permanece pendente até sua execução e inspeção da evidência versionável.
+**Estado em 14/11/2026:** teste temporário executado com sucesso: INSERT, UPDATE e DELETE foram correlacionados ao mesmo marcador, com `op=c`, `op=u` e `op=d`, todos `snapshot=false`, nos offsets 223, 224 e 225. Evidência local: `evidence/homologation/20261114T001704Z-cdc-offset-test.txt`. Essa execução comprova tecnicamente o fluxo incremental. A primeira execução do verificador oficial realizou INSERT/UPDATE/DELETE e confirmou a limpeza, mas não registrou mensagens Kafka/offsets e terminou com código 1; portanto, não comprovou CDC. O arquivo oficial foi adaptado in-place para reproduzir o comando consumidor do teste temporário, sem `--config auto.offset.reset=latest`. A nova versão ainda não foi executada; a homologação formal permanece pendente.
 
 ## 7. Evolução adicional do schema real do CDC (extensão do projeto)
 
