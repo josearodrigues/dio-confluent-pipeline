@@ -136,7 +136,7 @@ Esses estados confirmam o estado dos statements, não a correção funcional do 
 
 
 
-**Atualização — preflight global de statements (14/11/2026):** antes de renomear o pool ou submeter qualquer statement, o orquestrador consulta a lista do pool e verifica os cinco nomes planejados (payments-transactions-startup, payments-pk-accounts, payments-enrichment, payments-append-only, payments-fraud-detection). Se qualquer nome já existir, interrompe antes da primeira submissão; não exclui nem sobrescreve statements. A verificação individual em submit() permanece como proteção adicional. Alteração publicada no commit 4dfe1228f91f4cbd383c041cdbfcba9dabe3a58f. Ainda depende de sincronização e bash -n local. Nenhuma operação Cloud foi executada.
+**Atualização — preflight global de statements (14/11/2026):** depois de resolver e validar o compute pool, mas antes de submeter qualquer statement, o orquestrador consulta a lista do pool e verifica os cinco nomes planejados (payments-transactions-startup, payments-pk-accounts, payments-enrichment, payments-append-only, payments-fraud-detection). Se qualquer nome já existir, interrompe antes da primeira submissão; não exclui nem sobrescreve statements. A verificação individual em submit() permanece como proteção adicional. Alteração publicada no commit 4dfe1228f91f4cbd383c041cdbfcba9dabe3a58f. Ainda depende de sincronização e bash -n local. Nenhuma operação Cloud foi executada.
 
 ## 9. Cenário positivo de fraude
 
