@@ -136,5 +136,5 @@ O timeout fixo pode fazer uma partição ser excluída mais cedo do cálculo de 
 
 ### Verificações operacionais
 
-`operations/verify-metrics.sh` automatiza a coleta read-only de `received_bytes` pela Confluent Metrics API e salva o JSON original e um resumo datado em `evidence/observability/`. Requer `METRICS_API_KEY`, `METRICS_API_SECRET` e `CLUSTER_ID` no ambiente local. Consulte `operations/cost-and-metrics.md` para parâmetros, interpretação e limites. O orquestrador geral de observabilidade será adicionado após a implementação dos verificadores de ACLs, custos e confiabilidade.
+`operations/verify-metrics.sh` automatiza a coleta read-only de `received_bytes` pela Confluent Metrics API e salva o JSON original e um resumo datado em `evidence/observability/`. Requer `METRICS_API_KEY`, `METRICS_API_SECRET` e `CLUSTER_ID` no ambiente local. `operations/verify-billing.sh` consulta custos agregados pela Costs API usando a sessão autenticada da Confluent CLI; exige `OrganizationAdmin` ou `BillingAdmin` e gera JSON e resumo datados. A Costs API pode atrasar até 72 horas e não informa o saldo restante dos créditos promocionais. Consulte `operations/cost-and-metrics.md` para interpretação e limites. O orquestrador geral de observabilidade será adicionado após a implementação dos verificadores individuais de ACLs, Billing e confiabilidade.
 
