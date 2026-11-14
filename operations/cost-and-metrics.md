@@ -58,7 +58,7 @@ Padrões: janela `PT6H/now` e granularidade `PT1H`. Podem ser ajustados por `MET
 
 O resumo apresenta os valores em bytes e conversão para KiB. A métrica representa bytes recebidos pelo cluster na granularidade consultada; não identifica o produtor e ausência de pontos não significa tráfego zero. A coleta manual realizada em 14/11/2026 permanece como evidência histórica independente. A coleta automatizada foi executada com sucesso pelo usuário em 14/11/2026 e suas evidências foram versionadas; sua validação está registrada abaixo.
 
-O futuro `operations/verify-observability.sh` será o orquestrador dos verificadores de métricas, ACLs, custos e confiabilidade. Ele só deve ser criado quando esses verificadores individuais estiverem implementados, para não declarar etapas inexistentes como concluídas.
+O futuro `operations/verify-observability.sh` será o orquestrador dos verificadores de métricas, ACLs, Billing e confiabilidade. Ele só deve ser criado quando esses verificadores individuais estiverem implementados, para não declarar etapas inexistentes como concluídas.
 
 ### Execução do verificador automatizado (14/11/2026)
 
@@ -68,3 +68,23 @@ O usuário sincronizou `main`, validou a sintaxe de `operations/verify-metrics.s
 - `evidence/observability/20261114T100354Z-metrics.md` — resumo com valores e conversões.
 
 Foram retornados dois pontos: 133.168 bytes às 05:00 UTC (≈130,05 KiB) e 1.250 bytes às 06:00 UTC (≈1,22 KiB), para o cluster `lkc-rrwvjjk`, com janela solicitada `PT6H/now` e granularidade `PT1H`. A consulta confirma a coleta de dados para os pontos retornados, mas não cobertura contínua das seis horas. A coleta automatizada está validada nesta execução; a observabilidade geral permanece parcial até a verificação read-only de ACLs, Billing e confiabilidade.
+
+
+## Coleta automatizada de Billing — preparação
+
+O verificador `operations/verify-billing.sh` consulta os custos agregados pela Confluent Costs API por meio da Confluent CLI (`confluent billing cost list --start-date ... --end-date ... -o json`). É uma consulta somente leitura e reutiliza a sessão já autenticada da CLI; não cria API keys, não altera permissões e não acessa dados de pagamento.
+
+Uso:
+
+```bash
+./operations/verify-billing.sh
+./operations/verify-billing.sh 2026-11-01 2026-11-11
+```
+
+Sem argumentos, consulta o mês UTC atual até três dias antes da data corrente, como margem conservadora para o atraso de até 72 horas da Costs API. O intervalo explícito usa início inclusivo e fim exclusivo, no formato `YYYY-MM-DD`; a API aceita no máximo um mês por consulta. O papel necessário é `OrganizationAdmin` ou `BillingAdmin`.
+
+O script preserva a saída JSON original e cria resumo Markdown datado em `evidence/observability/`, ambos com permissão local 600. O resumo soma `original_amount`, `discount_amount` e `amount` dos itens retornados, além de apresentar produto, tipo, ambiente, recurso, quantidade e unidade. O formato legado da API é acomodado por campos alternativos de ambiente/recurso.
+
+**Limitações:** a Costs API agrega os itens diariamente e pode levar até 72 horas para disponibilizar os dados. Portanto, não substitui o valor de encargos correntes do Console. O resultado não comprova o saldo restante de créditos promocionais nem substitui a Invoice Breakdown. Não interpretar ausência de itens como prova de custo zero fora do período consultado.
+
+**Estado:** script publicado e revisão documental realizada; ainda não foi executado no clone local nem contra a conta Confluent. A validação operacional depende de `bash -n`, execução pelo usuário e inspeção da evidência real. Nenhum recurso Cloud foi alterado nesta preparação.
