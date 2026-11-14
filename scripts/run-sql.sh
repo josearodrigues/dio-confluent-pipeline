@@ -78,8 +78,7 @@ SQL
   echo "Pré-validação aprovada: wal_level=logical; role $PG_CDC_USER com LOGIN + REPLICATION e autenticação válida."
   EXTRA+=(-v reset_ok=1)
   EXTRA+=(-v "cdc_role=$PG_CDC_USER")
-  EXTRA+=(-v "sink_role=$PG_SINK_USER")
-  EXTRA+=(-v "sink_password=$PG_SINK_PASSWORD")
+
 fi
 
 if [[ "$SQL_RELATIVE" == database/cleanup/postgres-cleanup.sql ]]; then
