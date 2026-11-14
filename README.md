@@ -2,9 +2,9 @@
 
 Projeto didático de CDC e processamento de eventos com PostgreSQL, Confluent Cloud e Flink SQL. A regra de demonstração identifica três ou mais transações positivas do mesmo cartão em uma janela de 60 segundos.
 
-**Fluxo:** PostgreSQL → Debezium CDC → Kafka → Flink SQL (Temporal Join) → append → MATCH_RECOGNIZE → tópico Kafka de alertas.
+**Fluxo:** PostgreSQL → Debezium CDC → Kafka → Flink SQL (Temporal Join) → append → MATCH_RECOGNIZE → tópico Kafka `fraud_alerts` → PostgreSQL Sink → tabela `public.fraud_alerts`.
 
-O projeto acompanha os conceitos da demonstração do mentor, com nomes e configurações próprios. Há uma diferença de ordem no teste isolado de contrato Avro e uma validação adicional do subject CDC real; consulte `docs/matriz-rastreabilidade-demo-mentor.md`. O destino da solução é o tópico Kafka `fraud_alerts`; não há PostgreSQL Sink no fluxo principal.
+O projeto acompanha os conceitos da demonstração do mentor, com nomes e configurações próprios. Há uma diferença de ordem no teste isolado de contrato Avro e uma validação adicional do subject CDC real; consulte `docs/matriz-rastreabilidade-demo-mentor.md`. O tópico `fraud_alerts` é a saída do Flink e alimenta o PostgreSQL Sink, que grava em `public.fraud_alerts`. O Sink está preparado no código, mas ainda não foi executado nem homologado.
 
 ## Arquitetura
 
@@ -17,17 +17,20 @@ flowchart LR
   TJ[Temporal Join]
   AP[Append mode]
   MR[MATCH_RECOGNIZE]
-  OUT[(fraud_alerts)]
+  OUT[(Kafka fraud_alerts)]
+  SINK[PostgreSQL Sink]
+  DEST[(public.fraud_alerts)]
   PG --> CDC --> K
   K --- SR
-  K --> TJ --> AP --> MR --> OUT
+  K --> TJ --> AP --> MR --> OUT --> SINK --> DEST
 ```
 
 ## Estrutura
 
 - `database/init/`: criação do schema e carga sintética.
 - `database/seed/`: cenários de transações para validação.
-- `infrastructure/`: Environment, cluster, identidades, ACLs, Schema Registry e conector CDC.
+- `database/verify/`: consultas de alertas persistidos e auditoria da role Sink.
+- `infrastructure/`: Environment, cluster, identidades, ACLs, Schema Registry e conectores CDC/Sink.
 - `flink/sql/` e `flink/scripts/`: statements Flink e submissão sequencial.
 - `operations/`: verificações CDC, evidências e acompanhamento de custos.
 - `schemas/`: contratos Avro usados no exercício de compatibilidade.
@@ -52,6 +55,7 @@ A Fase 1 reproduz a preparação mostrada pelo mentor. Execute as etapas **nesta
    - `NEON_BRANCH`: branch do banco (padrão `main`).
    - `PG_DATABASE`: nome do banco.
    - `PG_HOST`, `PG_PORT`, `PG_ADMIN_USER` e `PG_ADMIN_PASSWORD`: dados da connection string administrativa. Use o host direto, sem pooler.
+   - `PG_SINK_USER` (padrão `alerts_sink`) e `PG_SINK_PASSWORD`: credenciais locais da role que grava os alertas.
 3. Autentique a Neon CLI, se ainda não estiver:
 
    ```bash
@@ -74,7 +78,7 @@ A Fase 1 reproduz a preparação mostrada pelo mentor. Execute as etapas **nesta
 
    O wrapper testa a conexão administrativa, exige `wal_level=logical`, verifica `LOGIN + REPLICATION` da role e testa sua autenticação **antes** de executar o SQL destrutivo. Se alguma verificação falhar, aborta sem apagar o schema.
 
-A etapa 01 recria somente o schema `payments`, carrega dados determinísticos (200 customers, 240 accounts, 320 cards, 30 merchants e 2.000 transactions), aplica `REPLICA IDENTITY FULL` às quatro tabelas capturadas e cria `payments_pub` com essas quatro tabelas. `merchants` integra o dataset do mentor, mas fica fora da publication e do escopo CDC.
+A etapa 01 recria o schema `payments` e a tabela `public.fraud_alerts`, configura a role `alerts_sink` e carrega dados determinísticos (200 customers, 240 accounts, 320 cards, 30 merchants e 2.000 transactions), aplica `REPLICA IDENTITY FULL` às quatro tabelas capturadas e cria `payments_pub` com essas quatro tabelas. `merchants` integra o dataset do mentor, mas fica fora da publication e do escopo CDC.
 
 **Atenção:** a etapa 01 apaga e recria `payments`. Use uma instância/banco dedicado ao laboratório e confira host e database exibidos pelo wrapper antes de confirmar.
 
@@ -93,6 +97,8 @@ O verificador inicia os quatro consumidores em paralelo e acompanha cada tópico
 7. `./flink/scripts/run.sh` — somente depois das validações anteriores, configura startup offset, declara a PK de accounts, cria Temporal Join, append e MATCH_RECOGNIZE (Passo 7 do mentor).
 8. Execute o cenário positivo: `./scripts/run-sql.sh database/seed/simulate-events.sql`.
 9. Consulte os resultados no tópico `fraud_alerts` e registre as evidências.
+10. Antes de criar o Sink, confira o schema Avro real do tópico e execute a auditoria read-only da role com `./scripts/run-sql.sh database/verify/alerts.sql`.
+11. Somente após aprovar contrato e privilégios, execute `./infrastructure/connectors/sink/connector.sh`; depois correlacione uma mensagem conhecida com a linha persistida usando a mesma consulta SQL.
 
 A evolução real do schema é uma validação adicional deste projeto e antecede o Flink. O Passo 6 da demonstração do mentor é o teste de compatibilidade no subject isolado `contract.transactions-value`, atualmente executado dentro da preparação do Schema Registry (etapa 2), antes do CDC. As duas validações não são intercambiáveis.
 
@@ -106,13 +112,15 @@ A evolução real do schema é uma validação adicional deste projeto e anteced
 - O snapshot inicial deve terminar antes de iniciar os statements de processamento.
 - Para evitar que as 2.000 transações do snapshot sejam interpretadas como uma rajada, o script define `scan.startup.mode=latest-offset` em transactions antes do Temporal Join. A dimensão accounts permanece disponível para o join.
 - A conversão para append-only altera a representação do changelog para atender ao operador seguinte. Não deve ser interpretada como filtro universal de operações Debezium nem como garantia de que somente INSERTs de negócio serão contados. Atualizações/retrações podem ser representadas como novos registros conforme a semântica do plano e do conector; validar o comportamento observado antes de interpretar alertas. O cenário positivo usa INSERTs novos para demonstrar a regra.
-- O resultado é um fluxo de alertas no Kafka, não uma persistência em banco de destino.
+- O Flink publica alertas em Kafka e o Sink está configurado para persistir em PostgreSQL. A persistência real permanece pendente de execução e homologação.
 
 ## Segurança e custos
 
 Não versione `.env`, `.state.env`, arquivos renderizados ou segredos. O `.state.env` local contém IDs e credenciais, deve permanecer privado (permissão 600) e não deve ser compartilhado. A automação redescobre os recursos Confluent pelo nome; se uma API key já existir sem que seu segredo esteja disponível localmente, interrompe a execução para evitar duplicação. Execute em ambiente dedicado. Compute pool Flink e conectores gerenciados podem gerar custos enquanto provisionados/ativos. Consulte `operations/cost-and-metrics.md` antes e depois do laboratório.
 
 ## Estado da entrega
+
+O PostgreSQL Sink, a tabela de destino, o script de criação e as consultas de auditoria estão preparados no código. A criação/execução do conector e a persistência dos alertas não foram homologadas. `RUNNING` não é evidência suficiente: é necessário correlacionar mensagem Kafka e linha no PostgreSQL.
 
 Este repositório começa com histórico Git independente. Os artefatos descrevem como recriar o laboratório; sua presença não comprova execução na Confluent Cloud. Registre resultados reais em `evidence/` somente após executá-los e verificá-los.
 
