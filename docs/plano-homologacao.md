@@ -119,7 +119,7 @@ Com snapshot, CDC incremental e evolução do schema real homologados por evidê
 ./flink/scripts/run.sh
 ```
 
-O script seleciona o contexto Flink e reutiliza o compute pool configurado. Na primeira execução, se o pool de destino ainda não existir, reconhece somente o pool legado previamente identificado (`lfcp-2268w8o` / `default.env-mn3vgw.us-east-2`), valida ID, nome, environment, cloud, região, status e capacidade, e o renomeia para o nome configurado preservando o `max_cfu`. Não cria compute pools automaticamente; em caso de ausência, duplicidade ou incompatibilidade, interrompe. Depois, submete em sequência os statements de startup offset, PKs, enrichment, append e detecção. Interrompe se um statement com o mesmo nome já existir; não sobrescreve automaticamente.
+O script seleciona o contexto Flink e reutiliza o compute pool configurado. Na primeira execução, se o pool de destino ainda não existir, reconhece somente o pool legado previamente identificado (`lfcp-2268w8o` / `default.env-mn3vgw.us-east-2`), valida ID, nome, environment, cloud, região, status e capacidade, e o renomeia para o nome configurado preservando o `max_cfu`. Não cria compute pools automaticamente; em caso de ausência, duplicidade ou incompatibilidade, interrompe. Depois, submete em sequência as PKs de `accounts` e `transactions`, enrichment, append e detecção. O `sql.tables.scan.idle-timeout` é aplicado a cada statement por propriedade da CLI, com padrão de `5 s`; não há statement separado de `SET`. Interrompe se um statement com o mesmo nome já existir; não sobrescreve automaticamente.
 
 **Evidência esperada:** `evidence/cloud/04-flink.txt`.
 
@@ -128,7 +128,7 @@ O script seleciona o contexto Flink e reutiliza o compute pool configurado. Na p
 **Atualização em 14/11/2026:** o orquestrador foi ajustado para reutilizar o pool existente e, somente na primeira execução, renomear o pool legado identificado após validar identidade, environment, cloud, região, status e `max_cfu`. A capacidade atual é preservada explicitamente. O script não cria pools automaticamente e interrompe em situações ambíguas. Alteração estática publicada; ainda depende de `git pull`, revisão do diff e `bash -n` local. Nenhuma operação Cloud foi executada; renomeação e submissão de statements continuam pendentes de autorização.
 
 **Critério mínimo:** verificar os estados esperados registrados pelo script:
-- startup offset e declarações de PK: `COMPLETED`;
+- declarações de PK de `accounts` e `transactions`: `COMPLETED`;
 - enrichment e detecção: `RUNNING`;
 - append: `COMPLETED`.
 
@@ -136,7 +136,7 @@ Esses estados confirmam o estado dos statements, não a correção funcional do 
 
 
 
-**Atualização — preflight global de statements (14/11/2026):** depois de resolver e validar o compute pool, mas antes de submeter qualquer statement, o orquestrador consulta a lista do pool e verifica os cinco nomes planejados (payments-transactions-startup, payments-pk-accounts, payments-enrichment, payments-append-only, payments-fraud-detection). Se qualquer nome já existir, interrompe antes da primeira submissão; não exclui nem sobrescreve statements. A verificação individual em submit() permanece como proteção adicional. Alteração publicada no commit 4dfe1228f91f4cbd383c041cdbfcba9dabe3a58f. Ainda depende de sincronização e bash -n local. Nenhuma operação Cloud foi executada.
+**Atualização — preflight global de statements (14/11/2026):** depois de resolver e validar o compute pool, mas antes de submeter qualquer statement, o orquestrador consulta a lista do pool e verifica os cinco nomes planejados (payments-pk-accounts, payments-pk-transactions, payments-enrichment, payments-append-only, payments-fraud-detection). Se qualquer nome já existir, interrompe antes da primeira submissão; não exclui nem sobrescreve statements. A verificação individual em submit() permanece como proteção adicional. Alteração publicada no commit 4dfe1228f91f4cbd383c041cdbfcba9dabe3a58f. Ainda depende de sincronização e bash -n local. Nenhuma operação Cloud foi executada.
 
 ## 9. Cenário positivo de fraude
 
