@@ -56,7 +56,7 @@ Execução:
 
 Padrões: janela `PT6H/now` e granularidade `PT1H`. Podem ser ajustados por `METRICS_INTERVAL` (formato `PT<n>H/now`) e `METRICS_GRANULARITY` (formato `PT<n>M` ou `PT<n>H`). O script grava a resposta JSON original e um resumo Markdown datados em `evidence/observability/`, com permissão local restrita. As evidências não incluem API key ou secret.
 
-O resumo apresenta os valores em bytes e conversão para KiB. A métrica representa bytes recebidos pelo cluster na granularidade consultada; não identifica o produtor e ausência de pontos não significa tráfego zero. A coleta manual realizada em 14/11/2026 continua sendo evidência histórica independente; o script ainda precisa ser sincronizado, validado sintaticamente e executado pelo usuário para confirmar sua operação no ambiente local.
+O resumo apresenta os valores em bytes e conversão para KiB. A métrica representa bytes recebidos pelo cluster na granularidade consultada; não identifica o produtor e ausência de pontos não significa tráfego zero. A coleta manual realizada em 14/11/2026 permanece como evidência histórica independente. A coleta automatizada foi executada com sucesso pelo usuário em 14/11/2026 e suas evidências foram versionadas; sua validação está registrada abaixo.
 
 O futuro `operations/verify-observability.sh` será o orquestrador dos verificadores de métricas, ACLs, custos e confiabilidade. Ele só deve ser criado quando esses verificadores individuais estiverem implementados, para não declarar etapas inexistentes como concluídas.
 
