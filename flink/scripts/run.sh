@@ -9,13 +9,13 @@ require confluent jq
 : "${CC_REGION:?Defina CC_REGION em .env}"
 : "${CC_FLINK_POOL_NAME:?Defina CC_FLINK_POOL_NAME em .env}"
 FLINK_DIR="$ROOT_DIR/flink/sql"
-FLINK_IDLE_TIMEOUT="${FLINK_IDLE_TIMEOUT:-}"
+FLINK_IDLE_TIMEOUT="${FLINK_IDLE_TIMEOUT:-5 s}"
 OUT="$ROOT_DIR/evidence/cloud/04-flink.txt"
 mkdir -p "$(dirname "$OUT")"
 
 for file in \
-  "$FLINK_DIR/00-startup-transactions.sql" \
-  "$FLINK_DIR/00-pk-accounts.sql" \
+  "$FLINK_DIR/00-primary-key-accounts.sql" \
+  "$FLINK_DIR/00-primary-key-transactions.sql" \
   "$FLINK_DIR/01-enrichment.sql" \
   "$FLINK_DIR/02-append-only.sql" \
   "$FLINK_DIR/04-fraud-detection.sql"; do
@@ -130,8 +130,8 @@ done
 # Esta consulta ocorre antes da primeira submissão; nenhum statement é removido ou sobrescrito.
 existing_statements="$(confluent flink statement list --compute-pool "$FLINK_POOL_ID" --environment "$ENV_ID" -o json)"
 for name in \
-  payments-transactions-startup \
   payments-pk-accounts \
+  payments-pk-transactions \
   payments-enrichment \
   payments-append-only \
   payments-fraud-detection; do
@@ -166,9 +166,8 @@ submit() {
 }
 
 {
-  # A carga inicial CDC deve estar concluída antes de iniciar esta sequência.
-  submit payments-transactions-startup "$FLINK_DIR/00-startup-transactions.sql" COMPLETED
-  submit payments-pk-accounts "$FLINK_DIR/00-pk-accounts.sql" COMPLETED
+  submit payments-pk-accounts "$FLINK_DIR/00-primary-key-accounts.sql" COMPLETED
+  submit payments-pk-transactions "$FLINK_DIR/00-primary-key-transactions.sql" COMPLETED
   submit payments-enrichment "$FLINK_DIR/01-enrichment.sql" RUNNING
   submit payments-append-only "$FLINK_DIR/02-append-only.sql" COMPLETED
   submit payments-fraud-detection "$FLINK_DIR/04-fraud-detection.sql" RUNNING
