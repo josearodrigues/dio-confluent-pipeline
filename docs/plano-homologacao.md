@@ -229,3 +229,9 @@ O script `flink/scripts/run.sh` pode renomear o pool legado previamente identifi
 
 Só avançar quando a unidade atual tiver: (a) revisão concluída; (b) execução autorizada e realizada, se aplicável; (c) resultado observado; e (d) evidência/estado registrado. Uma falha interrompe o avanço. Não repetir etapas já homologadas de snapshot, CDC incremental ou evolução real do schema.
 
+## Automação das verificações operacionais
+
+O script `operations/verify-metrics.sh` foi preparado para coletar a métrica `io.confluent.kafka.server/received_bytes` pela Metrics API, filtrada pelo cluster configurado, e salvar a resposta original e um resumo datado em `evidence/observability/`. A operação é somente leitura e reutiliza as credenciais locais existentes. Consulte `operations/cost-and-metrics.md`.
+
+**Estado:** script publicado; ainda não sincronizado/validado no clone local nem executado pelo usuário. Portanto, a coleta manual anterior permanece a única execução observada. Próximas unidades: verificador read-only de ACLs e role binding MetricsViewer; consulta de Billing; verificações de confiabilidade. O orquestrador `operations/verify-observability.sh` será criado após os verificadores individuais. Não executar qualquer rotina que altere permissões ou recursos.
+
