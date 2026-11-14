@@ -125,6 +125,8 @@ O script seleciona o contexto Flink e reutiliza o compute pool configurado. Na p
 
 **Estado em 13/11/2026:** revisão estática do script e dos SQLs concluída; `bash -n` aprovado sobre o conteúdo remoto final. Nenhum compute pool ou statement Flink foi criado/executado nesta instância. A execução permanece pendente de autorização.
 
+**Atualização em 14/11/2026:** o orquestrador foi ajustado para reutilizar o pool existente e, somente na primeira execução, renomear o pool legado identificado após validar identidade, environment, cloud, região, status e `max_cfu`. A capacidade atual é preservada explicitamente. O script não cria pools automaticamente e interrompe em situações ambíguas. Alteração estática publicada; ainda depende de `git pull`, revisão do diff e `bash -n` local. Nenhuma operação Cloud foi executada; renomeação e submissão de statements continuam pendentes de autorização.
+
 **Critério mínimo:** verificar os estados esperados registrados pelo script:
 - startup offset e declarações de PK: `COMPLETED`;
 - enrichment e detecção: `RUNNING`;
