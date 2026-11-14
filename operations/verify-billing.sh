@@ -118,6 +118,7 @@ chmod 600 "$JSON_FILE"
 ROW_COUNT="$(jq 'length' "$TMP_ROWS")"
 TOTALS="$(jq -r '
   {
+    item_count: length,
     original: ([.[] | (.original_amount // 0)] | add // 0),
     discount: (if all(.[]; .discount_amount? != null)
                then ([.[] | .discount_amount] | add // 0)
@@ -143,7 +144,7 @@ TOTALS="$(jq -r '
   jq -r '
     "| Valor original | " + (.original | tostring) + " |",
     (if .discount == null
-     then "| Descontos/créditos discriminados | Não consolidado: campo nulo/ausente em " + (.discount_missing_count | tostring) + " de " + (env.ROW_COUNT // "0") + " itens |"
+     then "| Descontos/créditos discriminados | Não consolidado: campo nulo/ausente em " + (.discount_missing_count | tostring) + " de " + (.item_count | tostring) + " itens |"
      else "| Descontos/créditos discriminados | " + (.discount | tostring) + " |"
      end),
     "| Valor líquido (amount) | " + (.amount | tostring) + " |"
