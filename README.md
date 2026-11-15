@@ -159,7 +159,36 @@ CONFIRM_SCHEMA_EVOLUTION=yes ./infrastructure/schema-evolution.sh
 
 Confirme na evidência que o novo schema foi publicado, que a compatibilidade foi aceita e que o evento correspondente chegou ao tópico. Esse teste é diferente do teste de contrato isolado realizado na etapa 5.
 
-## 10. Executar os statements Flink
+## 10. Criar o Flink Compute Pool
+
+A fundação não cria o compute pool. Antes de executar os statements, crie um pool no Environment preparado na etapa 4. O script Flink não cria esse recurso automaticamente.
+
+Carregue as configurações locais e o ID do Environment salvo pela fundação:
+
+```bash
+source .env
+source .state.env
+```
+
+Crie o pool com a região e o nome definidos no `.env`:
+
+```bash
+confluent flink compute-pool create "$CC_FLINK_POOL_NAME" \
+  --cloud "$CC_CLOUD" \
+  --region "$CC_REGION" \
+  --max-cfu 5 \
+  --environment "$ENV_ID"
+```
+
+O exemplo define limite máximo de 5 CFUs; ajuste esse limite conscientemente às necessidades e aos custos do laboratório. Consulte o estado até aparecer como `PROVISIONED`:
+
+```bash
+confluent flink compute-pool list --environment "$ENV_ID"
+```
+
+A criação exige permissão Confluent adequada, como `FlinkAdmin`. Consulte a [documentação oficial de criação de compute pools](https://docs.confluent.io/confluent-cli/current/command-reference/flink/compute-pool/confluent_flink_compute-pool_create.html).
+
+## 11. Executar os statements Flink
 
 Somente depois das validações anteriores:
 
@@ -179,7 +208,7 @@ Confira os estados e a evidência `evidence/cloud/04-flink.txt`. Para inspeciona
 
 Estados `RUNNING` ou `COMPLETED` comprovam apenas o estado dos statements, não a correção funcional do processamento.
 
-## 11. Testar e validar a detecção
+## 12. Testar e validar a detecção
 
 Confirme que enrichment e detecção estão em `RUNNING`. Em seguida, execute o cenário positivo:
 
@@ -209,7 +238,7 @@ A validação só é aprovada quando o resultado confirma um alerta do cartão e
 
 O encerrador exige evidência aprovada recente e confirma o estado `STOPPED`; não exclui os statements.
 
-## 12. Preparar a persistência PostgreSQL (Sink)
+## 13. Preparar a persistência PostgreSQL (Sink)
 
 O Sink é uma etapa posterior e só deve ser criado depois de validar a saída Kafka e revisar o contrato Avro e os privilégios PostgreSQL.
 
@@ -235,7 +264,7 @@ O conector usa UPSERT em `public.fraud_alerts`. Quando estiver `RUNNING`, valide
 
 `RUNNING` não comprova gravação. A homologação exige correlacionar uma mensagem conhecida do tópico `fraud_alerts` com a linha correspondente no PostgreSQL e testar a reentrega com a mesma chave.
 
-## 13. Encerramento e segurança
+## 14. Encerramento e segurança
 
 - Não versione `.env`, `.state.env`, arquivos renderizados ou segredos.
 - Não repita scripts de criação sem conferir se os recursos já existem. Alguns interrompem deliberadamente diante de recursos ou subjects preexistentes.
