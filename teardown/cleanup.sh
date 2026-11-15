@@ -39,7 +39,7 @@ delete_owned_sa() {
     normalized="$(printf '%s' "$list" | normalize_list)" || return 1
     exists="$(jq -r --arg id "$id" '[.[] | select(.id == $id)] | length' <<<"$normalized")" || return 1
     [[ "$exists" == "0" ]] || { echo "Service Account $label ($id) ainda aparece na listagem." >&2; return 1; }
-    SA_REMOVED="$SA_REMOVED $label"
+    if [[ "$SA_REMOVED" == "nenhuma" ]]; then SA_REMOVED="$label"; else SA_REMOVED="$SA_REMOVED $label"; fi
   elif [[ "$exists" != "0" ]]; then
     echo "Resultado inesperado ao verificar $label ($id): $exists." >&2
     return 1
@@ -66,7 +66,6 @@ delete_owned_identities() {
   delete_owned_sa "$SA_WRITER_ID" "$SA_WRITER_CREATED" "cdc-writer" || return 1
   delete_owned_sa "$SA_READER_ID" "$SA_READER_CREATED" "app-reader" || return 1
   delete_owned_sa "$SA_METRICS_ID" "$SA_METRICS_CREATED" "metrics-reader" || return 1
-  [[ "$SA_REMOVED" == "nenhuma" ]] || SA_REMOVED="${SA_REMOVED#nenhuma }"
 }
 
 has_owned_identity_state() {
