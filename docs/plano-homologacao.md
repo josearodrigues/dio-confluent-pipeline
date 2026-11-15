@@ -113,7 +113,15 @@ Esta é uma extensão do projeto, não o Passo 6 da demonstração do mentor. O 
 **Estado em 14/11/2026:** **homologado**. Execução de `infrastructure/schema-evolution.sh` concluída com sucesso. O subject `payments.transactions-value` evoluiu da versão 1 para a 2; a compatibilidade efetiva permaneceu `BACKWARD` e `is_compatible=true`; o schema novo contém `channel`; o conector `payments-postgres-cdc` permaneceu `RUNNING`; e o evento correlacionado `schema-evolution-20261114T012247Z-27263` foi observado no tópico `payments.transactions`, partição 0, offset 2000, com `op=c` e `snapshot=false`. Evidência versionada: `evidence/homologation/20261114T012247Z-real-schema-evolution.txt` (commit `22182874a9f3059e18c038ad4e778ee9fca3cac7`).
 ## 8. Flink SQL
 
-Com snapshot, CDC incremental e evolução do schema real homologados por evidências da instância atual, a próxima etapa é revisar e, mediante autorização explícita, executar:
+Antes de submeter statements, crie ou valide o compute pool configurado:
+
+```bash
+bash infrastructure/flink-compute-pool.sh
+```
+
+O script carrega as configurações locais, valida o Environment e a identidade do pool, cria o recurso quando necessário (ou renomeia somente o pool legado previamente identificado e validado), aguarda `PROVISIONED`/`RUNNING`, salva `FLINK_POOL_ID` em `.state.env` e grava `evidence/cloud/04-flink-compute-pool.txt`. Não cria um segundo pool quando o pool de destino já existe e interrompe diante de divergências ou ambiguidades.
+
+Com snapshot, CDC incremental e evolução do schema real homologados por evidências da instância atual e compute pool disponível, a próxima etapa é revisar e, mediante autorização explícita, executar:
 
 ```bash
 ./flink/scripts/run.sh
