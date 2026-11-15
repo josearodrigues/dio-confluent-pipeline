@@ -649,7 +649,7 @@ Ao retomar a validação funcional, será necessário um cenário controlado com
 
 ## Teardown — encerramento do laboratório
 
-O teardown contém duas operações destrutivas independentes. Nenhuma confirmação autoriza a outra. Cada etapa pode ser executada isoladamente: a ausência de configuração/CLI de um provedor não deve impedir a tentativa no outro.
+O teardown contém duas operações destrutivas com confirmações independentes: nenhuma confirmação autoriza a outra. A execução, entretanto, segue uma dependência obrigatória: a etapa Neon só pode começar após a listagem da Confluent CLI confirmar que o Environment configurado está ausente. Se essa condição não puder ser verificada, o script bloqueia a limpeza Neon; a ausência de dados/CLI Confluent não libera a etapa seguinte.
 
 ### Confluent
 
@@ -669,7 +669,7 @@ O teardown contém duas operações destrutivas independentes. Nenhuma confirma�
 5. O SQL revoga privilégios conhecidos e executa `DROP ROLE` sem `DROP OWNED CASCADE`. Dependências adicionais fazem o PostgreSQL interromper a remoção da role; investigue antes de qualquer ação manual.
 6. O banco e o projeto permanecem existentes. Código de saída diferente de zero significa que a limpeza SQL não foi concluída integralmente.
 
-Confirmar Confluent não confirma Neon, e vice-versa. Se uma confirmação for recusada, a respectiva infraestrutura/objetos são preservados. Não execute em projeto ou banco compartilhado.
+Confirmar a exclusão do Environment não confirma a limpeza Neon, que exige sua própria confirmação literal. A etapa Neon só é liberada quando a ausência do Environment é confirmada por listagem, antes ou depois da solicitação de exclusão. Se a exclusão for recusada, o Environment continuar listado, a CLI/dados Confluent estiverem indisponíveis ou a verificação falhar, a limpeza Neon é bloqueada; corrija a situação e execute novamente o teardown. Não execute em projeto ou banco compartilhado.
 
 
 ## Revisão estática adicional do teardown — 15/11/2026
