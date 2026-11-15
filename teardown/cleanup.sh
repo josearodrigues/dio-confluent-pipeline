@@ -192,7 +192,7 @@ elif [[ -n "$NEON_PROJECT_ID" && -n "$PG_HOST" && -n "$PG_DATABASE" ]]; then
     if [[ -z "${PG_CDC_USER:-}" || -z "${PG_SINK_USER:-}" ]]; then
       NEON_STATUS="falha de configuração"
       NEON_DETAIL="PG_CDC_USER ou PG_SINK_USER ausente; SQL não executado."
-    elif NEON_OUTPUT="$(CONFIRM_CLEANUP=yes "$ROOT_DIR/scripts/run-sql.sh" database/cleanup/postgres-cleanup.sql 2>&1)"; then
+    elif NEON_OUTPUT="$(CONFLUENT_ENV_CONFIRMED=1 CONFIRM_CLEANUP=yes "$ROOT_DIR/scripts/run-sql.sh" database/cleanup/postgres-cleanup.sql 2>&1)"; then
       NEON_STATUS="SQL executado"
       NEON_DETAIL="$NEON_OUTPUT"
     else
