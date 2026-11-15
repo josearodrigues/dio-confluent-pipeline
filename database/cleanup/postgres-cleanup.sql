@@ -55,6 +55,24 @@ WHERE rolname IN (:'cdc_role', :'sink_role')
   AND rolname <> current_user
 \gexec
 
+-- A limpeza só termina com sucesso se todos os alvos estiverem ausentes.
+SELECT
+  NOT EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'payments')
+  AND NOT EXISTS (SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname = 'public' AND c.relname = 'fraud_alerts')
+  AND NOT EXISTS (SELECT 1 FROM pg_publication WHERE pubname = 'payments_pub')
+  AND NOT EXISTS (SELECT 1 FROM pg_replication_slots WHERE slot_name = 'payments_slot')
+  AND NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = :'cdc_role')
+  AND NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = :'sink_role')
+  AS cleanup_verified
+\gset
+
+\if :cleanup_verified
+  \echo 'Verificação final aprovada: todos os objetos e roles do laboratório estão ausentes.'
+\else
+  \echo 'ERRO: a verificação final encontrou objetos ou roles ainda existentes.'
+  \quit 4
+\endif
+
 SELECT
   EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'payments') AS schema_payments_exists,
   EXISTS (SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname = 'public' AND c.relname = 'fraud_alerts') AS fraud_alerts_exists,
