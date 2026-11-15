@@ -234,3 +234,13 @@ A revisão identificou que o fluxo anterior permitia iniciar a limpeza Neon mesm
 Commits publicados: `11ee3fda` (gate da etapa Neon), `e57c8e82` (README), `1cb753d8` (mensagem de falha alinhada) e `26a93122` (plano de homologação).
 
 **Estado:** alteração revisada estaticamente e conteúdo conferido no GitHub. Ainda não foi executado `bash -n` após essas mudanças, nem teste funcional do fluxo. Nenhum comando Confluent, SQL, Neon ou operação destrutiva foi executado.
+
+ 
+## Proteção do replication slot no teardown — 15/11/2026
+
+- Arquivo: `database/cleanup/postgres-cleanup.sql`.
+- Alteração: removida a tentativa automática de `pg_terminate_backend` e a espera fixa de dois segundos.
+- Antes de qualquer DDL destrutivo, o SQL consulta `pg_replication_slots.active_pid` para `payments_slot`. Se houver backend ativo, encerra com código SQL-script 5 e orienta parar/excluir o connector CDC na Confluent; nenhum objeto do laboratório é removido nessa tentativa.
+- Se o slot estiver ausente, a limpeza prossegue. Se existir e estiver inativo, solicita sua remoção.
+- Limite: a consulta é uma verificação pontual; não substitui a confirmação de que o Environment/connector CDC foi parado. Uma reconexão concorrente ainda pode fazer a remoção do slot falhar, mas o erro interrompe a execução com `ON_ERROR_STOP=1`.
+- Natureza: correção estática publicada; não foi executada contra Neon. A validação operacional depende do pull local e da execução autorizada do teardown.
