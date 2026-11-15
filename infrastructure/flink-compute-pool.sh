@@ -51,7 +51,7 @@ main() {
     legacy="$(jq -c --arg id "$legacy_id" '.[] | select(.id==$id)' <<<"$pools")"
     [[ "$(jq -r '.name' <<<"$legacy")" == "$legacy_name" && \
        "$(jq -r '.environment' <<<"$legacy")" == "$ENV_ID" && \
-       "$(jq -r '.cloud | ascii_upcase' <<<"$legacy")" == "$(tr '[:lower:]' '[:upper:]' <<<"$CC_CLOUD" | tr -d '\\n')" && \
+       "$(jq -r '.cloud | ascii_upcase' <<<"$legacy")" == "$(printf '%s' "$CC_CLOUD" | tr '[:lower:]' '[:upper:]')" && \
        "$(jq -r '.region' <<<"$legacy")" == "$CC_REGION" ]] || {
       echo "Pool legado não corresponde ao ID, nome, Environment, cloud e região esperados. Interrompendo." >&2
       return 1
