@@ -25,53 +25,77 @@ ENV_NAME="não configurado"
 ENV_AFTER="não consultado"
 SA_REMOVED="nenhuma"
 RBAC_STATUS="não aplicável"
+IDENTITIES_STATUS="não consultadas"
 
 delete_owned_sa() {
   local id="$1" created="$2" label="$3" list normalized exists
   [[ "$created" == yes && -n "$id" ]] || return 0
-  list="$(confluent iam service-account list -o json)"
-  normalized="$(printf '%s' "$list" | normalize_list)"
-  exists="$(jq -r --arg id "$id" '[.[] | select(.id == $id)] | length' <<<"$normalized")"
+  list="$(confluent iam service-account list -o json)" || { echo "Falha ao listar Service Accounts antes de remover $label ($id)." >&2; return 1; }
+  normalized="$(printf '%s' "$list" | normalize_list)" || return 1
+  exists="$(jq -r --arg id "$id" '[.[] | select(.id == $id)] | length' <<<"$normalized")" || return 1
   if [[ "$exists" == "1" ]]; then
-    confluent iam service-account delete "$id" --force
-    list="$(confluent iam service-account list -o json)"
-    normalized="$(printf '%s' "$list" | normalize_list)"
-    exists="$(jq -r --arg id "$id" '[.[] | select(.id == $id)] | length' <<<"$normalized")"
+    confluent iam service-account delete "$id" --force || { echo "Falha ao solicitar a remoção de $label ($id)." >&2; return 1; }
+    list="$(confluent iam service-account list -o json)" || { echo "Falha ao verificar a remoção de $label ($id)." >&2; return 1; }
+    normalized="$(printf '%s' "$list" | normalize_list)" || return 1
+    exists="$(jq -r --arg id "$id" '[.[] | select(.id == $id)] | length' <<<"$normalized")" || return 1
     [[ "$exists" == "0" ]] || { echo "Service Account $label ($id) ainda aparece na listagem." >&2; return 1; }
     SA_REMOVED="$SA_REMOVED $label"
+  elif [[ "$exists" != "0" ]]; then
+    echo "Resultado inesperado ao verificar $label ($id): $exists." >&2
+    return 1
   fi
 }
+
 delete_owned_identities() {
   if [[ "$METRICS_RBAC_CREATED" == yes && -n "$SA_METRICS_ID" ]]; then
-    local bindings binding_list
-    bindings="$(confluent iam rbac role-binding list --principal "User:$SA_METRICS_ID" --role MetricsViewer -o json)"
-    binding_list="$(printf '%s' "$bindings" | normalize_list)"
-    if [[ "$(jq -r 'length' <<<"$binding_list")" -gt 0 ]]; then
-      confluent iam rbac role-binding delete --principal "User:$SA_METRICS_ID" --role MetricsViewer --force
+    local bindings binding_list count
+    bindings="$(confluent iam rbac role-binding list --principal "User:$SA_METRICS_ID" --role MetricsViewer -o json)" || { echo "Falha ao consultar o vínculo MetricsViewer de $SA_METRICS_ID." >&2; return 1; }
+    binding_list="$(printf '%s' "$bindings" | normalize_list)" || return 1
+    count="$(jq -er 'length' <<<"$binding_list")" || return 1
+    if [[ "$count" -gt 0 ]]; then
+      confluent iam rbac role-binding delete --principal "User:$SA_METRICS_ID" --role MetricsViewer --force || { echo "Falha ao solicitar a remoção do vínculo MetricsViewer de $SA_METRICS_ID." >&2; return 1; }
+      bindings="$(confluent iam rbac role-binding list --principal "User:$SA_METRICS_ID" --role MetricsViewer -o json)" || { echo "Falha ao verificar a remoção do vínculo MetricsViewer de $SA_METRICS_ID." >&2; return 1; }
+      binding_list="$(printf '%s' "$bindings" | normalize_list)" || return 1
+      count="$(jq -er 'length' <<<"$binding_list")" || return 1
+      [[ "$count" == "0" ]] || { echo "O vínculo MetricsViewer de $SA_METRICS_ID ainda aparece na listagem." >&2; return 1; }
+      RBAC_STATUS="MetricsViewer removido e ausência confirmada por listagem"
+    else
+      RBAC_STATUS="MetricsViewer já ausente, confirmado por listagem"
     fi
-    RBAC_STATUS="MetricsViewer removido quando presente (marcador de criação confirmado)"
   fi
-  delete_owned_sa "$SA_WRITER_ID" "$SA_WRITER_CREATED" "cdc-writer"
-  delete_owned_sa "$SA_READER_ID" "$SA_READER_CREATED" "app-reader"
-  delete_owned_sa "$SA_METRICS_ID" "$SA_METRICS_CREATED" "metrics-reader"
+  delete_owned_sa "$SA_WRITER_ID" "$SA_WRITER_CREATED" "cdc-writer" || return 1
+  delete_owned_sa "$SA_READER_ID" "$SA_READER_CREATED" "app-reader" || return 1
+  delete_owned_sa "$SA_METRICS_ID" "$SA_METRICS_CREATED" "metrics-reader" || return 1
   [[ "$SA_REMOVED" == "nenhuma" ]] || SA_REMOVED="${SA_REMOVED#nenhuma }"
 }
+
 has_owned_identity_state() {
   [[ ( "$SA_WRITER_CREATED" == yes && -n "$SA_WRITER_ID" ) ||
      ( "$SA_READER_CREATED" == yes && -n "$SA_READER_ID" ) ||
      ( "$SA_METRICS_CREATED" == yes && -n "$SA_METRICS_ID" ) ||
      ( "$METRICS_RBAC_CREATED" == yes && -n "$SA_METRICS_ID" ) ]]
 }
+
 confirm_and_delete_owned_identities() {
-  has_owned_identity_state || return 0
-  echo "Identidades marcadas como criadas pelo laboratório:"
+  if ! has_owned_identity_state; then
+    IDENTITIES_STATUS="nenhuma identidade marcada como criada pelo laboratório"
+    return 0
+  fi
+  echo "Identidades/vínculos marcados como criados pelo laboratório:"
   [[ "$SA_WRITER_CREATED" == yes ]] && echo "  cdc-writer: $SA_WRITER_ID"
   [[ "$SA_READER_CREATED" == yes ]] && echo "  app-reader: $SA_READER_ID"
   [[ "$SA_METRICS_CREATED" == yes ]] && echo "  metrics-reader: $SA_METRICS_ID"
-  read -r -p "Digite exatamente 'IDENTITIES/$ENV_ID' para confirmar a remoção dessas identidades: " identity_answer
+  [[ "$METRICS_RBAC_CREATED" == yes ]] && echo "  MetricsViewer: User:$SA_METRICS_ID"
+  read -r -p "Digite exatamente 'IDENTITIES/$ENV_ID' para confirmar a remoção dessas identidades/vínculos: " identity_answer
   if [[ "$identity_answer" == "IDENTITIES/$ENV_ID" ]]; then
-    delete_owned_identities
+    if delete_owned_identities; then
+      IDENTITIES_STATUS="remoção solicitada e verificações posteriores concluídas"
+    else
+      IDENTITIES_STATUS="falha; a remoção pode ter sido parcial"
+      return 1
+    fi
   else
+    IDENTITIES_STATUS="preservadas: confirmação independente não fornecida"
     echo "Identidades Confluent preservadas por falta de confirmação."
   fi
 }
@@ -91,7 +115,7 @@ if [[ -n "$ENV_ID" && -n "$CC_ENV_NAME" ]] && command -v confluent >/dev/null 2>
       # identidades cujo estado local registra criação pelo laboratório.
       confirm_and_delete_owned_identities || {
         CONFLUENT_STATUS="falha ao remover identidades"
-        CONFLUENT_DETAIL="Environment já ausente, mas houve falha ao remover uma identidade criada pelo laboratório."
+        CONFLUENT_DETAIL="Environment já ausente, mas a remoção de identidades/vínculos próprios falhou; consulte o estado detalhado no relatório."
       }
     elif [[ "$MATCH_COUNT" != "1" ]]; then
       CONFLUENT_STATUS="não verificado"
@@ -123,7 +147,7 @@ if [[ -n "$ENV_ID" && -n "$CC_ENV_NAME" ]] && command -v confluent >/dev/null 2>
             CONFLUENT_DETAIL="A listagem confirmou que o Environment não existe mais."
             confirm_and_delete_owned_identities || {
               CONFLUENT_STATUS="Environment removido; falha ao remover identidades"
-              CONFLUENT_DETAIL="Environment ausente, mas houve falha ao remover uma identidade criada pelo laboratório."
+              CONFLUENT_DETAIL="Environment ausente, mas a remoção de identidades/vínculos próprios falhou; consulte o estado detalhado no relatório."
             }
             [[ "$SA_REMOVED" == "nenhuma" ]] || SA_REMOVED="${SA_REMOVED#nenhuma }"
           elif [[ "$ENV_AFTER" == "não consultado" ]]; then
@@ -131,7 +155,7 @@ if [[ -n "$ENV_ID" && -n "$CC_ENV_NAME" ]] && command -v confluent >/dev/null 2>
             CONFLUENT_DETAIL="Não foi possível consultar novamente a listagem do Environment; Neon continua independente."
           else
             CONFLUENT_STATUS="não confirmado"
-            CONFLUENT_DETAIL="A listagem ainda mostra o Environment; Service Accounts não foram removidas."
+            CONFLUENT_DETAIL="A listagem ainda mostra o Environment; identidades e vínculos próprios não foram removidos."
           fi
         else
           CONFLUENT_STATUS="preservado"
@@ -189,6 +213,7 @@ cat > "$REPORT_PATH" <<EOF
 - Environment encontrado após operação: $ENV_AFTER
 - Service Accounts removidas (marcador de criação): $SA_REMOVED
 - Vínculo MetricsViewer: $RBAC_STATUS
+- Estado das identidades próprias: $IDENTITIES_STATUS
 
 ## Confluent
 
