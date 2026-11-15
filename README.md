@@ -184,7 +184,7 @@ bash infrastructure/flink-compute-pool.sh
 O script carrega automaticamente `.env` e `.state.env`, identifica o Environment criado na etapa 4 e cria o pool com o nome, a cloud e a região configurados. O limite padrão é de 5 CFUs; pode ser ajustado localmente por `FLINK_MAX_CFU`, por exemplo:
 
 ```bash
-FLINK_MAX_CFU=10 ./infrastructure/flink-compute-pool.sh
+FLINK_MAX_CFU=10 bash infrastructure/flink-compute-pool.sh
 ```
 
 Se o pool com o nome configurado já existir, o script não o recria: valida nome, Environment, cloud, região e estado. Se encontrar o pool legado conhecido, só o renomeia após validar sua identidade e localização, preservando o limite de CFUs. Em caso de divergência, duplicidade ou coexistência ambígua, interrompe sem alterar o recurso. Quando o pool estiver `PROVISIONED` ou `RUNNING`, salva seu ID em `.state.env`.
