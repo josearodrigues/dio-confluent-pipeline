@@ -121,7 +121,7 @@ Na revisão inicial, não foram alterados código, configurações ou recursos C
 | Tema | Classificação | Situação nesta atualização |
 |---|---|---|
 | Padrão de idleness em `flink/scripts/run.sh` | Inconsistência confirmada entre script e README | **Corrigido no código:** o padrão agora fica vazio; timeout fixo só é aplicado quando configurado explicitamente. |
-| Teardown: nome do statement de chave de transactions | Divergência confirmada | **Corrigido no código:** o teardown usa `payments-pk-transactions`, igual ao executor. |
+| Teardown: nomes dos statements Flink | Cobertura incompleta para nomes atuais e aliases históricos documentados | **Corrigido no código:** a lista inclui `payments-pk-transactions` e os aliases históricos `payments-enrichment-test` e `payments-fraud-detection-test`, além dos nomes atuais. A remoção ainda não foi executada. |
 | Teardown: vínculo e identidade de métricas | Lacuna confirmada | **Corrigido parcialmente no código:** a fundação registra se criou o vínculo MetricsViewer; o teardown remove a API key, o vínculo e a Service Account de métricas somente quando pertencem ao projeto. A limpeza ainda não foi executada. |
 | Teardown: contagens posteriores | Defeito confirmado de contabilização | **Corrigido no código:** falhas de consulta deixam de ser convertidas em zero; Environment usa o ID via `jq --arg`; Neon aparece como não verificado. |
 | ACLs de grupos | Divergência entre fundação e verificador | **Corrigido no verificador:** removida a expectativa de DESCRIBE não provisionada. Nenhuma permissão adicional foi concedida. |
