@@ -142,7 +142,7 @@ Confirme o conector em `RUNNING` e consulte `evidence/cloud/03-cdc-connector.txt
 ./operations/verify-cdc-snapshot.sh
 ```
 
-O verificador acompanha os quatro tópicos e conta os eventos Debezium de snapshot (`op=r`).
+O verificador acompanha os quatro tópicos e conta os eventos Debezium de snapshot (`op=r`). **Esta validação pode demorar vários minutos**, pois depende da publicação e leitura dos eventos do snapshot no Kafka. Os quatro consumidores são iniciados em paralelo; o tempo varia conforme o volume e o ritmo de processamento. O timeout padrão é de 2.400 segundos (40 minutos) por tópico, configurável pela variável `CDC_SNAPSHOT_TIMEOUT`.
 
 | Tópico | Quantidade esperada |
 |---|---:|
