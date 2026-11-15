@@ -125,7 +125,7 @@ O teardown tem duas confirmações independentes. Na etapa Confluent, informa o 
 
 Na etapa Neon, o script apresenta `NEON_PROJECT_ID`, `NEON_BRANCH`, host e database e exige a confirmação literal `NEON_PROJECT_ID/NEON_BRANCH/PG_DATABASE`. A limpeza SQL remove `payments_slot`, `payments_pub`, o schema `payments`, `public.fraud_alerts` e as roles configuradas por `PG_CDC_USER` e `PG_SINK_USER` (normalmente `cdc` e `alerts_sink`). O projeto, branch, compute, endpoint e banco são preservados. A remoção de roles não usa `DROP OWNED CASCADE`: dependências adicionais fazem o PostgreSQL recusar o `DROP ROLE`, preservando objetos não identificados como parte do laboratório.
 
-Autorizar Confluent não autoriza Neon. Se uma etapa não for confirmada, seus recursos permanecem preservados. Consulte o relatório em `evidence/teardown/`; ele distingue solicitação, verificação posterior e falhas.
+As etapas podem ser executadas independentemente: se os dados/CLI de um provedor não estiverem disponíveis, sua limpeza é ignorada sem impedir a outra. Autorizar Confluent não autoriza Neon. Se uma etapa não for confirmada, seus recursos permanecem preservados. Consulte o relatório em `evidence/teardown/`; ele distingue solicitação, verificação posterior e falhas.
 
 ## Estado da entrega
 
