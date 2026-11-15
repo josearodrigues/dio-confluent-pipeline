@@ -670,3 +670,10 @@ O teardown contém duas operações destrutivas independentes. Nenhuma confirma�
 6. O banco e o projeto permanecem existentes. Código de saída diferente de zero significa que a limpeza SQL não foi concluída integralmente.
 
 Confirmar Confluent não confirma Neon, e vice-versa. Se uma confirmação for recusada, a respectiva infraestrutura/objetos são preservados. Não execute em projeto ou banco compartilhado.
+
+
+## Revisão estática adicional do teardown — 15/11/2026
+
+A rotina de remoção de identidades foi reforçada para propagar explicitamente falhas de listagem, exclusão e verificação das Service Accounts. O vínculo `MetricsViewer`, quando marcado como criado pelo laboratório, também é consultado antes e depois da exclusão; sua ausência só é registrada após nova listagem. O relatório registra separadamente o estado das identidades próprias e sinaliza que uma falha pode ter deixado remoção parcial. A confirmação literal `IDENTITIES/ENV_ID` permanece independente da confirmação do Environment.
+
+**Validação:** alteração estática publicada; aguarda `git pull` e `bash -n` local. Não foram executados comandos Confluent, SQL, Neon ou operações Cloud.
