@@ -244,3 +244,21 @@ Commits publicados: `11ee3fda` (gate da etapa Neon), `e57c8e82` (README), `1cb75
 - Se o slot estiver ausente, a limpeza prossegue. Se existir e estiver inativo, solicita sua remoção.
 - Limite: a consulta é uma verificação pontual; não substitui a confirmação de que o Environment/connector CDC foi parado. Uma reconexão concorrente ainda pode fazer a remoção do slot falhar, mas o erro interrompe a execução com `ON_ERROR_STOP=1`.
 - Natureza: correção estática publicada; não foi executada contra Neon. A validação operacional depende do pull local e da execução autorizada do teardown.
+
+## Correção do tratamento de erro no SQL de limpeza — 15/11/2026
+
+### Achado confirmado
+
+O teste isolado da proteção do replication slot exibiu a mensagem de bloqueio, mas o comando `\quit 5` foi interpretado pelo `psql` como `\quit` com argumento excedente, ignorando o código solicitado e retornando status 0. A mesma construção estava presente nos caminhos de erro para variáveis ausentes, confirmação ausente e falha da verificação final. Isso permitia falso sinal de sucesso no wrapper, que classifica o resultado pelo código de saída do `psql`.
+
+### Correção estática publicada
+
+Foram substituídos todos os cinco usos de `\quit N` por blocos SQL `DO ... RAISE EXCEPTION`. Com `ON_ERROR_STOP=1` no wrapper, uma exceção SQL não tratada interrompe o `psql` com status de erro, em vez de ignorar um código passado a `\quit`.
+
+### Estado e limites
+
+- Commit: `a64954216dcc82d3e9c55c4ca3d3a6f5cdbb9192`.
+- Arquivo alterado: `database/cleanup/postgres-cleanup.sql`.
+- A alteração foi publicada no GitHub; ainda requer revisão do conteúdo sincronizado e teste isolado não destrutivo para confirmar o código de saída.
+- O slot `payments_slot` foi observado ativo (`active_pid=1457`) na verificação anterior. A consulta de integridade confirmou que schema, tabela, publication, slot e roles permaneciam presentes.
+- O teardown não foi executado. Nenhum objeto Neon/Confluent foi removido ou alterado.
