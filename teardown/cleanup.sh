@@ -21,6 +21,7 @@ METRICS_RBAC_CREATED="${METRICS_RBAC_CREATED:-no}"
 
 CONFLUENT_STATUS="não solicitado"
 CONFLUENT_DETAIL="Dados/CLI Confluent ausentes; nenhuma ação executada."
+CONFLUENT_ENV_CONFIRMED="no"
 ENV_NAME="não configurado"
 ENV_AFTER="não consultado"
 SA_REMOVED="nenhuma"
@@ -106,6 +107,7 @@ if [[ -n "$ENV_ID" && -n "$CC_ENV_NAME" ]] && command -v confluent >/dev/null 2>
     ENV_MATCH="$(jq -c --arg id "$ENV_ID" '[.[] | select(.id == $id)]' <<<"$ENVIRONMENTS")"
     MATCH_COUNT="$(jq -r 'length' <<<"$ENV_MATCH")"
     if [[ "$MATCH_COUNT" == "0" ]]; then
+      CONFLUENT_ENV_CONFIRMED="yes"
       CONFLUENT_STATUS="Environment já ausente"
       CONFLUENT_DETAIL="A listagem confirmou que o Environment não existe antes desta execução."
       ENV_NAME="$CC_ENV_NAME"
@@ -142,6 +144,7 @@ if [[ -n "$ENV_ID" && -n "$CC_ENV_NAME" ]] && command -v confluent >/dev/null 2>
             ENV_AFTER="não consultado"
           fi
           if [[ "$ENV_AFTER" == "0" ]]; then
+            CONFLUENT_ENV_CONFIRMED="yes"
             CONFLUENT_STATUS="Environment ausente na verificação posterior"
             CONFLUENT_DETAIL="A listagem confirmou que o Environment não existe mais."
             confirm_and_delete_owned_identities || {
@@ -174,7 +177,11 @@ echo
 echo "TEARDOWN NEON (confirmação independente)"
 NEON_STATUS="não solicitado"
 NEON_DETAIL="Dados Neon ausentes; nenhuma ação executada."
-if [[ -n "$NEON_PROJECT_ID" && -n "$PG_HOST" && -n "$PG_DATABASE" ]]; then
+if [[ "$CONFLUENT_ENV_CONFIRMED" != "yes" ]]; then
+  NEON_STATUS="bloqueado: Environment Confluent não confirmado como ausente"
+  NEON_DETAIL="A limpeza Neon não foi iniciada. Confirme a ausência do Environment Confluent por listagem e execute novamente o teardown."
+  echo "Neon bloqueado: a ausência do Environment Confluent não foi confirmada."
+elif [[ -n "$NEON_PROJECT_ID" && -n "$PG_HOST" && -n "$PG_DATABASE" ]]; then
   echo "Projeto: $NEON_PROJECT_ID | Branch: $NEON_BRANCH"
   echo "PostgreSQL: host=$PG_HOST database=$PG_DATABASE"
   echo "Serão removidos payments_slot, payments_pub, schema payments, public.fraud_alerts"
