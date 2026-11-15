@@ -175,32 +175,21 @@ Confirme na evidência que o novo schema foi publicado, que a compatibilidade fo
 
 ## 10. Criar o Flink Compute Pool
 
-A fundação não cria o compute pool. Antes de executar os statements, crie um pool no Environment preparado na etapa 4. O script Flink não cria esse recurso automaticamente.
-
-Carregue as configurações locais e o ID do Environment salvo pela fundação:
+A fundação não cria o compute pool. Antes de executar os statements, execute o script:
 
 ```bash
-source .env
-source .state.env
+./infrastructure/flink-compute-pool.sh
 ```
 
-Crie o pool com a região e o nome definidos no `.env`:
+O script carrega automaticamente `.env` e `.state.env`, identifica o Environment criado na etapa 4 e cria o pool com o nome, a cloud e a região configurados. O limite padrão é de 5 CFUs; pode ser ajustado localmente por `FLINK_MAX_CFU`, por exemplo:
 
 ```bash
-confluent flink compute-pool create "$CC_FLINK_POOL_NAME" \
-  --cloud "$CC_CLOUD" \
-  --region "$CC_REGION" \
-  --max-cfu 5 \
-  --environment "$ENV_ID"
+FLINK_MAX_CFU=10 ./infrastructure/flink-compute-pool.sh
 ```
 
-O exemplo define limite máximo de 5 CFUs; ajuste esse limite conscientemente às necessidades e aos custos do laboratório. Consulte o estado até aparecer como `PROVISIONED`:
+Se o pool com o nome configurado já existir, o script não o recria: valida nome, Environment, cloud, região e estado. Em caso de divergência ou ambiguidade, interrompe sem alterar o recurso. Quando o pool estiver `PROVISIONED` ou `RUNNING`, salva seu ID em `.state.env`.
 
-```bash
-confluent flink compute-pool list --environment "$ENV_ID"
-```
-
-A criação exige permissão Confluent adequada, como `FlinkAdmin`. Consulte a [documentação oficial de criação de compute pools](https://docs.confluent.io/confluent-cli/current/command-reference/flink/compute-pool/confluent_flink_compute-pool_create.html).
+A evidência da execução é gravada em `evidence/cloud/04-flink-compute-pool.txt`. A criação exige permissão Confluent adequada, como `FlinkAdmin`. Consulte a [documentação oficial de criação de compute pools](https://docs.confluent.io/confluent-cli/current/command-reference/flink/compute-pool/confluent_flink_compute-pool_create.html).
 
 ## 11. Executar os statements Flink
 
