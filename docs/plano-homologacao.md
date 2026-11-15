@@ -677,3 +677,10 @@ Confirmar a exclusão do Environment não confirma a limpeza Neon, que exige sua
 A rotina de remoção de identidades foi reforçada para propagar explicitamente falhas de listagem, exclusão e verificação das Service Accounts. O vínculo `MetricsViewer`, quando marcado como criado pelo laboratório, também é consultado antes e depois da exclusão; sua ausência só é registrada após nova listagem. O relatório registra separadamente o estado das identidades próprias e sinaliza que uma falha pode ter deixado remoção parcial. A confirmação literal `IDENTITIES/ENV_ID` permanece independente da confirmação do Environment.
 
 **Validação:** o usuário sincronizou a `main` até `c2d424a` e informou que `bash -n teardown/cleanup.sh` e `bash -n scripts/run-sql.sh` terminaram sem erros. Isso valida apenas sintaxe Bash; não foram executados comandos Confluent, SQL, Neon ou operações Cloud.
+
+
+## Registro operacional — Neon após limpeza (15/11/2026)
+
+O operador confirmou a remoção manual das roles auxiliares `cdc` e `alerts_sink`. A role administrativa/owner pertencente ao projeto Neon (neste ambiente, `payments_owner`) foi preservada por fazer parte do ciclo de vida do projeto. Permanecem preservados o projeto, branch, compute, endpoint e database `payments`. Não executar novamente o teardown Neon nem tentar excluir isoladamente o database para remover a role do projeto.
+
+As variáveis iniciais de identificação do Neon serão mantidas nos arquivos de referência do projeto. Os arquivos locais `.env` e `.state.env` serão saneados pelo operador para retirar credenciais e estado operacional que não serão usados no teste final; não versionar nem compartilhar seu conteúdo.
