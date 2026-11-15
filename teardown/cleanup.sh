@@ -96,7 +96,8 @@ confluent kafka cluster use "$CLUSTER_ID" >/dev/null
 # -------------------------------------------------------------------
 # 5. Remoção dos recursos Confluent (idempotente)
 # -------------------------------------------------------------------
-for statement in payments-fraud-detection payments-append-only payments-enrichment \
+for statement in payments-fraud-detection payments-fraud-detection-test \
+  payments-append-only payments-enrichment payments-enrichment-test \
   payments-pk-accounts payments-pk-transactions; do
   confluent flink statement delete "$statement" --force 2>/dev/null || true
 done
