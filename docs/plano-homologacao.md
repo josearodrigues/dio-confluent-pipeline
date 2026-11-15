@@ -649,7 +649,7 @@ Ao retomar a validação funcional, será necessário um cenário controlado com
 
 ## Teardown — encerramento do laboratório
 
-O teardown contém duas operações destrutivas independentes. Nenhuma confirmação autoriza a outra.
+O teardown contém duas operações destrutivas independentes. Nenhuma confirmação autoriza a outra. Cada etapa pode ser executada isoladamente: a ausência de configuração/CLI de um provedor não deve impedir a tentativa no outro.
 
 ### Confluent
 
