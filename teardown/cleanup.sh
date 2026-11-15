@@ -26,6 +26,37 @@ ENV_AFTER="não consultado"
 SA_REMOVED="nenhuma"
 RBAC_STATUS="não aplicável"
 
+delete_owned_sa() {
+  local id="$1" created="$2" label="$3" list normalized exists
+  [[ "$created" == yes && -n "$id" ]] || return 0
+  list="$(confluent iam service-account list -o json)"
+  normalized="$(printf '%s' "$list" | normalize_list)"
+  exists="$(jq -r --arg id "$id" '[.[] | select(.id == $id)] | length' <<<"$normalized")"
+  if [[ "$exists" == "1" ]]; then
+    confluent iam service-account delete "$id" --force
+    list="$(confluent iam service-account list -o json)"
+    normalized="$(printf '%s' "$list" | normalize_list)"
+    exists="$(jq -r --arg id "$id" '[.[] | select(.id == $id)] | length' <<<"$normalized")"
+    [[ "$exists" == "0" ]] || { echo "Service Account $label ($id) ainda aparece na listagem." >&2; return 1; }
+    SA_REMOVED="$SA_REMOVED $label"
+  fi
+}
+delete_owned_identities() {
+  if [[ "$METRICS_RBAC_CREATED" == yes && -n "$SA_METRICS_ID" ]]; then
+    local bindings binding_list
+    bindings="$(confluent iam rbac role-binding list --principal "User:$SA_METRICS_ID" --role MetricsViewer -o json)"
+    binding_list="$(printf '%s' "$bindings" | normalize_list)"
+    if [[ "$(jq -r 'length' <<<"$binding_list")" -gt 0 ]]; then
+      confluent iam rbac role-binding delete --principal "User:$SA_METRICS_ID" --role MetricsViewer --force
+    fi
+    RBAC_STATUS="MetricsViewer removido quando presente (marcador de criação confirmado)"
+  fi
+  delete_owned_sa "$SA_WRITER_ID" "$SA_WRITER_CREATED" "cdc-writer"
+  delete_owned_sa "$SA_READER_ID" "$SA_READER_CREATED" "app-reader"
+  delete_owned_sa "$SA_METRICS_ID" "$SA_METRICS_CREATED" "metrics-reader"
+  [[ "$SA_REMOVED" == "nenhuma" ]] || SA_REMOVED="${SA_REMOVED#nenhuma }"
+}
+
 echo "TEARDOWN CONFLUENT"
 if [[ -n "$ENV_ID" && -n "$CC_ENV_NAME" ]] && command -v confluent >/dev/null 2>&1; then
   if ENVIRONMENTS_RAW="$(confluent environment list -o json 2>&1)" &&
@@ -37,6 +68,9 @@ if [[ -n "$ENV_ID" && -n "$CC_ENV_NAME" ]] && command -v confluent >/dev/null 2>
       CONFLUENT_DETAIL="A listagem confirmou que o Environment não existe antes desta execução."
       ENV_NAME="$CC_ENV_NAME"
       ENV_AFTER="0"
+      # Environment pode ter sido removido em execução anterior; limpe apenas
+      # identidades cujo estado local registra criação pelo laboratório.
+      delete_owned_identities
     elif [[ "$MATCH_COUNT" != "1" ]]; then
       CONFLUENT_STATUS="não verificado"
       CONFLUENT_DETAIL="A listagem não retornou correspondência única; nenhuma exclusão executada."
@@ -62,32 +96,7 @@ if [[ -n "$ENV_ID" && -n "$CC_ENV_NAME" ]] && command -v confluent >/dev/null 2>
           if [[ "$ENV_AFTER" == "0" ]]; then
             CONFLUENT_STATUS="Environment ausente na verificação posterior"
             CONFLUENT_DETAIL="A listagem confirmou que o Environment não existe mais."
-            delete_owned_sa() {
-              local id="$1" created="$2" label="$3" list normalized exists
-              [[ "$created" == yes && -n "$id" ]] || return 0
-              list="$(confluent iam service-account list -o json)"
-              normalized="$(printf '%s' "$list" | normalize_list)"
-              exists="$(jq -r --arg id "$id" '[.[] | select(.id == $id)] | length' <<<"$normalized")"
-              if [[ "$exists" == "1" ]]; then
-                confluent iam service-account delete "$id" --force
-                list="$(confluent iam service-account list -o json)"
-                normalized="$(printf '%s' "$list" | normalize_list)"
-                exists="$(jq -r --arg id "$id" '[.[] | select(.id == $id)] | length' <<<"$normalized")"
-                [[ "$exists" == "0" ]] || { echo "Service Account $label ($id) ainda aparece na listagem." >&2; return 1; }
-                SA_REMOVED="$SA_REMOVED $label"
-              fi
-            }
-            if [[ "$METRICS_RBAC_CREATED" == yes && -n "$SA_METRICS_ID" ]]; then
-              bindings="$(confluent iam rbac role-binding list --principal "User:$SA_METRICS_ID" --role MetricsViewer -o json)"
-              binding_list="$(printf '%s' "$bindings" | normalize_list)"
-              if [[ "$(jq -r 'length' <<<"$binding_list")" -gt 0 ]]; then
-                confluent iam rbac role-binding delete --principal "User:$SA_METRICS_ID" --role MetricsViewer --force
-              fi
-              RBAC_STATUS="MetricsViewer removido quando presente (marcador de criação confirmado)"
-            fi
-            delete_owned_sa "$SA_WRITER_ID" "$SA_WRITER_CREATED" "cdc-writer"
-            delete_owned_sa "$SA_READER_ID" "$SA_READER_CREATED" "app-reader"
-            delete_owned_sa "$SA_METRICS_ID" "$SA_METRICS_CREATED" "metrics-reader"
+            delete_owned_identities
             [[ "$SA_REMOVED" == "nenhuma" ]] || SA_REMOVED="${SA_REMOVED#nenhuma }"
           else
             CONFLUENT_STATUS="não confirmado"
