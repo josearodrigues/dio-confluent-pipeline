@@ -645,3 +645,28 @@ A nova homologação positiva foi deliberadamente adiada até depois da conclus�
 
 Ao retomar a validação funcional, será necessário um cenário controlado com pelo menos três eventos positivos do mesmo cartão chegando ao Kafka em até 60 segundos, seguido da correlação com um alerta novo e evidência direta da mensagem/offset no tópico de saída. A consulta ao catálogo ou à tabela materializada, isoladamente, não substitui essa evidência.
 
+
+
+## Teardown — encerramento do laboratório
+
+O teardown contém duas operações destrutivas independentes. Nenhuma confirmação autoriza a outra.
+
+### Confluent
+
+1. Confira `ENV_ID` e `CC_ENV_NAME` no ambiente local.
+2. O script valida a correspondência exata e solicita confirmação literal `ENV_ID/CC_ENV_NAME`.
+3. A exclusão do Environment é a operação principal; remove clusters Kafka, Schema Registry, Connect e Flink Compute Pools associados.
+4. Service Accounts só são removidas quando `SA_WRITER_CREATED`, `SA_READER_CREATED` ou `SA_METRICS_CREATED` indicam criação pelo laboratório. O vínculo MetricsViewer só é removido quando `METRICS_RBAC_CREATED=yes`.
+5. A exclusão de Service Account remove suas API keys associadas. API keys Flink podem ter escopo regional fora do Environment; revise eventuais resíduos e preserve identidades preexistentes.
+6. O script verifica o desaparecimento do Environment e das Service Accounts removidas. Falha de consulta não é convertida em zero.
+
+### Neon
+
+1. O projeto Neon é criado/configurado manualmente antes do laboratório. O teardown não exclui projeto, branch, compute, endpoint ou banco.
+2. Confira `NEON_PROJECT_ID`, `NEON_BRANCH`, `PG_HOST`, `PG_DATABASE`, `PG_CDC_USER` e `PG_SINK_USER`.
+3. O script exibe o alvo e exige confirmação literal `NEON_PROJECT_ID/NEON_BRANCH/PG_DATABASE`.
+4. O SQL remove `payments_slot`, `payments_pub`, schema `payments`, tabela `public.fraud_alerts` e as roles indicadas em `PG_CDC_USER` e `PG_SINK_USER` (padrões `cdc` e `alerts_sink`).
+5. O SQL revoga privilégios conhecidos e executa `DROP ROLE` sem `DROP OWNED CASCADE`. Dependências adicionais fazem o PostgreSQL interromper a remoção da role; investigue antes de qualquer ação manual.
+6. O banco e o projeto permanecem existentes. Código de saída diferente de zero significa que a limpeza SQL não foi concluída integralmente.
+
+Confirmar Confluent não confirma Neon, e vice-versa. Se uma confirmação for recusada, a respectiva infraestrutura/objetos são preservados. Não execute em projeto ou banco compartilhado.
