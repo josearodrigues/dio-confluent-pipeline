@@ -60,6 +60,12 @@ openssl rand -hex 24
 
 Copie o resultado para `PG_SINK_PASSWORD` no `.env`. Não reutilize a senha administrativa nem compartilhe ou versione credenciais.
 
+Autentique a Confluent CLI, se necessário:
+
+```bash
+confluent login
+```
+
 A etapa Neon gera e grava `PG_CDC_PASSWORD` no `.env`; não preencha essa senha manualmente. O arquivo `.state.env` é criado pelos scripts para armazenar IDs e credenciais da Confluent. Ambos são locais e privados.
 
 ## 3. Preparar o PostgreSQL no Neon
@@ -224,6 +230,14 @@ Consulte a saída Flink:
 ./flink/scripts/test-fraud-scenario.sh
 ```
 
+O cenário negativo é opcional e testa três transações do mesmo cartão espaçadas além da janela:
+
+```bash
+./scripts/run-sql.sh database/seed/slow-pattern.sql
+```
+
+Observe o resultado no Flink; a ausência de alerta só pode ser concluída depois de considerar o processamento e os watermarks.
+
 Para correlacionar o alerta com o cenário, use os limites UTC observados na execução:
 
 ```bash
@@ -241,6 +255,26 @@ O encerrador exige evidência aprovada recente e confirma o estado `STOPPED`; n�
 ## 13. Preparar a persistência PostgreSQL (Sink)
 
 O Sink é uma etapa posterior e só deve ser criado depois de validar a saída Kafka e revisar o contrato Avro e os privilégios PostgreSQL.
+
+Antes da auditoria, confira a mensagem no tópico Kafka `fraud_alerts`. As credenciais e o endpoint do Schema Registry já foram salvos em `.state.env`:
+
+```bash
+source .env
+source .state.env
+confluent kafka topic consume fraud_alerts \
+  --value-format avro \
+  --print-offset \
+  --schema-registry-endpoint "$SR_URL" \
+  --schema-registry-api-key "$SR_API_KEY" \
+  --schema-registry-api-secret "$SR_API_SECRET" \
+  --api-key "$READER_API_KEY" \
+  --api-secret "$READER_API_SECRET" \
+  --bootstrap "$BOOTSTRAP" \
+  --cluster "$CLUSTER_ID" \
+  --environment "$ENV_ID"
+```
+
+Interrompa o consumidor com `Ctrl+C` depois de observar a mensagem relevante. Registre tópico, partição, offset e conteúdo necessário para correlacionar a entrega.
 
 Primeiro, faça a auditoria read-only da role e da tabela:
 
