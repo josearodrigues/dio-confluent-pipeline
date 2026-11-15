@@ -68,3 +68,20 @@ A consulta resumida de `fraud_alerts` observou 641 linhas com `txn_count=3`, mas
 
 A investigação sobre a proibição de `$rowtime` está encerrada para fins de decisão: não reescrever o SQL nem repetir consultas exploratórias sobre esse ponto. A nova homologação positiva foi adiada para depois da observabilidade e do teardown. Nenhuma ação Cloud foi executada como parte desta investigação. Consulte também a seção 16 de `docs/plano-homologacao.md`.
 
+
+
+## Decisão de teardown — 15/11/2026
+
+O encerramento é assimétrico porque os recursos são criados de formas diferentes:
+
+- **Confluent:** o projeto provisiona o Environment e recursos associados. O teardown exclui o Environment como operação principal e verifica seu desaparecimento. Service Accounts e vínculo MetricsViewer são tratados separadamente somente quando os marcadores de estado comprovam criação pelo laboratório. A exclusão do Environment remove clusters, Schema Registry, Connect e Flink Compute Pools, mas não remove API keys relacionadas ao Flink com escopo regional. Service Accounts preexistentes são preservadas.
+- **Neon:** o usuário cria o projeto PostgreSQL manualmente antes da execução e fornece os parâmetros no `.env`. O teardown preserva projeto, branch, compute, endpoint e banco. Remove `payments_slot`, `payments_pub`, schema `payments`, tabela `public.fraud_alerts` e as roles `PG_CDC_USER`/`PG_SINK_USER`.
+
+A remoção das roles usa revogação dos privilégios conhecidos e `DROP ROLE`. Não é usado `DROP OWNED CASCADE`, pois poderia eliminar objetos não pertencentes ao laboratório. Dependências adicionais devem bloquear o `DROP ROLE` e ser investigadas. As confirmações Confluent e Neon são independentes. O relatório diferencia recurso removido, preservado, falha e estado não verificado.
+
+Referências oficiais:
+- Confluent, https://docs.confluent.io/cloud/current/security/access-control/hierarchy/cloud-environments.html
+- Confluent API, https://docs.confluent.io/cloud/current/ccloud/delete-org-v-2-environment/
+- Confluent API, https://docs.confluent.io/cloud/current/ccloud/delete-iam-v-2-service-account/
+- PostgreSQL, https://www.postgresql.org/docs/current/sql-droprole.html
+- PostgreSQL, https://www.postgresql.org/docs/17/role-removal.html
