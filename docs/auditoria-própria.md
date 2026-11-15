@@ -135,7 +135,7 @@ Na revisão inicial, não foram alterados código, configurações ou recursos C
 
 ### Próximas prioridades
 
-1. Validar localmente a sintaxe da alteração do teardown antes de qualquer uso operacional.
+1. A sintaxe Bash dos quatro scripts e, posteriormente, da alteração isolada de `teardown/cleanup.sh` foi informada pelo usuário como válida (`bash -n`); isso não comprova comportamento operacional.
 2. Manter role do Sink, detecção de fraude e execução do Sink como pendências separadas; não ampliar o escopo automaticamente.
 
 ### Limites desta atualização
@@ -155,3 +155,14 @@ bash -n flink/scripts/run.sh \
 ```
 
 **Resultado reportado:** a verificação de sintaxe passou para os quatro scripts listados. Esta validação não executa os scripts nem comprova comportamento em runtime, permissões, acesso à Confluent Cloud ou ao Neon. Nenhuma operação Cloud/Neon foi realizada nesta etapa.
+
+
+## Validação local da alteração do teardown — 15/11/2026
+
+Após sincronizar a alteração que inclui os aliases históricos dos statements Flink, o usuário executou:
+
+```bash
+bash -n teardown/cleanup.sh && echo "Sintaxe Bash OK"
+```
+
+**Resultado reportado:** `Sintaxe Bash OK`. A validação confirma somente a sintaxe Bash do arquivo `teardown/cleanup.sh`. Não executa o script, não testa as chamadas à Confluent CLI, não comprova a remoção de recursos e não autoriza a limpeza. O teardown permanece não executado.
