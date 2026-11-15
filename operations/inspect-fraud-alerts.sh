@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Inspeciona mensagens Avro do tópico fraud_alerts e registra a sessão.
 set -euo pipefail
-source "$(dirname "${BASH_SOURCE[0]}")/../../scripts/_common.sh"
+source "$(dirname "${BASH_SOURCE[0]}")/../scripts/_common.sh"
 require confluent date tee
 
 : "${ENV_ID:?ENV_ID ausente; execute infrastructure/foundation.sh}"
