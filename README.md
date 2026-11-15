@@ -41,7 +41,7 @@ flowchart LR
 
 - Conta Neon com um projeto PostgreSQL dedicado.
 - Conta Neon e [Neon CLI](https://neon.com/docs/get-started/neon-cli) instalada (requer Node.js/npm) e autenticada (`neon auth`).
-- `bash`, `psql`, `jq` e `curl`.
+- `bash`, `psql`, `jq`, `curl` e `openssl`.
 - Conta Confluent Cloud com acesso a Kafka, Connect, Schema Registry e Flink.
 - Confluent CLI autenticada e compatível com os comandos do projeto.
 
@@ -55,7 +55,7 @@ A Fase 1 reproduz a preparação mostrada pelo mentor. Execute as etapas **nesta
    - `NEON_BRANCH`: branch do banco (padrão `main`).
    - `PG_DATABASE`: nome do banco.
    - `PG_HOST`, `PG_PORT`, `PG_ADMIN_USER` e `PG_ADMIN_PASSWORD`: dados da connection string administrativa. Use o host direto, sem pooler.
-   - `PG_SINK_USER` (padrão `alerts_sink`) e `PG_SINK_PASSWORD`: credenciais locais da role que grava os alertas.
+   - `PG_SINK_USER` (padrão `alerts_sink`) e `PG_SINK_PASSWORD`: credenciais locais da role que grava os alertas. Gere a senha localmente com `openssl rand -hex 24` e copie o resultado para `PG_SINK_PASSWORD` no arquivo `.env`. O comando gera 24 bytes aleatórios representados por 48 caracteres hexadecimais. Não reutilize a senha administrativa do Neon nem compartilhe ou versione esse valor.
 3. Autentique a Neon CLI, se ainda não estiver:
 
    ```bash
