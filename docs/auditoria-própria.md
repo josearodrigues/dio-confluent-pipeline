@@ -177,3 +177,10 @@ A remoção das roles não utiliza `DROP OWNED CASCADE`. O SQL revoga os privil�
 No lado Confluent, o Environment é removido como operação principal. Service Accounts e vínculo MetricsViewer são tratados somente quando os marcadores de estado indicam criação pelo projeto e após confirmação literal independente `IDENTITIES/ENV_ID`. API keys Flink regionais não são removidas pela exclusão do Environment; chaves vinculadas a identidades não removidas exigem revisão residual. A etapa Neon também pode ser executada sem a etapa Confluent e vice-versa.
 
 **Estado desta atualização:** alterações estáticas preparadas no GitHub; nenhuma execução Bash, SQL, Confluent Cloud ou Neon foi realizada. A sintaxe e o comportamento dos scripts precisam ser validados localmente antes de qualquer execução destrutiva.
+
+
+## Correção adicional de confirmação Confluent — 15/11/2026
+
+Na revisão após a validação local de sintaxe reportada pelo usuário, foi identificado que a ramificação em que o Environment já estava ausente chamava a remoção de Service Accounts sem uma confirmação própria. O teardown foi corrigido para exigir a confirmação literal `IDENTITIES/ENV_ID` antes de remover qualquer identidade marcada como criada pelo laboratório. A mesma confirmação é exigida após a exclusão do Environment. O README, o plano de homologação e as decisões técnicas foram alinhados.
+
+O usuário reportou `bash -n teardown/cleanup.sh` e `bash -n scripts/run-sql.sh` sem mensagens de erro antes desta correção. A alteração posterior ainda precisa dessa validação local. Nenhum script, SQL ou operação Cloud/Neon foi executado.
