@@ -61,7 +61,12 @@ EXPECTED='[
   {"principal":"READER","permission":"ALLOW","operation":"DESCRIBE","resource_type":"TOPIC","resource_name":"fraud_alerts","pattern_type":"LITERAL","host":"*"},
   {"principal":"READER","permission":"ALLOW","operation":"READ","resource_type":"GROUP","resource_name":"app-reader","pattern_type":"LITERAL","host":"*"},
   {"principal":"READER","permission":"ALLOW","operation":"READ","resource_type":"GROUP","resource_name":"connect-","pattern_type":"PREFIXED","host":"*"},
-  {"principal":"READER","permission":"ALLOW","operation":"READ","resource_type":"GROUP","resource_name":"snapshot-check-","pattern_type":"PREFIXED","host":"*"}
+  {"principal":"READER","permission":"ALLOW","operation":"DESCRIBE","resource_type":"GROUP","resource_name":"connect-","pattern_type":"PREFIXED","host":"*"},
+  {"principal":"READER","permission":"ALLOW","operation":"READ","resource_type":"GROUP","resource_name":"snapshot-check-","pattern_type":"PREFIXED","host":"*"},
+  {"principal":"READER","permission":"ALLOW","operation":"CREATE","resource_type":"TOPIC","resource_name":"dlq-","pattern_type":"PREFIXED","host":"*"},
+  {"principal":"READER","permission":"ALLOW","operation":"WRITE","resource_type":"TOPIC","resource_name":"dlq-","pattern_type":"PREFIXED","host":"*"},
+  {"principal":"READER","permission":"ALLOW","operation":"READ","resource_type":"TOPIC","resource_name":"dlq-","pattern_type":"PREFIXED","host":"*"},
+  {"principal":"READER","permission":"ALLOW","operation":"DESCRIBE","resource_type":"TOPIC","resource_name":"dlq-","pattern_type":"PREFIXED","host":"*"}
 ]'
 
 EXPECTED="$(jq -c --arg w "$WRITER" --arg r "$READER" '
