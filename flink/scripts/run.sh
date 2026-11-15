@@ -9,7 +9,7 @@ require confluent jq
 : "${CC_REGION:?Defina CC_REGION em .env}"
 : "${CC_FLINK_POOL_NAME:?Defina CC_FLINK_POOL_NAME em .env}"
 FLINK_DIR="$ROOT_DIR/flink/sql"
-FLINK_IDLE_TIMEOUT="${FLINK_IDLE_TIMEOUT-5 s}"
+FLINK_IDLE_TIMEOUT="${FLINK_IDLE_TIMEOUT:-}"
 OUT="$ROOT_DIR/evidence/cloud/04-flink.txt"
 mkdir -p "$(dirname "$OUT")"
 
