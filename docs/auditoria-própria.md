@@ -184,3 +184,21 @@ No lado Confluent, o Environment é removido como operação principal. Service 
 Na revisão após a validação local de sintaxe reportada pelo usuário, foi identificado que a ramificação em que o Environment já estava ausente chamava a remoção de Service Accounts sem uma confirmação própria. O teardown foi corrigido para exigir a confirmação literal `IDENTITIES/ENV_ID` antes de remover qualquer identidade marcada como criada pelo laboratório. A mesma confirmação é exigida após a exclusão do Environment. O README, o plano de homologação e as decisões técnicas foram alinhados.
 
 O usuário reportou `bash -n teardown/cleanup.sh` e `bash -n scripts/run-sql.sh` sem mensagens de erro antes desta correção. A alteração posterior ainda precisa dessa validação local. Nenhum script, SQL ou operação Cloud/Neon foi executado.
+
+
+## Correção de propagação de falhas no teardown — 15/11/2026
+
+### Achado
+
+A remoção de identidades era chamada dentro de uma lista OR (`confirm_and_delete_owned_identities || ...`). Nesse contexto, `errexit` não oferece a proteção presumida para todos os comandos internos da função. A rotina podia continuar após falha de remoção de uma Service Account e terminar com status de sucesso. O vínculo `MetricsViewer` também era considerado removido após o comando de exclusão, sem consulta posterior que confirmasse a ausência.
+
+### Correção estática
+
+- Comandos de listagem, exclusão e verificação agora têm tratamento explícito de erro e retornam falha ao chamador.
+- O vínculo `MetricsViewer` é consultado novamente após a exclusão; só é classificado como removido quando a listagem retorna zero vínculos.
+- O estado de identidades próprias é registrado separadamente, incluindo preservação por falta de confirmação e possibilidade de remoção parcial.
+- O relatório não confunde falha parcial com remoção concluída.
+
+### Estado e limites
+
+Alteração publicada no GitHub. Aguarda sincronização e validação local de sintaxe pelo usuário. Não foram executados scripts, comandos Confluent, SQL, operações Neon ou exclusões Cloud. A revisão é estática e não comprova comportamento operacional.
