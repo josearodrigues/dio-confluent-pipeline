@@ -2,7 +2,8 @@
 
 - Repositório: `josearodrigues/dio-confluent-pipeline`
 - Branch analisada: `main`
-- Commit de referência da revisão inicial: `0c1a8406af9f893a127f0d6b44a8f08928017250`\n- Atualização da matriz e correções estáticas: 15/11/2026, branch `main`.
+- Commit de referência da revisão inicial: `0c1a8406af9f893a127f0d6b44a8f08928017250`
+- Atualização da matriz e correções estáticas: 15/11/2026, branch `main`.
 - Natureza: revisão estática do código e confronto com a documentação/evidências versionadas.
 - Execuções realizadas nesta auditoria: nenhuma. Não foram executados scripts, SQL, comandos Confluent/Neon nem operações Cloud.
 - Escopo: scripts Bash de preparação, provisionamento, execução, verificações e teardown; SQL PostgreSQL; configuração dos conectores CDC/Sink; SQL Flink; schemas Avro; README, decisões técnicas, plano e evidências relevantes.
