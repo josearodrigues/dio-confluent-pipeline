@@ -606,3 +606,42 @@ Depois de produzir um alerta conhecido, execute:
 ### Limpeza
 
 O `teardown/cleanup.sh` valida o nome do Sink pelo ID persistido e remove o conector antes do CDC e do cluster. A limpeza PostgreSQL remove `public.fraud_alerts`; a role `alerts_sink` é global ao cluster e permanece criada, salvo remoção manual futura após auditoria de dependências.
+
+## 16. Investigação de `$rowtime` e encerramento do debate (14/11/2026)
+
+### Conclusão técnica
+
+A documentação consultada da Confluent apresenta duas orientações que parecem conflitantes: a página de restrições de metadata columns alerta para usos downstream, enquanto o exemplo oficial de `MATCH_RECOGNIZE` utiliza `$rowtime` em `ORDER BY` e nas medidas. A divergência documental não foi resolvida formalmente nesta investigação.
+
+A evidência do próprio ambiente, porém, permite uma conclusão operacional mais limitada e suficiente para decidir o próximo passo:
+
+- O statement `payments-fraud-detection-test` foi aceito em 14/11/2026 às 05:20:12 UTC e observado em `RUNNING`, usando o SQL atual de `flink/sql/04-fraud-detection.sql`.
+- Não foi encontrado, nos registros pesquisados, erro de submissão/rejeição que atribua falha ao uso de `$rowtime`.
+- O catálogo SQL listou `fraud_alerts`; `DESCRIBE EXTENDED fraud_alerts` mostrou `$rowtime` como coluna `ROWTIME`, com watermark `SOURCE_WATERMARK()`.
+- A consulta resumida retornou 641 linhas, todas com `txn_count=3`. Isso não identifica a origem dessas linhas nem prova que o cenário positivo controlado tenha sido detectado.
+- O warning `AGGREGATION_WITHOUT_KEY` veio de uma consulta exploratória de agregação global, não do statement de fraude.
+
+**Decisão:** não alterar o SQL atual com base apenas na divergência documental. Não afirmar que o uso de `$rowtime` está formalmente liberado para todo contexto, nem que está proibido em `MATCH_RECOGNIZE`. Para este projeto, a evidência disponível comprova aceitação e execução observada do statement, mas não homologação funcional.
+
+### Resultado do cenário positivo já executado
+
+As transações 2002, 2003 e 2004 do cartão 1 foram encontradas em `enriched_payments`, com os seguintes `$rowtime`:
+
+| Transação | `$rowtime` UTC |
+|---:|---|
+| 2002 | 06:11:30.774 |
+| 2003 | 06:11:30.775 |
+| 2004 | 06:16:44.383 |
+
+O intervalo entre o primeiro e o terceiro evento foi de **5 min 13,609 s**, superior à janela configurada de 60 segundos. Os registros consultados em `fraud_alerts` para o cartão 1 tinham timestamps entre 05:03:20.541 e 05:03:22.758 UTC, anteriores ao cenário. Não há correlação comprovada entre esses alertas históricos e as transações 2002–2004.
+
+**Classificação:** cenário positivo executado; enrichment observado para os três registros; alerta correspondente não comprovado; homologação funcional pendente. A consulta de 641 linhas e o estado `RUNNING` não alteram essa classificação.
+
+### Continuidade e limites operacionais
+
+A investigação sobre a proibição de `$rowtime` está encerrada para fins de decisão: não há base para reescrever o SQL, e novas consultas exploratórias sobre o mesmo ponto não são justificadas agora.
+
+A nova homologação positiva foi deliberadamente adiada até depois da conclusão da observabilidade e do teardown, conforme a ordem de trabalho acordada. Não repetir o cenário, não submeter statements e não executar operações de parada, exclusão ou provisionamento neste momento. Não executar Sink nem consumidor Python por inferência: o Sink permanece preparado no repositório, sem execução/homologação, e sua necessidade deve ser decidida separadamente dentro do escopo simplificado.
+
+Ao retomar a validação funcional, será necessário um cenário controlado com pelo menos três eventos positivos do mesmo cartão chegando ao Kafka em até 60 segundos, seguido da correlação com um alerta novo e evidência direta da mensagem/offset no tópico de saída. A consulta ao catálogo ou à tabela materializada, isoladamente, não substitui essa evidência.
+
