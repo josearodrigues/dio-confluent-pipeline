@@ -97,6 +97,21 @@ confluent kafka consumer group list -o json > "$GROUPS_TMP" 2>/dev/null || echo 
   echo "|---|---|---:|"
   jq -r '.[] | "| " + (.consumer_group // "-") + " | " + (.state // "-") + " | " + ((.coordinator // "-") | tostring) + " |"' "$GROUPS_TMP" 2>/dev/null || echo "| - | - | - |"
   echo
+  echo "## Detalhes dos Consumer Groups (Describe)"
+  echo
+  if jq -e '. | length > 0' "$GROUPS_TMP" >/dev/null 2>&1; then
+    for cg in $(jq -r '.[].consumer_group' "$GROUPS_TMP" 2>/dev/null); do
+      echo "### Consumer Group: \`$cg\`"
+      echo
+      echo '```text'
+      confluent kafka consumer group describe "$cg" 2>&1 || true
+      echo '```'
+      echo
+    done
+  else
+    echo "Nenhum Consumer Group encontrado no cluster."
+    echo
+  fi
   echo "## Arquivos"
   echo
   echo "- JSON original: \`evidence/observability/$(basename "$JSON_FILE")\`"
