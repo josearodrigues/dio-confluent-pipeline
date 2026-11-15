@@ -57,7 +57,17 @@ pre_counts() {
 
 post_counts() {
   CLUSTERS_AFTER="$(count_or_unknown confluent kafka cluster list --environment "$ENV_ID" -o json)"
-  ENVIRONMENTS_AFTER="$(count_or_unknown confluent environment list -o json)"
+  local environments_json
+  if environments_json="$(confluent environment list -o json 2>/dev/null)"; then
+    ENVIRONMENTS_AFTER="$(jq -er --arg id "$ENV_ID" '
+      if type == "array" then [.[] | select(.id == $id)] | length
+      elif type == "object" and (.data | type) == "array" then [.data[] | select(.id == $id)] | length
+      else error("formato JSON de environments não reconhecido")
+      end
+    ' <<<"$environments_json" 2>/dev/null)" || ENVIRONMENTS_AFTER="não consultado"
+  else
+    ENVIRONMENTS_AFTER="não consultado"
+  fi
   STATEMENTS_AFTER="$(count_or_unknown confluent flink statement list --environment "$ENV_ID" -o json)"
   CONNECTORS_AFTER="$(count_or_unknown confluent connect cluster list --environment "$ENV_ID" -o json)"
   POOL_AFTER="$(count_or_unknown confluent flink compute-pool list --environment "$ENV_ID" -o json)"
