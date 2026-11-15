@@ -55,3 +55,16 @@ Na execução atual, não iniciar Flink antes de concluir snapshot, CDC incremen
 ## Estado de validação
 
 As decisões acima descrevem o desenho e os artefatos atuais. A matriz de rastreabilidade documenta a diferença entre a ordem da demo e a ordem atual dos scripts do projeto. O Sink está configurado no repositório, mas sua execução, compatibilidade do schema Avro de saída, suficiência dos privilégios e persistência continuam pendentes de evidência real. A entrega at-least-once é declarada pela documentação do conector; UPSERT não é garantia exactly-once ponta a ponta. Os resultados cloud devem ser classificados somente com evidências produzidas e verificadas durante a execução real.
+
+## Investigação de `$rowtime` em `MATCH_RECOGNIZE` — decisão de 14/11/2026
+
+A documentação da Confluent consultada durante a revisão apresenta orientações aparentemente conflitantes: a página de restrições de metadata columns alerta para determinados usos downstream, enquanto o exemplo oficial de `MATCH_RECOGNIZE` utiliza `$rowtime` em `ORDER BY` e nas medidas. A divergência não foi resolvida formalmente.
+
+A evidência operacional do projeto mostra que o statement `payments-fraud-detection-test`, criado às 05:20:12 UTC de 14/11/2026, foi aceito e observado em `RUNNING` com o SQL atual. Não foi encontrado erro de rejeição por metadata column nos registros pesquisados. O catálogo listou `fraud_alerts`, cujo `DESCRIBE EXTENDED` expôs `$rowtime` como `ROWTIME` com `SOURCE_WATERMARK()`. Isso comprova aceitação e estado observado, não correção funcional nem autorização geral para qualquer uso downstream.
+
+**Decisão:** manter `flink/sql/04-fraud-detection.sql` sem alteração por esta suspeita. Não declarar que `$rowtime` é proibido em `MATCH_RECOGNIZE`, tampouco que a contradição documental foi resolvida. O warning `AGGREGATION_WITHOUT_KEY` identificado pertenceu a uma consulta exploratória de agregação global, não ao statement de fraude.
+
+A consulta resumida de `fraud_alerts` observou 641 linhas com `txn_count=3`, mas não estabeleceu origem nem correlação. No cenário positivo, as transações 2002, 2003 e 2004 do cartão 1 chegaram a `enriched_payments` com `$rowtime` 06:11:30.774, 06:11:30.775 e 06:16:44.383 UTC. O intervalo de 5 min 13,609 s excedeu a janela de 60 segundos. Os alertas históricos consultados eram anteriores ao cenário. Portanto, a detecção funcional continua sem homologação.
+
+A investigação sobre a proibição de `$rowtime` está encerrada para fins de decisão: não reescrever o SQL nem repetir consultas exploratórias sobre esse ponto. A nova homologação positiva foi adiada para depois da observabilidade e do teardown. Nenhuma ação Cloud foi executada como parte desta investigação. Consulte também a seção 16 de `docs/plano-homologacao.md`.
+
