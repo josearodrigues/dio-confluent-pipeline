@@ -116,7 +116,16 @@ A evolução real do schema é uma validação adicional deste projeto e anteced
 
 ## Segurança e custos
 
-Não versione `.env`, `.state.env`, arquivos renderizados ou segredos. O `.state.env` local contém IDs e credenciais, deve permanecer privado (permissão 600) e não deve ser compartilhado. A senha `PG_SINK_PASSWORD` é lida pelo `psql` diretamente do ambiente e não é passada como argumento de processo. A role `alerts_sink` é criada ou atualizada na inicialização; atributos e memberships preexistentes devem ser auditados antes de autorizar o Sink. A limpeza PostgreSQL remove a tabela `public.fraud_alerts`, mas não remove automaticamente a role global. A automação redescobre os recursos Confluent pelo nome; se uma API key já existir sem que seu segredo esteja disponível localmente, interrompe a execução para evitar duplicação. Execute em ambiente dedicado. Compute pool Flink e conectores gerenciados podem gerar custos enquanto provisionados/ativos. Consulte `operations/cost-and-metrics.md` antes e depois do laboratório.
+Não versione `.env`, `.state.env`, arquivos renderizados ou segredos. O `.state.env` local contém IDs e credenciais, deve permanecer privado (permissão 600) e não deve ser compartilhado. A senha `PG_SINK_PASSWORD` é lida pelo `psql` diretamente do ambiente e não é passada como argumento de processo. A role `alerts_sink` é criada ou atualizada na inicialização; atributos e memberships preexistentes devem ser auditados antes de autorizar o Sink. O teardown Neon remove os objetos PostgreSQL do laboratório e as roles configuradas em `PG_CDC_USER` e `PG_SINK_USER`, após confirmação independente. A automação redescobre os recursos Confluent pelo nome; se uma API key já existir sem que seu segredo esteja disponível localmente, interrompe a execução para evitar duplicação. Execute em ambiente dedicado. Compute pool Flink e conectores gerenciados podem gerar custos enquanto provisionados/ativos. Consulte `operations/cost-and-metrics.md` antes e depois do laboratório.
+
+
+## Teardown e preservação do Neon
+
+O teardown tem duas confirmações independentes. Na etapa Confluent, informa o Environment e solicita a confirmação literal `ENV_ID/CC_ENV_NAME`; a exclusão do Environment remove os recursos associados, como cluster Kafka, Schema Registry, Connect e Flink Compute Pool. Service Accounts só são excluídas quando o estado local registra que foram criadas pelo laboratório. API keys relacionadas ao Flink podem ter escopo regional e não são removidas pela exclusão do Environment; revise possíveis resíduos regionais e identidades preexistentes.
+
+Na etapa Neon, o script apresenta `NEON_PROJECT_ID`, `NEON_BRANCH`, host e database e exige a confirmação literal `NEON_PROJECT_ID/NEON_BRANCH/PG_DATABASE`. A limpeza SQL remove `payments_slot`, `payments_pub`, o schema `payments`, `public.fraud_alerts` e as roles configuradas por `PG_CDC_USER` e `PG_SINK_USER` (normalmente `cdc` e `alerts_sink`). O projeto, branch, compute, endpoint e banco são preservados. A remoção de roles não usa `DROP OWNED CASCADE`: dependências adicionais fazem o PostgreSQL recusar o `DROP ROLE`, preservando objetos não identificados como parte do laboratório.
+
+Autorizar Confluent não autoriza Neon. Se uma etapa não for confirmada, seus recursos permanecem preservados. Consulte o relatório em `evidence/teardown/`; ele distingue solicitação, verificação posterior e falhas.
 
 ## Estado da entrega
 
