@@ -605,7 +605,7 @@ Depois de produzir um alerta conhecido, execute:
 
 ### Limpeza
 
-O `teardown/cleanup.sh` valida o nome do Sink pelo ID persistido e remove o conector antes do CDC e do cluster. A limpeza PostgreSQL remove `public.fraud_alerts`; a role `alerts_sink` é global ao cluster e permanece criada, salvo remoção manual futura após auditoria de dependências.
+O `teardown/cleanup.sh` valida o nome do Sink pelo ID persistido e remove o conector antes do CDC e do cluster. A limpeza PostgreSQL remove `public.fraud_alerts` e tenta remover as roles configuradas em `PG_CDC_USER` e `PG_SINK_USER` após revogar os privilégios conhecidos do laboratório. Não usa `DROP OWNED CASCADE`: dependências adicionais podem impedir `DROP ROLE`, exigindo investigação antes de qualquer remoção manual.
 
 ## 16. Investigação de `$rowtime` e encerramento do debate (14/11/2026)
 
@@ -676,4 +676,4 @@ Confirmar Confluent não confirma Neon, e vice-versa. Se uma confirmação for r
 
 A rotina de remoção de identidades foi reforçada para propagar explicitamente falhas de listagem, exclusão e verificação das Service Accounts. O vínculo `MetricsViewer`, quando marcado como criado pelo laboratório, também é consultado antes e depois da exclusão; sua ausência só é registrada após nova listagem. O relatório registra separadamente o estado das identidades próprias e sinaliza que uma falha pode ter deixado remoção parcial. A confirmação literal `IDENTITIES/ENV_ID` permanece independente da confirmação do Environment.
 
-**Validação:** alteração estática publicada; aguarda `git pull` e `bash -n` local. Não foram executados comandos Confluent, SQL, Neon ou operações Cloud.
+**Validação:** o usuário sincronizou a `main` até `c2d424a` e informou que `bash -n teardown/cleanup.sh` e `bash -n scripts/run-sql.sh` terminaram sem erros. Isso valida apenas sintaxe Bash; não foram executados comandos Confluent, SQL, Neon ou operações Cloud.
