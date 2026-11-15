@@ -25,27 +25,45 @@ CLUSTER_NAME="$(confluent kafka cluster describe "$CLUSTER_ID" -o json | jq -r '
 # -------------------------------------------------------------------
 # 2. Funções auxiliares para contagem de recursos
 # -------------------------------------------------------------------
+count_or_unknown() {
+  local output count
+  if ! output="$("$@" 2>/dev/null)"; then
+    printf 'não consultado'
+    return
+  fi
+  count="$(jq -er '
+    if type == "array" then length
+    elif type == "object" and (.data | type) == "array" then (.data | length)
+    else error("formato JSON de listagem não reconhecido")
+    end
+  ' <<<"$output" 2>/dev/null)" || {
+    printf 'não consultado'
+    return
+  }
+  printf '%s' "$count"
+}
+
 pre_counts() {
   CLUSTERS_BEFORE=$(confluent kafka cluster list --environment "$ENV_ID" -o json | jq 'length')
-  ENVIRONMENTS_BEFORE=$(confluent environment list -o json | jq '[.[] | select(.id=="$ENV_ID")] | length')
+  ENVIRONMENTS_BEFORE=$(confluent environment list -o json | jq --arg id "$ENV_ID" '[.[] | select(.id == $id)] | length')
   STATEMENTS_BEFORE=$(confluent flink statement list --environment "$ENV_ID" -o json | jq 'length')
   CONNECTORS_BEFORE=$(confluent connect cluster list --environment "$ENV_ID" -o json | jq 'length')
   POOL_BEFORE=$(confluent flink compute-pool list --environment "$ENV_ID" -o json | jq 'length')
   APIKEYS_BEFORE=$(confluent api-key list --environment "$ENV_ID" -o json | jq 'length')
   SA_BEFORE=$(confluent iam service-account list --environment "$ENV_ID" -o json | jq 'length')
-  # Neon DB sempre existente antes da limpeza (marcamos como 1)
-  NEON_BEFORE=1
+  # A existência/conteúdo do Neon não é consultada por este script.
+  NEON_BEFORE="não verificado"
 }
 
 post_counts() {
-  CLUSTERS_AFTER=$(confluent kafka cluster list --environment "$ENV_ID" -o json | jq 'length') || CLUSTERS_AFTER=0
-  ENVIRONMENTS_AFTER=$(confluent environment list -o json | jq '[.[] | select(.id=="$ENV_ID")] | length') || ENVIRONMENTS_AFTER=0
-  STATEMENTS_AFTER=$(confluent flink statement list --environment "$ENV_ID" -o json | jq 'length') || STATEMENTS_AFTER=0
-  CONNECTORS_AFTER=$(confluent connect cluster list --environment "$ENV_ID" -o json | jq 'length') || CONNECTORS_AFTER=0
-  POOL_AFTER=$(confluent flink compute-pool list --environment "$ENV_ID" -o json | jq 'length') || POOL_AFTER=0
-  APIKEYS_AFTER=$(confluent api-key list --environment "$ENV_ID" -o json | jq 'length') || APIKEYS_AFTER=0
-  SA_AFTER=$(confluent iam service-account list --environment "$ENV_ID" -o json | jq 'length') || SA_AFTER=0
-  NEON_AFTER=0
+  CLUSTERS_AFTER="$(count_or_unknown confluent kafka cluster list --environment "$ENV_ID" -o json)"
+  ENVIRONMENTS_AFTER="$(count_or_unknown confluent environment list -o json)"
+  STATEMENTS_AFTER="$(count_or_unknown confluent flink statement list --environment "$ENV_ID" -o json)"
+  CONNECTORS_AFTER="$(count_or_unknown confluent connect cluster list --environment "$ENV_ID" -o json)"
+  POOL_AFTER="$(count_or_unknown confluent flink compute-pool list --environment "$ENV_ID" -o json)"
+  APIKEYS_AFTER="$(count_or_unknown confluent api-key list --environment "$ENV_ID" -o json)"
+  SA_AFTER="$(count_or_unknown confluent iam service-account list --environment "$ENV_ID" -o json)"
+  NEON_AFTER="não verificado"
 }
 
 # -------------------------------------------------------------------
@@ -69,7 +87,7 @@ confluent kafka cluster use "$CLUSTER_ID" >/dev/null
 # 5. Remoção dos recursos Confluent (idempotente)
 # -------------------------------------------------------------------
 for statement in payments-fraud-detection payments-append-only payments-enrichment \
-  payments-pk-accounts payments-transactions-startup; do
+  payments-pk-accounts payments-pk-transactions; do
   confluent flink statement delete "$statement" --force 2>/dev/null || true
 done
 
@@ -82,14 +100,21 @@ fi
 if [[ -n "${FLINK_POOL_ID:-}" ]]; then
   confluent flink compute-pool delete "$FLINK_POOL_ID" --force || true
 fi
-for key in "${WRITER_API_KEY:-}" "${READER_API_KEY:-}" "${SR_API_KEY:-}"; do
+for key in "${WRITER_API_KEY:-}" "${READER_API_KEY:-}" "${SR_API_KEY:-}" "${METRICS_API_KEY:-}"; do
   [[ -n "$key" ]] && confluent api-key delete "$key" --force || true
 done
+if [[ "${METRICS_RBAC_CREATED:-no}" == yes && -n "${SA_METRICS_ID:-}" ]]; then
+  confluent iam rbac role-binding delete \
+    --principal "User:$SA_METRICS_ID" --role MetricsViewer --force || true
+fi
 if [[ "${SA_WRITER_CREATED:-no}" == yes && -n "${SA_WRITER_ID:-}" ]]; then
   confluent iam service-account delete "$SA_WRITER_ID" --force || true
 fi
 if [[ "${SA_READER_CREATED:-no}" == yes && -n "${SA_READER_ID:-}" ]]; then
   confluent iam service-account delete "$SA_READER_ID" --force || true
+fi
+if [[ "${SA_METRICS_CREATED:-no}" == yes && -n "${SA_METRICS_ID:-}" ]]; then
+  confluent iam service-account delete "$SA_METRICS_ID" --force || true
 fi
 confluent kafka cluster delete "$CLUSTER_ID" --force || true
 confluent environment delete "$ENV_ID" --force || true
@@ -147,7 +172,7 @@ $NEON_CLEANUP_OUTPUT
 $BILLING_OUTPUT
 ```
 
-*Todas as contagens acima devem ser 0 após a execução bem‑sucedida.*
+Contagens marcadas como "não consultado" não puderam ser verificadas após a remoção do Environment. O estado do Neon também não é consultado por este relatório; não interprete "não verificado" como banco vazio.
 EOF
 
 echo "✅ Relatório de teardown salvo em $REPORT_PATH"
