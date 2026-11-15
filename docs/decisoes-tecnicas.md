@@ -92,3 +92,8 @@ Referências oficiais:
 ## Decisão complementar de teardown — 15/11/2026
 
 Falhas em consultas, exclusões ou verificações de Service Accounts e do vínculo `MetricsViewer` devem ser propagadas explicitamente, sem depender apenas de `set -e` dentro de funções chamadas em condicionais. O vínculo só é reportado como removido após nova listagem confirmar sua ausência. O relatório distingue identidades preservadas por falta de confirmação, ausência de identidades marcadas e falha possivelmente parcial. A remoção continua limitada aos recursos cujo estado local registra criação pelo laboratório e exige confirmação literal independente `IDENTITIES/ENV_ID`.
+
+
+## Decisão operacional — roles Neon (15/11/2026)
+
+A role administrativa/owner provisionada e gerenciada pelo projeto Neon (neste ambiente, `payments_owner`) faz parte do ciclo de vida do projeto. Não é uma role auxiliar criada pelo laboratório e deve ser preservada; sua remoção não faz parte do teardown. As roles auxiliares `cdc` e `alerts_sink` foram removidas manualmente em 15/11/2026, conforme informado pelo operador. Não repetir a limpeza Neon para tentar removê-las. O projeto, branch, compute, endpoint e database `payments` permanecem preservados. Não tentar excluir isoladamente o database para remover a role gerenciada pelo projeto.
