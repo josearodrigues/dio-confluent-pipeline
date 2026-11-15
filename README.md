@@ -178,7 +178,7 @@ Confirme na evidência que o novo schema foi publicado, que a compatibilidade fo
 A fundação não cria o compute pool. Antes de executar os statements, execute o script:
 
 ```bash
-./infrastructure/flink-compute-pool.sh
+bash infrastructure/flink-compute-pool.sh
 ```
 
 O script carrega automaticamente `.env` e `.state.env`, identifica o Environment criado na etapa 4 e cria o pool com o nome, a cloud e a região configurados. O limite padrão é de 5 CFUs; pode ser ajustado localmente por `FLINK_MAX_CFU`, por exemplo:
@@ -187,7 +187,7 @@ O script carrega automaticamente `.env` e `.state.env`, identifica o Environment
 FLINK_MAX_CFU=10 ./infrastructure/flink-compute-pool.sh
 ```
 
-Se o pool com o nome configurado já existir, o script não o recria: valida nome, Environment, cloud, região e estado. Em caso de divergência ou ambiguidade, interrompe sem alterar o recurso. Quando o pool estiver `PROVISIONED` ou `RUNNING`, salva seu ID em `.state.env`.
+Se o pool com o nome configurado já existir, o script não o recria: valida nome, Environment, cloud, região e estado. Se encontrar o pool legado conhecido, só o renomeia após validar sua identidade e localização, preservando o limite de CFUs. Em caso de divergência, duplicidade ou coexistência ambígua, interrompe sem alterar o recurso. Quando o pool estiver `PROVISIONED` ou `RUNNING`, salva seu ID em `.state.env`.
 
 A evidência da execução é gravada em `evidence/cloud/04-flink-compute-pool.txt`. A criação exige permissão Confluent adequada, como `FlinkAdmin`. Consulte a [documentação oficial de criação de compute pools](https://docs.confluent.io/confluent-cli/current/command-reference/flink/compute-pool/confluent_flink_compute-pool_create.html).
 
