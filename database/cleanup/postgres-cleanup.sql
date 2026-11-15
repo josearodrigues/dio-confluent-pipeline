@@ -19,12 +19,30 @@
   \quit 3
 \endif
 
-SELECT pg_terminate_backend(active_pid)
-FROM pg_replication_slots
-WHERE slot_name = 'payments_slot' AND active_pid IS NOT NULL;
-SELECT pg_sleep(2);
+-- Não tenta encerrar sessões: no Neon, pg_terminate_backend pode não
+-- ter privilégio sobre outra role membro de neon_superuser.
+-- Se o slot estiver ativo, interrompe antes de qualquer alteração destrutiva.
+SELECT EXISTS (
+  SELECT 1
+  FROM pg_replication_slots
+  WHERE slot_name = 'payments_slot'
+    AND active_pid IS NOT NULL
+) AS payments_slot_active
+\gset
+
+\if :payments_slot_active
+  \echo 'ERRO: payments_slot está ativo. Pare/exclua o connector CDC na Confluent e repita a limpeza.'
+  \quit 5
+\endif
+
+-- Slot ausente é aceito; slot existente só é removido quando inativo.
 SELECT pg_drop_replication_slot('payments_slot')
-WHERE EXISTS (SELECT 1 FROM pg_replication_slots WHERE slot_name = 'payments_slot');
+WHERE EXISTS (
+  SELECT 1
+  FROM pg_replication_slots
+  WHERE slot_name = 'payments_slot'
+    AND active_pid IS NULL
+);
 
 DROP PUBLICATION IF EXISTS payments_pub;
 
