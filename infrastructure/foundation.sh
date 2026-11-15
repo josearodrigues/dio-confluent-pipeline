@@ -105,6 +105,7 @@ ensure_key(){
 }
 ensure_metrics_role(){
   local principal="$1" bindings normalized count
+  local previous_created="${METRICS_RBAC_CREATED:-no}"
   bindings="$(confluent iam rbac role-binding list \
     --principal "$principal" --role MetricsViewer -o json)"
   normalized="$(jq -ce '
@@ -120,6 +121,8 @@ ensure_metrics_role(){
   count="$(jq -er 'length' <<<"$normalized")" ||
     fail "não foi possível contar os role-bindings MetricsViewer."
   if [[ "$count" -gt 0 ]]; then
+    METRICS_RBAC_CREATED="$previous_created"
+    save_state METRICS_RBAC_CREATED "$METRICS_RBAC_CREATED"
     echo "MetricsViewer já atribuído a $principal."
     return
   fi
@@ -145,6 +148,8 @@ ensure_metrics_role(){
   [[ "$count" -gt 0 ]] ||
     fail "o role-binding MetricsViewer não apareceu na listagem após a criação."
 
+  METRICS_RBAC_CREATED=yes
+  save_state METRICS_RBAC_CREATED "$METRICS_RBAC_CREATED"
   echo "MetricsViewer atribuído e confirmado para $principal."
 }
 # Classifica uma ACL exata para a operação solicitada.
