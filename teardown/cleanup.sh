@@ -154,7 +154,7 @@ if [[ -n "$ENV_ID" && -n "$CC_ENV_NAME" ]] && command -v confluent >/dev/null 2>
             [[ "$SA_REMOVED" == "nenhuma" ]] || SA_REMOVED="${SA_REMOVED#nenhuma }"
           elif [[ "$ENV_AFTER" == "não consultado" ]]; then
             CONFLUENT_STATUS="não verificado"
-            CONFLUENT_DETAIL="Não foi possível consultar novamente a listagem do Environment; Neon continua independente."
+            CONFLUENT_DETAIL="Não foi possível consultar novamente a listagem do Environment; a limpeza Neon será bloqueada."
           else
             CONFLUENT_STATUS="não confirmado"
             CONFLUENT_DETAIL="A listagem ainda mostra o Environment; identidades e vínculos próprios não foram removidos."
