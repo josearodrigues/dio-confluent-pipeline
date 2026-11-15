@@ -657,7 +657,7 @@ O teardown contém duas operações destrutivas independentes. Nenhuma confirma�
 2. O script valida a correspondência exata e solicita confirmação literal `ENV_ID/CC_ENV_NAME`.
 3. A exclusão do Environment é a operação principal; remove clusters Kafka, Schema Registry, Connect e Flink Compute Pools associados.
 4. Service Accounts só são removidas quando `SA_WRITER_CREATED`, `SA_READER_CREATED` ou `SA_METRICS_CREATED` indicam criação pelo laboratório. O vínculo MetricsViewer só é removido quando `METRICS_RBAC_CREATED=yes`.
-5. A exclusão de Service Account remove suas API keys associadas. API keys Flink podem ter escopo regional fora do Environment; revise eventuais resíduos e preserve identidades preexistentes.
+5. A exclusão de Service Account remove suas API keys associadas. Confira a página de API Keys após a exclusão: chaves Flink regionais devem ser verificadas individualmente. A exclusão de uma Service Account remove as API keys associadas a ela; chaves ligadas a usuários ou outras identidades devem ser avaliadas separadamente.
 6. O script verifica o desaparecimento do Environment e das Service Accounts removidas. Falha de consulta não é convertida em zero.
 
 ### Neon
