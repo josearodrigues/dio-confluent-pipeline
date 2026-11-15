@@ -1,10 +1,18 @@
 # Pipeline de pagamentos em tempo real
 
-Laboratório didático de **Change Data Capture (CDC)** e processamento de eventos com PostgreSQL, Confluent Cloud e Flink SQL.
+Este repositório apresenta um projeto acadêmico desenvolvido como desafio final do bootcamp **IBM Confluent - Dados em tempo real para agentes de IA**, oferecido pela [DIO](https://www.dio.me/) em parceria com IBM e Confluent. O trabalho tem finalidade educacional: aplicar conceitos de integração de dados em tempo real, Change Data Capture (CDC), streaming e processamento de eventos em uma arquitetura de pagamentos.
+
+O projeto utiliza PostgreSQL, Confluent Cloud, Kafka, Schema Registry, conectores e Flink SQL para demonstrar um fluxo de eventos e uma regra didática de detecção de possíveis transações suspeitas. É um projeto independente, não um produto oficial nem uma implementação certificada ou endossada pela DIO, IBM ou Confluent.
 
 **Fluxo:** PostgreSQL → Debezium CDC → Kafka → Flink SQL → tópico `fraud_alerts` → PostgreSQL Sink.
 
 O objetivo é capturar alterações no banco, enriquecer transações com dados de contas e identificar três ou mais transações positivas do mesmo cartão em até 60 segundos de tempo de evento Kafka.
+
+### Organização da execução
+
+A execução foi documentada em etapas, com scripts específicos para partes do fluxo. **Não foi criado um script único que provisiona e executa todos os recursos de uma só vez.** Essa escolha é intencional: o usuário percorre as etapas, acompanha a criação e a configuração dos recursos na Neon e na Confluent Cloud, observa seus estados e valida os resultados de cada componente. A proposta é proporcionar experiência prática com o provisionamento e a integração dos serviços, em vez de ocultar todo o processo atrás de uma automação única.
+
+Os scripts automatizam tarefas delimitadas, mas não substituem a leitura das instruções, as confirmações exigidas nem a validação de cada etapa. Siga a sequência deste README e avance somente após conferir os resultados esperados.
 
 ## Arquitetura
 
