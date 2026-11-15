@@ -205,7 +205,7 @@ TOTALS="$(jq -r '
   echo "## Limitações e interpretação"
   echo
   echo "- A Costs API pode levar até 72 horas para disponibilizar os dados; os valores não representam necessariamente os encargos correntes do Console."
-  echo "- A consulta padrão termina três dias antes da data UTC atual para reduzir a exposição ao atraso. Datas explícitas podem ser informadas como argumentos."
+  echo "- Sem argumentos, a consulta cobre do primeiro dia do mês UTC corrente até amanhã (fim exclusivo). A Costs API pode apresentar defasagem de até 72 horas; para períodos mais recentes, considere informar datas explícitas."
   echo "- A API agrega os itens diariamente. O campo \`amount\` é o valor após os descontos discriminados pela API."
   echo "- Quando \`discount_amount\` vier nulo/ausente em qualquer item, o resumo não apresenta uma soma global de descontos como se estivesse completa."
   echo "- O resultado não informa o saldo restante de créditos promocionais nem substitui a tela de Invoice Breakdown."
