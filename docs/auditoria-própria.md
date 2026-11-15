@@ -142,3 +142,17 @@ Na revisão inicial, não foram alterados código, configurações ou recursos C
 ### Limites desta atualização
 
 As alterações foram feitas estaticamente no GitHub. Não foram executados Bash, ShellCheck, comandos Confluent, SQL, operações Neon, criação ou remoção de recursos. Portanto, os ajustes estão **preparados no código**, mas ainda não foram testados em execução.
+
+## Validação local de sintaxe Bash — 15/11/2026
+
+O usuário executou no clone local o comando abaixo e informou o retorno `Sintaxe Bash OK`:
+
+```bash
+bash -n flink/scripts/run.sh \
+  infrastructure/foundation.sh \
+  teardown/cleanup.sh \
+  operations/verify-acls.sh \
+  && echo "Sintaxe Bash OK"
+```
+
+**Resultado reportado:** a verificação de sintaxe passou para os quatro scripts listados. Esta validação não executa os scripts nem comprova comportamento em runtime, permissões, acesso à Confluent Cloud ou ao Neon. Nenhuma operação Cloud/Neon foi realizada nesta etapa.
