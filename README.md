@@ -114,11 +114,13 @@ O wrapper valida a conexão, a configuração de logical replication e a autenti
 
 ## 4. Provisionar a fundação Confluent
 
-Autentique a Confluent CLI, se necessário:
+Com a CLI Neon autenticada na etapa anterior, autentique também a Confluent CLI, se necessário:
 
 ```bash
 confluent login
 ```
+
+Depois, execute o provisionamento da fundação:
 
 ```bash
 ./infrastructure/foundation.sh
