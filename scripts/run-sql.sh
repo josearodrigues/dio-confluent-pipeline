@@ -82,10 +82,15 @@ SQL
 fi
 
 if [[ "$SQL_RELATIVE" == database/cleanup/postgres-cleanup.sql ]]; then
-  [[ "${CONFIRM_CLEANUP:-}" == "yes" ]] || {
-    echo "A limpeza remove o schema payments, a publication e a tabela public.fraud_alerts. Use CONFIRM_CLEANUP=yes após conferir o alvo." >&2
-    exit 1
-  }
+  : "${PG_CDC_USER:?PG_CDC_USER ausente}"
+  : "${PG_SINK_USER:?PG_SINK_USER ausente}"
+  [[ "$PG_CDC_USER" =~ ^[A-Za-z_][A-Za-z0-9_]*$ && "$PG_SINK_USER" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] || { echo "Nomes de roles inválidos." >&2; exit 1; }
+  [[ "$PG_CDC_USER" != "$PG_SINK_USER" && "$PG_CDC_USER" != "$PG_ADMIN_USER" && "$PG_SINK_USER" != "$PG_ADMIN_USER" ]] || { echo "Roles CDC, Sink e administrativa devem ser distintas." >&2; exit 1; }
+  [[ "${CONFIRM_CLEANUP:-}" == "yes" ]] || { echo "A limpeza remove objetos e roles PG_CDC_USER/PG_SINK_USER. Use CONFIRM_CLEANUP=yes após conferir o alvo." >&2; exit 1; }
+  echo "Alvo Neon informado: projeto=${NEON_PROJECT_ID:-não informado} branch=${NEON_BRANCH:-main}"
+  echo "Alvo PostgreSQL: host=$PG_HOST database=$PG_DATABASE user=$PG_ADMIN_USER"
+  echo "Roles a remover: CDC=$PG_CDC_USER; Sink=$PG_SINK_USER"
+  EXTRA+=(-v cleanup_ok=1)
 fi
 
 STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
