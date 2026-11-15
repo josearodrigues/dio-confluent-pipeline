@@ -67,7 +67,7 @@ O usuário sincronizou `main`, validou a sintaxe de `operations/verify-metrics.s
 - `evidence/observability/20261114T100354Z-metrics.json` — resposta original da API.
 - `evidence/observability/20261114T100354Z-metrics.md` — resumo com valores e conversões.
 
-Foram retornados dois pontos: 133.168 bytes às 05:00 UTC (≈130,05 KiB) e 1.250 bytes às 06:00 UTC (≈1,22 KiB), para o cluster `lkc-rrwvjjk`, com janela solicitada `PT6H/now` e granularidade `PT1H`. A consulta confirma a coleta de dados para os pontos retornados, mas não cobertura contínua das seis horas. A coleta automatizada está validada nesta execução; a observabilidade geral permanece parcial: ACLs/RBAC foram aprovados; Billing está preparado, mas aguarda execução; confiabilidade ainda está pendente.
+Foram retornados dois pontos: 133.168 bytes às 05:00 UTC (≈130,05 KiB) e 1.250 bytes às 06:00 UTC (≈1,22 KiB), para o cluster `lkc-rrwvjjk`, com janela solicitada `PT6H/now` e granularidade `PT1H`. A consulta confirma a coleta de dados para os pontos retornados, mas não cobertura contínua das seis horas. A coleta automatizada de métricas está validada nesta execução; ACLs/RBAC foram aprovados. Billing também possui execução registrada em 15/11/2026, com evidência em `evidence/observability/20261115T004328Z-billing.md`; a observabilidade geral permanece parcial, pois a análise de confiabilidade é conceitual e não comprova o pipeline ponta a ponta.
 
 
 ## Coleta automatizada de Billing — preparação
@@ -81,7 +81,7 @@ bash operations/verify-billing.sh
 ./operations/verify-billing.sh 2026-11-01 2026-11-11
 ```
 
-Sem argumentos, consulta o mês UTC atual até três dias antes da data corrente, como margem conservadora para o atraso de até 72 horas da Costs API. O intervalo explícito usa início inclusivo e fim exclusivo, no formato `YYYY-MM-DD`; a API aceita no máximo um mês por consulta. O papel necessário é `OrganizationAdmin` ou `BillingAdmin`.
+Sem argumentos, consulta do primeiro dia do mês UTC corrente até amanhã (data final exclusiva). Como a Costs API pode apresentar atraso de até 72 horas, os dias mais recentes podem ainda não estar disponíveis; para consultar uma janela específica, informe as datas explicitamente. O intervalo explícito usa início inclusivo e fim exclusivo, no formato `YYYY-MM-DD`; a API aceita no máximo um mês por consulta. O papel necessário é `OrganizationAdmin` ou `BillingAdmin`.
 
 O script preserva a saída JSON original e cria resumo Markdown datado em `evidence/observability/`, ambos com permissão local 600. A normalização aceita valores monetários JSON numéricos, strings decimais e strings com prefixo `$<decimal>`, além de decimais sem prefixo e números JSON, validando o formato antes da conversão. A tabela trata `resource` e `environment` como objeto, string ou `null`: acessa `id` somente quando o valor é objeto e usa a string diretamente quando aplicável. Valores nulos/ausentes são exibidos vazios. `amount` é obrigatório; `original_amount` e `discount_amount` nulos/ausentes não são convertidos silenciosamente em zero. Se qualquer item não trouxer `discount_amount`, o resumo não consolida uma soma global incompleta. O JSON bruto da CLI é preservado antes da renderização da tabela.
 
