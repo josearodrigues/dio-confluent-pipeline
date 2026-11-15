@@ -262,6 +262,7 @@ Antes da auditoria, confira a mensagem no tópico Kafka `fraud_alerts`. As crede
 source .env
 source .state.env
 confluent kafka topic consume fraud_alerts \
+  --from-beginning \
   --value-format avro \
   --print-offset \
   --schema-registry-endpoint "$SR_URL" \
