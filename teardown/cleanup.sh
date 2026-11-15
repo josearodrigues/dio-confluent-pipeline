@@ -70,7 +70,10 @@ if [[ -n "$ENV_ID" && -n "$CC_ENV_NAME" ]] && command -v confluent >/dev/null 2>
       ENV_AFTER="0"
       # Environment pode ter sido removido em execução anterior; limpe apenas
       # identidades cujo estado local registra criação pelo laboratório.
-      delete_owned_identities
+      delete_owned_identities || {
+        CONFLUENT_STATUS="falha ao remover identidades"
+        CONFLUENT_DETAIL="Environment já ausente, mas houve falha ao remover uma identidade criada pelo laboratório."
+      }
     elif [[ "$MATCH_COUNT" != "1" ]]; then
       CONFLUENT_STATUS="não verificado"
       CONFLUENT_DETAIL="A listagem não retornou correspondência única; nenhuma exclusão executada."
@@ -90,14 +93,23 @@ if [[ -n "$ENV_ID" && -n "$CC_ENV_NAME" ]] && command -v confluent >/dev/null 2>
             CONFLUENT_STATUS="falha"
             CONFLUENT_DETAIL="A CLI retornou erro ao solicitar a exclusão."
           fi
-          ENVIRONMENTS_AFTER_RAW="$(confluent environment list -o json)"
-          ENVIRONMENTS_AFTER="$(printf '%s' "$ENVIRONMENTS_AFTER_RAW" | normalize_list)"
-          ENV_AFTER="$(jq -r --arg id "$ENV_ID" '[.[] | select(.id == $id)] | length' <<<"$ENVIRONMENTS_AFTER")"
+          if ENVIRONMENTS_AFTER_RAW="$(confluent environment list -o json 2>&1)" &&
+             ENVIRONMENTS_AFTER="$(printf '%s' "$ENVIRONMENTS_AFTER_RAW" | normalize_list 2>/dev/null)"; then
+            ENV_AFTER="$(jq -r --arg id "$ENV_ID" '[.[] | select(.id == $id)] | length' <<<"$ENVIRONMENTS_AFTER")"
+          else
+            ENV_AFTER="não consultado"
+          fi
           if [[ "$ENV_AFTER" == "0" ]]; then
             CONFLUENT_STATUS="Environment ausente na verificação posterior"
             CONFLUENT_DETAIL="A listagem confirmou que o Environment não existe mais."
-            delete_owned_identities
+            delete_owned_identities || {
+              CONFLUENT_STATUS="Environment removido; falha ao remover identidades"
+              CONFLUENT_DETAIL="Environment ausente, mas houve falha ao remover uma identidade criada pelo laboratório."
+            }
             [[ "$SA_REMOVED" == "nenhuma" ]] || SA_REMOVED="${SA_REMOVED#nenhuma }"
+          elif [[ "$ENV_AFTER" == "não consultado" ]]; then
+            CONFLUENT_STATUS="não verificado"
+            CONFLUENT_DETAIL="Não foi possível consultar novamente a listagem do Environment; Neon continua independente."
           else
             CONFLUENT_STATUS="não confirmado"
             CONFLUENT_DETAIL="A listagem ainda mostra o Environment; Service Accounts não foram removidas."
