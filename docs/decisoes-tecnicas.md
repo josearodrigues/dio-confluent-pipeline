@@ -87,3 +87,8 @@ Referências oficiais:
 - Confluent API, https://docs.confluent.io/cloud/current/ccloud/delete-iam-v-2-service-account/
 - PostgreSQL, https://www.postgresql.org/docs/current/sql-droprole.html
 - PostgreSQL, https://www.postgresql.org/docs/17/role-removal.html
+
+
+## Decisão complementar de teardown — 15/11/2026
+
+Falhas em consultas, exclusões ou verificações de Service Accounts e do vínculo `MetricsViewer` devem ser propagadas explicitamente, sem depender apenas de `set -e` dentro de funções chamadas em condicionais. O vínculo só é reportado como removido após nova listagem confirmar sua ausência. O relatório distingue identidades preservadas por falta de confirmação, ausência de identidades marcadas e falha possivelmente parcial. A remoção continua limitada aos recursos cujo estado local registra criação pelo laboratório e exige confirmação literal independente `IDENTITIES/ENV_ID`.
