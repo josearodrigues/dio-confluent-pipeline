@@ -2,7 +2,7 @@
 
 - Repositório: `josearodrigues/dio-confluent-pipeline`
 - Branch analisada: `main`
-- Commit de referência: `0c1a8406af9f893a127f0d6b44a8f08928017250`
+- Commit de referência da revisão inicial: `0c1a8406af9f893a127f0d6b44a8f08928017250`\n- Atualização da matriz e correções estáticas: 15/11/2026, branch `main`.
 - Natureza: revisão estática do código e confronto com a documentação/evidências versionadas.
 - Execuções realizadas nesta auditoria: nenhuma. Não foram executados scripts, SQL, comandos Confluent/Neon nem operações Cloud.
 - Escopo: scripts Bash de preparação, provisionamento, execução, verificações e teardown; SQL PostgreSQL; configuração dos conectores CDC/Sink; SQL Flink; schemas Avro; README, decisões técnicas, plano e evidências relevantes.
@@ -109,4 +109,32 @@ Também há uma divergência documental relevante: o relatório de confiabilidad
 
 Esta foi uma análise estática dos arquivos listados no escopo, usando a versão da branch `main` indicada no cabeçalho. Não foram executados testes locais, análise ShellCheck, validação de SQL contra instância real, chamadas à Confluent Cloud ou ao Neon, nem provisionamento/remoção de recursos. Assim, compatibilidade de versões da CLI, comportamento de APIs, permissões efetivas e funcionamento em runtime permanecem pontos a verificar.
 
-A revisão não alterou código, configurações, recursos Cloud/Neon ou evidências existentes. Este arquivo é o registro desta análise própria; o relatório da auditoria independente externa deve permanecer separado em `docs/auditoria-independente-externa.md`.
+Na revisão inicial, não foram alterados código, configurações ou recursos Cloud/Neon. As correções estáticas posteriores estão discriminadas na matriz abaixo. Nenhuma operação Cloud/Neon foi executada. Este arquivo permanece o registro da análise própria; o relatório independente externo continua separado em `docs/auditoria-independente-externa.md`.
+
+
+## Matriz consolidada e situação das correções — 15/11/2026
+
+| Tema | Classificação | Situação nesta atualização |
+|---|---|---|
+| Padrão de idleness em `flink/scripts/run.sh` | Inconsistência confirmada entre script e README | **Corrigido no código:** o padrão agora fica vazio; timeout fixo só é aplicado quando configurado explicitamente. |
+| Teardown: nome do statement de chave de transactions | Divergência confirmada | **Corrigido no código:** o teardown usa `payments-pk-transactions`, igual ao executor. |
+| Teardown: vínculo e identidade de métricas | Lacuna confirmada | **Corrigido parcialmente no código:** a fundação registra se criou o vínculo MetricsViewer; o teardown remove a API key, o vínculo e a Service Account de métricas somente quando pertencem ao projeto. A limpeza ainda não foi executada. |
+| Teardown: contagens posteriores | Defeito confirmado de contabilização | **Corrigido no código:** falhas de consulta deixam de ser convertidas em zero; Environment usa o ID via `jq --arg`; Neon aparece como não verificado. |
+| ACLs de grupos | Divergência entre fundação e verificador | **Corrigido no verificador:** removida a expectativa de DESCRIBE não provisionada. Nenhuma permissão adicional foi concedida. |
+| Relatório de confiabilidade | Afirmações não sustentadas por execução | **Corrigido no documento:** agora é análise conceitual; Sink e detecção de fraude permanecem explicitamente não demonstrados. |
+| Uso de `$rowtime` em `MATCH_RECOGNIZE` | Suspeita não confirmada | **Sem alteração**, conforme decisão técnica registrada: statement aceito/observado, mas detecção funcional não comprovada. |
+| Bug de Markdown no Billing | Achado histórico já corrigido | **Não reaberto:** a versão atual já contém a correção. |
+| Guarda de duplicidade do conector CDC | Falso positivo parcial da auditoria externa | **Não tratado como defeito:** o script verifica conector e replication slot; isso evita duplicação, mas não equivale a reexecução idempotente completa. |
+| Confirmação do reset Neon | Falso positivo da auditoria externa | **Não tratado como defeito:** o script exige a confirmação literal prevista, não qualquer texto não vazio. |
+| Privilégios efetivos da role do Sink | Ponto a verificar | **Pendente:** não alterar permissões sem resultado da auditoria read-only ou requisito específico confirmado. |
+| Detecção funcional de fraude | Limitação comprovada pelas evidências disponíveis | **Pendente:** os três eventos observados não ficaram dentro da janela de 60 segundos; não há correlação comprovada com mensagem nova em `fraud_alerts`. |
+
+### Próximas prioridades
+
+1. Revisar com calma os limites restantes do teardown, especialmente o que só pode ser confirmado após consulta real aos recursos.
+2. Fazer validação local de sintaxe dos scripts alterados antes de qualquer uso operacional.
+3. Manter role do Sink, detecção de fraude e execução do Sink como pendências separadas; não ampliar o escopo automaticamente.
+
+### Limites desta atualização
+
+As alterações foram feitas estaticamente no GitHub. Não foram executados Bash, ShellCheck, comandos Confluent, SQL, operações Neon, criação ou remoção de recursos. Portanto, os ajustes estão **preparados no código**, mas ainda não foram testados em execução.
