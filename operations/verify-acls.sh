@@ -113,22 +113,49 @@ RBAC_OK=no
 [[ "$RBAC_COUNT" -eq 1 ]] && RBAC_OK=yes
 
 {
-  echo "# Verificação de ACLs e RBAC"
+  echo "# Verificação de ACLs e RBAC (Matriz de Segurança)"
   echo
   echo "- Coletado em (UTC): $STAMP"
   echo "- Environment ID: $ENV_ID"
   echo "- Kafka cluster ID: $CLUSTER_ID"
-  echo "- Writer principal: $WRITER"
-  echo "- Reader principal: $READER"
-  echo "- Metrics principal: $METRICS"
+  echo "- Writer (CDC) principal: $WRITER"
+  echo "- Reader (Sink) principal: $READER"
+  echo "- Metrics (Telemetria) principal: $METRICS"
   echo
-  echo "## ACLs Kafka"
+  echo "## 1. Permissões Efetivas do CDC Producer (Writer: \`$SA_WRITER_ID\`)"
+  echo
+  echo '```text'
+  confluent kafka acl list --service-account "$SA_WRITER_ID" 2>&1
+  echo '```'
+  echo
+  echo "## 2. Permissões Efetivas do Sink Consumer (Reader: \`$SA_READER_ID\`)"
+  echo
+  echo '```text'
+  confluent kafka acl list --service-account "$SA_READER_ID" 2>&1
+  echo '```'
+  echo
+  echo "## 3. Vínculo RBAC de Telemetria (Metrics: \`$SA_METRICS_ID\`)"
+  echo
+  echo '```text'
+  confluent iam rbac role-binding list --principal "$METRICS" --role MetricsViewer 2>&1
+  echo '```'
+  echo
+  echo "## 4. Tabela Síntese de Menor Privilégio (Pilar ② Segurança)"
+  echo
+  echo "| Service Account (Papel) | Recursos e Operações (ACLs / RBAC) | Justificativa Técnica (Por quê) |"
+  echo "|---|---|---|"
+  echo "| **CDC Producer (Writer)**<br>\`$SA_WRITER_ID\` | **TOPIC** \`payments.\` e \`__debezium-heartbeat\`<br>Operações: \`CREATE\`, \`WRITE\`, \`DESCRIBE\` | Permite ao conector Debezium registrar e publicar eventos transacionais do PostgreSQL e gerenciar batimentos cardíacos, sem permissão de leitura nos dados nem acesso a tópicos de alertas. |"
+  echo "| **Sink Consumer (Reader)**<br>\`$SA_READER_ID\` | **TOPIC** \`fraud_alerts\` (\`READ\`, \`DESCRIBE\`)<br>**GROUP** \`connect-\`, \`app-reader\`, \`snapshot-check-\` (\`READ\`, \`DESCRIBE\`)<br>**TOPIC** \`dlq-\` (\`CREATE\`, \`WRITE\`, \`READ\`, \`DESCRIBE\`) | Permite ao conector PostgresSink e consumidores autorizados consumirem estritamente os alertas de fraude gerados pelo Flink e coordenarem suas tarefas, com isolamento total dos tópicos de escrita transacional. |"
+  echo "| **Telemetria (Metrics)**<br>\`$SA_METRICS_ID\` | **RBAC Cloud:** \`MetricsViewer\` | Concede acesso somente leitura à Confluent Metrics API para coleta de throughput (\`received_bytes\`) e monitoramento, sem nenhuma chave ou permissão de leitura sobre tópicos Kafka (isolamento absoluto de dados). |"
+  echo
+  echo "## 5. Auditoria de Conformidade das ACLs"
   echo
   echo "- Esperadas: $(jq -r '.expected_count' <<<"$ACL_RESULT")"
   echo "- Encontradas para writer/reader: $(jq -r '.actual_count' <<<"$ACL_RESULT")"
   echo "- Ausentes/divergentes: $MISSING"
   echo "- Extras para writer/reader: $UNEXPECTED"
-  echo "- Resultado: $([[ "$ACL_OK" == yes ]] && echo APROVADO || echo REPROVADO)"
+  echo "- Vínculos RBAC MetricsViewer: $RBAC_COUNT"
+  echo "- Status consolidado: $([[ "$ACL_OK" == yes && "$RBAC_OK" == yes ]] && echo APROVADO || echo REPROVADO)"
   echo
   if [[ "$MISSING" -gt 0 ]]; then
     echo "### ACLs ausentes"
@@ -140,18 +167,8 @@ RBAC_OK=no
     jq -r '.unexpected[] | "- " + ([.principal,.permission,.operation,.resource_type,.resource_name,.pattern_type,.host] | join(" | "))' <<<"$ACL_RESULT"
     echo
   fi
-  echo "## RBAC MetricsViewer"
-  echo
-  echo "- Vínculos correspondentes encontrados: $RBAC_COUNT"
-  echo "- Resultado: $([[ "$RBAC_OK" == yes ]] && echo APROVADO || echo REPROVADO)"
-  if [[ "$RBAC_COUNT" -gt 0 ]]; then
-    jq -r '.[] | "- ID: " + (.id // "não informado") + " — principal: " + .principal + " — role: " + .role' <<<"$RBAC_RESULT"
-  fi
-  echo
-  echo "## Resultado consolidado"
-  echo
   if [[ "$ACL_OK" == yes && "$RBAC_OK" == yes ]]; then
-    echo "**APROVADO:** ACLs e vínculo RBAC correspondem ao estado esperado."
+    echo "**APROVADO:** Todas as ACLs e o vínculo RBAC correspondem estritamente ao desenho de menor privilégio homologado."
   else
     echo "**REPROVADO:** existem ausências, divergências ou vínculo RBAC não confirmado. Nenhuma permissão foi alterada."
   fi
