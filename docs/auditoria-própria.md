@@ -25,7 +25,8 @@ Também há uma divergência documental relevante: o relatório de confiabilidad
 - O operador `-` define `5 s` quando a variável não está definida. Portanto, a execução sem configuração explícita aplica timeout fixo de cinco segundos aos statements de enrichment e fraude.
 - O README descreve o comportamento progressivo da Confluent como padrão e orienta definir `FLINK_IDLE_TIMEOUT="5 s"` apenas para reproduzir o timeout fixo do mentor.
 - Impacto: a execução real do script pode usar uma política de watermark diferente da que o README leva o operador a esperar. Isso é especialmente relevante para a regra temporal de fraude.
-- Recomendação: alinhar o valor padrão do script e a documentação. Se o padrão pretendido for o comportamento progressivo, usar valor vazio quando a variável estiver ausente; manter o timeout fixo somente quando solicitado explicitamente.
+- Recomendação inicial: alinhar o valor padrão do script e a documentação.
+- **Estado:** corrigido em `flink/scripts/run.sh`; timeout fixo só é aplicado quando informado explicitamente.
 
 ### 2. Teardown não remove todos os recursos criados pela fundação
 
@@ -35,7 +36,8 @@ Também há uma divergência documental relevante: o relatório de confiabilidad
 - O teardown remove as API keys de writer, reader e Schema Registry, mas não inclui `METRICS_API_KEY`. Também remove apenas as Service Accounts writer e reader, sem tratar `SA_METRICS_ID`/`SA_METRICS_CREATED` nem o vínculo `MetricsViewer`.
 - Há ainda divergência no nome do statement de chave de transactions: o executor cria `payments-pk-transactions`, enquanto o teardown tenta excluir `payments-transactions-startup`. O statement atual pode permanecer sem ser removido individualmente.
 - Impacto: a limpeza pode deixar credenciais, identidade e vínculo RBAC residuais; statements podem permanecer até a remoção do Environment ou sobreviver caso a sequência de exclusão falhe.
-- Recomendação: inventariar todos os recursos efetivamente criados pela fundação e pelos scripts posteriores; alinhar os nomes dos statements com `flink/scripts/run.sh`; tratar explicitamente API key, Service Account e role binding de métricas. Não presumir que excluir Environment/cluster remove identidades e credenciais de escopo organizacional.
+- Recomendação inicial: inventariar os recursos criados e alinhar seus identificadores.
+- **Estado:** nome do statement corrigido; teardown passou a tratar API key, RBAC e Service Account de métricas com base nos marcadores de propriedade. A execução da limpeza ainda não foi realizada.
 
 ### 3. O relatório do teardown pode registrar contagens incorretas
 
@@ -46,7 +48,8 @@ Também há uma divergência documental relevante: o relatório de confiabilidad
 - `NEON_AFTER` é definido como zero sem consultar o banco. Além disso, a limpeza Neon é opcional e sua falha é suprimida com `|| true`.
 - O texto final afirma que todas as contagens devem ser zero, mas os valores apresentados não comprovam isso.
 - Impacto: o relatório pode declarar uma limpeza completa sem ter verificado os recursos, inclusive quando o banco não foi limpo.
-- Recomendação: passar o ID ao jq por `--arg`; não converter falha de consulta em contagem zero; registrar estados como “não consultado” ou “consulta falhou”; consultar o Neon após a operação e distinguir limpeza não solicitada, executada e confirmada.
+- Recomendação inicial: usar `jq --arg` e não converter falhas em zero.
+- **Estado:** filtro corrigido; consultas posteriores agora mostram “não consultado” em caso de falha, e Neon é identificado como não verificado. O conteúdo do banco não é auditado por este relatório.
 
 ### 4. ACLs de grupos esperadas pelo verificador não são criadas pela fundação
 
@@ -55,7 +58,7 @@ Também há uma divergência documental relevante: o relatório de confiabilidad
 - A função `ensure_group_acl` cria somente a operação `READ` para os grupos `app-reader`, `connect-` e `snapshot-check-`.
 - O verificador inclui também uma ACL `DESCRIBE` para o grupo prefixado `connect-`. A tabela explicativa do próprio verificador apresenta permissões de grupo `READ` e `DESCRIBE` de forma mais ampla.
 - Impacto: a verificação estrita pode apontar ACL ausente mesmo após a fundação terminar com sucesso. Também fica pouco claro se a permissão adicional é requisito real do conector ou apenas expectativa excessiva do relatório.
-- Recomendação: decidir, com base nos requisitos efetivos do conector e da plataforma, quais operações são necessárias; ajustar a fundação e o verificador para refletirem a mesma matriz. Não ampliar permissões apenas para fazer o teste passar.
+- **Estado:** o verificador foi alinhado às ACLs `READ` efetivamente criadas. Nenhuma permissão adicional foi concedida; a suficiência em runtime permanece fora do escopo desta revisão estática.
 
 ### 5. Relatório de confiabilidade afirma garantias de um trecho ainda não executado
 
@@ -65,7 +68,7 @@ Também há uma divergência documental relevante: o relatório de confiabilidad
 - O README, `docs/plano-homologacao.md` e `docs/decisoes-tecnicas.md` informam que o Sink está preparado no código, mas não foi criado/executado nem teve persistência validada. A detecção de fraude também não foi demonstrada funcionalmente.
 - A configuração de UPSERT e uma chave composta podem ser analisadas estaticamente, mas não provam que o conector iniciou, que a role tem privilégios suficientes, que a conversão Avro/PostgreSQL funciona em execução ou que reentregas foram testadas.
 - Impacto: o relatório transmite uma garantia ponta a ponta que o projeto ainda não demonstrou.
-- Recomendação: retirar a conclusão de exactly-once semântico e reescrever o documento como análise teórica de mecanismos e riscos, identificando claramente o Sink como configuração preparada e não executada. Separar idempotência potencial do destino de garantias efetivamente medidas.
+- **Estado:** documento reescrito como análise conceitual; a conclusão de exactly-once semântico foi removida e o Sink é identificado como preparado, não executado.
 
 ### 6. Privilégios da role do Sink permanecem como ponto de verificação
 
