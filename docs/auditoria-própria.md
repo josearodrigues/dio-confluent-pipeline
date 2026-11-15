@@ -202,3 +202,12 @@ A remoção de identidades era chamada dentro de uma lista OR (`confirm_and_dele
 ### Estado e limites
 
 Alteração publicada no GitHub. Aguarda sincronização e validação local de sintaxe pelo usuário. Não foram executados scripts, comandos Confluent, SQL, operações Neon ou exclusões Cloud. A revisão é estática e não comprova comportamento operacional.
+
+
+## Verificação final do teardown Neon — 15/11/2026
+
+Na revisão estática posterior ao commit `12e4c6d`, foi identificado que o SQL de limpeza apresentava as existências dos objetos ao final, mas não convertia uma eventual permanência em código de erro. Como o wrapper classifica a limpeza pelo código de saída do `psql`, isso poderia registrar sucesso sem uma asserção explícita sobre todos os alvos.
+
+**Correção estática:** o SQL agora calcula uma condição conjunta de ausência para schema `payments`, tabela `public.fraud_alerts`, publication `payments_pub`, slot `payments_slot` e roles configuradas. Se algum alvo continuar presente, o script encerra com código 4; a consulta detalhada permanece para evidência.
+
+**Limites:** alteração preparada no GitHub; ainda não validada localmente nem executada contra PostgreSQL/Neon. A sintaxe Bash já reportada pelo usuário não valida sintaxe SQL/psql. Nenhuma operação Cloud/Neon foi realizada.
