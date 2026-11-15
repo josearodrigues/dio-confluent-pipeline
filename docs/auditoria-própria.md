@@ -174,6 +174,6 @@ A decisão de encerramento foi atualizada após confirmação do usuário. O esc
 
 A remoção das roles não utiliza `DROP OWNED CASCADE`. O SQL revoga os privilégios conhecidos concedidos pelo init e tenta `DROP ROLE`; dependências externas, ownerships ou grants adicionais fazem o PostgreSQL interromper a operação. Essa é uma proteção deliberada, não uma limpeza completa presumida.
 
-No lado Confluent, o Environment é removido como operação principal. Service Accounts e vínculo MetricsViewer são tratados somente quando os marcadores de estado indicam criação pelo projeto. API keys Flink regionais não são removidas pela exclusão do Environment; chaves vinculadas a identidades não removidas exigem revisão residual. A etapa Neon também pode ser executada sem a etapa Confluent e vice-versa.
+No lado Confluent, o Environment é removido como operação principal. Service Accounts e vínculo MetricsViewer são tratados somente quando os marcadores de estado indicam criação pelo projeto e após confirmação literal independente `IDENTITIES/ENV_ID`. API keys Flink regionais não são removidas pela exclusão do Environment; chaves vinculadas a identidades não removidas exigem revisão residual. A etapa Neon também pode ser executada sem a etapa Confluent e vice-versa.
 
 **Estado desta atualização:** alterações estáticas preparadas no GitHub; nenhuma execução Bash, SQL, Confluent Cloud ou Neon foi realizada. A sintaxe e o comportamento dos scripts precisam ser validados localmente antes de qualquer execução destrutiva.
