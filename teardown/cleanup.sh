@@ -198,7 +198,9 @@ if [[ -n "$ENV_ID" && -n "$CC_ENV_NAME" ]] && command -v confluent >/dev/null 2>
           CONFLUENT_DETAIL="Falha em uma ou mais consultas do inventário; nenhuma exclusão foi solicitada."
           answer=""
         fi
-        if [[ "$answer" == "$ENV_ID/$ENV_NAME" ]]; then
+        if [[ "$CONFLUENT_STATUS" == "inventário incompleto; exclusão bloqueada" ]]; then
+          :
+        elif [[ "$answer" == "$ENV_ID/$ENV_NAME" ]]; then
           if confluent environment delete "$ENV_ID" --force; then
             CONFLUENT_STATUS="solicitado"
             CONFLUENT_DETAIL="Comando de exclusão aceito; verificando Environment."
