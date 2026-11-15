@@ -80,12 +80,6 @@ openssl rand -hex 24
 
 Copie o resultado para `PG_SINK_PASSWORD` no `.env`. Não reutilize a senha administrativa nem compartilhe ou versione credenciais.
 
-Autentique a Confluent CLI, se necessário:
-
-```bash
-confluent login
-```
-
 A etapa Neon gera e grava `PG_CDC_PASSWORD` no `.env`; não preencha essa senha manualmente. O arquivo `.state.env` é criado pelos scripts para armazenar IDs e credenciais da Confluent. Ambos são locais e privados.
 
 ## 3. Preparar o PostgreSQL no Neon
@@ -119,6 +113,12 @@ Execute na ordem:
 O wrapper valida a conexão, a configuração de logical replication e a autenticação da role CDC antes de executar o SQL.
 
 ## 4. Provisionar a fundação Confluent
+
+Autentique a Confluent CLI, se necessário:
+
+```bash
+confluent login
+```
 
 ```bash
 ./infrastructure/foundation.sh
