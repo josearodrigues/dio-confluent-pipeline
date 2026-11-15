@@ -174,7 +174,7 @@ A decisão de encerramento foi atualizada após confirmação do usuário. O esc
 
 A remoção das roles não utiliza `DROP OWNED CASCADE`. O SQL revoga os privilégios conhecidos concedidos pelo init e tenta `DROP ROLE`; dependências externas, ownerships ou grants adicionais fazem o PostgreSQL interromper a operação. Essa é uma proteção deliberada, não uma limpeza completa presumida.
 
-No lado Confluent, o Environment é removido como operação principal. Service Accounts e vínculo MetricsViewer são tratados somente quando os marcadores de estado indicam criação pelo projeto e após confirmação literal independente `IDENTITIES/ENV_ID`. API keys Flink regionais não são removidas pela exclusão do Environment; chaves vinculadas a identidades não removidas exigem revisão residual. A etapa Neon também pode ser executada sem a etapa Confluent e vice-versa.
+No lado Confluent, o Environment é removido como operação principal. Service Accounts e vínculo MetricsViewer são tratados somente quando os marcadores de estado indicam criação pelo projeto e após confirmação literal independente `IDENTITIES/ENV_ID`. API keys Flink regionais não são removidas pela exclusão do Environment; chaves vinculadas a identidades não removidas exigem revisão residual. A confirmação destrutiva Neon é independente, mas sua execução depende da confirmação por listagem de que o Environment Confluent está ausente. Se essa ausência não puder ser verificada, o teardown bloqueia a etapa Neon.
 
 **Estado desta atualização:** alterações estáticas preparadas no GitHub; nenhuma execução Bash, SQL, Confluent Cloud ou Neon foi realizada. A sintaxe e o comportamento dos scripts precisam ser validados localmente antes de qualquer execução destrutiva.
 
@@ -216,3 +216,21 @@ Na revisão estática posterior ao commit `12e4c6d`, foi identificado que o SQL 
 ## Sincronização local e sintaxe Bash — 15/11/2026
 
 O usuário informou que sincronizou a branch local `main` até `c2d424a`. Em seguida, executou `bash -n teardown/cleanup.sh` e `bash -n scripts/run-sql.sh`; ambos terminaram sem mensagens de erro. Resultado classificado como validação de sintaxe Bash, não como teste funcional ou validação SQL/psql. Nenhuma operação Confluent Cloud ou Neon foi executada.
+
+## Dependência entre as etapas Confluent e Neon — 15/11/2026
+
+### Achado
+
+A revisão identificou que o fluxo anterior permitia iniciar a limpeza Neon mesmo quando a etapa Confluent havia sido ignorada, recusada ou não podia confirmar a exclusão do Environment. Isso contrariava a ordem operacional planejada e poderia deixar ativo o connector CDC enquanto o SQL tentava remover o replication slot.
+
+### Correção estática publicada
+
+- `teardown/cleanup.sh` mantém um indicador explícito de confirmação da ausência do Environment.
+- A ausência é considerada confirmada somente quando a listagem da Confluent CLI não encontra o Environment, antes da execução ou após a solicitação de exclusão.
+- Se os dados/CLI Confluent estiverem ausentes, a confirmação for recusada, o Environment continuar listado ou a verificação posterior falhar, a limpeza Neon é bloqueada.
+- O relatório registra o bloqueio e orienta corrigir a condição e executar novamente o teardown.
+- `README.md` e o plano de homologação explicam a dependência; as confirmações destrutivas continuam independentes.
+
+Commits publicados: `11ee3fda` (gate da etapa Neon), `e57c8e82` (README), `1cb753d8` (mensagem de falha alinhada) e `26a93122` (plano de homologação).
+
+**Estado:** alteração revisada estaticamente e conteúdo conferido no GitHub. Ainda não foi executado `bash -n` após essas mudanças, nem teste funcional do fluxo. Nenhum comando Confluent, SQL, Neon ou operação destrutiva foi executado.
