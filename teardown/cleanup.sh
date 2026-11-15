@@ -102,7 +102,7 @@ confirm_and_delete_owned_identities() {
 
 print_resource_list() {
   local json="$1"
-  jq -r '.[] | "  - \(.name // .connector_name // .display_name // \"nome não retornado\") | ID: \(.id // .connector_id // \"ID não retornado\")"' <<<"$json"
+  jq -r '.[] | "  - \(.name // .connector_name // .display_name // "nome não retornado") | ID: \(.id // .connector_id // "ID não retornado")"' <<<"$json"
 }
 
 inventory_environment() {
@@ -138,7 +138,7 @@ inventory_environment() {
     else
       echo "    FALHA NA CONSULTA"; printf '    %s\n' "$connectors"; failed=yes
     fi
-  done < <(jq -r '.[] | "\(.name // \"nome não retornado\")|\(.id // .cluster_id // \"\")"' <<<"$cluster_list")
+  done < <(jq -r '.[] | "\(.name // "nome não retornado")|\(.id // .cluster_id // "")"' <<<"$cluster_list")
   if [[ "$failed" == yes ]]; then
     echo "INVENTÁRIO INCOMPLETO: exclusão bloqueada."
     return 1
