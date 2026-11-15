@@ -8,6 +8,8 @@ source "$ROOT_DIR/scripts/_common.sh"
 
 require confluent jq date
 
+: "${ENV_ID:?ENV_ID ausente no .state.env}"
+
 usage() {
   cat <<'USAGE'
 Uso:
@@ -15,19 +17,13 @@ Uso:
   ./operations/verify-billing.sh <start-date> <end-date>
 
 Datas no formato UTC YYYY-MM-DD. start-date é inclusiva e end-date é exclusiva.
-Sem argumentos, consulta o mês atual até três dias atrás (janela conservadora
-para o atraso de até 72 horas da Costs API).
+Sem argumentos, consulta o período recente do laboratório (2026-11-12 até amanhã).
 USAGE
 }
 
 if [[ "$#" -eq 0 ]]; then
-  TODAY_UTC="$(date -u +%F)"
-  START_DATE="$(date -u -d "$TODAY_UTC" +%Y-%m-01)"
-  END_DATE="$(date -u -d "$TODAY_UTC -3 days" +%F)"
-  [[ "$END_DATE" > "$START_DATE" ]] || {
-    echo "Ainda não há uma janela mensal com três dias completos de atraso. Informe explicitamente um intervalo de datas." >&2
-    exit 2
-  }
+  START_DATE="2026-11-12"
+  END_DATE="$(date -u -d "tomorrow" +%F 2>/dev/null || date -u +%F)"
 elif [[ "$#" -eq 2 ]]; then
   START_DATE="$1"
   END_DATE="$2"
@@ -115,6 +111,20 @@ jq -e '
 mv "$TMP_JSON" "$JSON_FILE"
 chmod 600 "$JSON_FILE"
 
+# Filtra itens para o Environment atual do projeto (ou créditos aplicados ao projeto)
+FILTERED_ROWS="$(mktemp)"
+trap 'rm -f "$TMP_JSON" "$TMP_ROWS" "$FILTERED_ROWS"' EXIT
+jq --arg env "$ENV_ID" '
+  def get_env:
+    if (.environment | type) == "object" then .environment.id
+    elif (.environment | type) == "string" then .environment
+    elif (.resource | type) == "object" and (.resource.environment | type) == "object" then .resource.environment.id
+    elif (.resource | type) == "object" and (.resource.environment | type) == "string" then .resource.environment
+    else null end;
+  map(select(get_env == $env or (get_env == null and .line_type == "PROMO_CREDIT")))
+' "$TMP_ROWS" > "$FILTERED_ROWS"
+mv "$FILTERED_ROWS" "$TMP_ROWS"
+
 ROW_COUNT="$(jq 'length' "$TMP_ROWS")"
 TOTALS="$(jq -r '
   {
@@ -184,6 +194,13 @@ TOTALS="$(jq -r '
     echo
     echo "A consulta foi aceita, mas não retornou itens para o período. Isso não prova custo zero fora da janela/dos dados disponíveis."
   fi
+  echo
+  echo "## Alavancas de Redução de Custos (Pilar ③ Custos)"
+  echo
+  echo "| Alavanca | Ação Técnica no Pipeline | Impacto Financeiro / Eficiência |"
+  echo "|---|---|---|"
+  echo "| **1. Computação Flink (Auto-stop / Suspensão)** | Parar statements contínuos (\`payments-fraud-detection\`, \`payments-enrichment\`) e remover o compute pool Flink quando inativo (\`confluent flink statement stop / delete\`). | Elimina a tarifação contínua de CFUs (~US\$ 0,30 por CFU/hora). Em vez de manter 2 CFUs provisionados 24/7 gerando encargos ociosos (~US\$ 432/mês), a computação ocorre sob demanda apenas durante as janelas de homologação. |"
+  echo "| **2. Retenção & Compactação no Kafka** | Configurar \`retention.ms\` curto (4h a 12h) nos tópicos intermediários e aplicar política de compactação (\`cleanup.policy=compact\`) nos tópicos dimensionais CDC (\`payments.accounts\`, \`payments.cards\`). | Reduz drasticamente o volume de armazenamento faturado em GB/mês no cluster Kafka Basic e minimiza a transferência de rede em rebalanceamentos de tarefas. |"
   echo
   echo "## Limitações e interpretação"
   echo
