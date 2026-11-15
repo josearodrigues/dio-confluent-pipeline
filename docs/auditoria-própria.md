@@ -211,3 +211,8 @@ Na revisão estática posterior ao commit `12e4c6d`, foi identificado que o SQL 
 **Correção estática:** o SQL agora calcula uma condição conjunta de ausência para schema `payments`, tabela `public.fraud_alerts`, publication `payments_pub`, slot `payments_slot` e roles configuradas. Se algum alvo continuar presente, o script encerra com código 4; a consulta detalhada permanece para evidência.
 
 **Limites:** alteração preparada no GitHub; ainda não validada localmente nem executada contra PostgreSQL/Neon. A sintaxe Bash já reportada pelo usuário não valida sintaxe SQL/psql. Nenhuma operação Cloud/Neon foi realizada.
+
+
+## Sincronização local e sintaxe Bash — 15/11/2026
+
+O usuário informou que sincronizou a branch local `main` até `c2d424a`. Em seguida, executou `bash -n teardown/cleanup.sh` e `bash -n scripts/run-sql.sh`; ambos terminaram sem mensagens de erro. Resultado classificado como validação de sintaxe Bash, não como teste funcional ou validação SQL/psql. Nenhuma operação Confluent Cloud ou Neon foi executada.
