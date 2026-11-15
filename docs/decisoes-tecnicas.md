@@ -74,13 +74,15 @@ A investigação sobre a proibição de `$rowtime` está encerrada para fins de 
 
 O encerramento é assimétrico porque os recursos são criados de formas diferentes:
 
-- **Confluent:** o projeto provisiona o Environment e recursos associados. O teardown exclui o Environment como operação principal e verifica seu desaparecimento. Service Accounts e vínculo MetricsViewer são tratados separadamente somente quando os marcadores de estado comprovam criação pelo laboratório. A exclusão do Environment remove clusters, Schema Registry, Connect e Flink Compute Pools. API keys Flink regionais devem ser verificadas individualmente após a operação; a exclusão de uma Service Account remove suas API keys associadas, enquanto chaves vinculadas a outras identidades exigem avaliação separada. Service Accounts preexistentes são preservadas.
+- **Confluent:** o projeto provisiona o Environment e recursos associados. O teardown exclui o Environment como operação principal e verifica seu desaparecimento. Service Accounts e vínculo MetricsViewer são tratados separadamente somente quando os marcadores de estado comprovam criação pelo laboratório. A exclusão do Environment remove clusters, Schema Registry, Connect, ksqlDB e Flink Compute Pools. API keys Flink regionais não são removidas pela exclusão do Environment e precisam ser verificadas/removidas separadamente, após confirmar sua identidade e uso. API keys Flink regionais devem ser verificadas individualmente após a operação; a exclusão de uma Service Account remove suas API keys associadas, enquanto chaves vinculadas a outras identidades exigem avaliação separada. Service Accounts preexistentes são preservadas.
 - **Neon:** o usuário cria o projeto PostgreSQL manualmente antes da execução e fornece os parâmetros no `.env`. O teardown preserva projeto, branch, compute, endpoint e banco. Remove `payments_slot`, `payments_pub`, schema `payments`, tabela `public.fraud_alerts` e as roles `PG_CDC_USER`/`PG_SINK_USER`.
 
 A remoção das roles usa revogação dos privilégios conhecidos e `DROP ROLE`. Não é usado `DROP OWNED CASCADE`, pois poderia eliminar objetos não pertencentes ao laboratório. Dependências adicionais devem bloquear o `DROP ROLE` e ser investigadas. As confirmações Confluent e Neon são independentes. O relatório diferencia recurso removido, preservado, falha e estado não verificado.
 
 Referências oficiais:
-- Confluent, https://docs.confluent.io/cloud/current/security/access-control/hierarchy/cloud-environments.html
+- Confluent, Environments on Confluent Cloud: https://docs.confluent.io/cloud/current/security/access-control/hierarchy/cloud-environments.html
+- Confluent, Manage API Keys: https://docs.confluent.io/cloud/current/security/authenticate/workload-identities/service-accounts/api-keys/manage-api-keys.html
+- Confluent, Service Accounts: https://docs.confluent.io/cloud/current/security/authenticate/workload-identities/service-accounts/overview.html
 - Confluent API, https://docs.confluent.io/cloud/current/ccloud/delete-org-v-2-environment/
 - Confluent API, https://docs.confluent.io/cloud/current/ccloud/delete-iam-v-2-service-account/
 - PostgreSQL, https://www.postgresql.org/docs/current/sql-droprole.html
