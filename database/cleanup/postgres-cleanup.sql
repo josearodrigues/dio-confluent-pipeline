@@ -1,12 +1,64 @@
--- DESTRUTIVO: use somente no banco dedicado ao laboratório.
+-- DESTRUTIVO: somente no banco dedicado ao laboratório.
+-- Preserva projeto, branch, compute, endpoint e banco Neon.
+\getenv cdc_role PG_CDC_USER
+\getenv sink_role PG_SINK_USER
+\if :{?cdc_role}
+\else
+  \echo 'ERRO: PG_CDC_USER ausente.'
+  \quit 3
+\endif
+\if :{?sink_role}
+\else
+  \echo 'ERRO: PG_SINK_USER ausente.'
+  \quit 3
+\endif
+\if :{?cleanup_ok}
+  \echo 'Confirmação recebida pelo wrapper; limpeza seletiva iniciada.'
+\else
+  \echo 'ERRO: use CONFIRM_CLEANUP=yes após conferir o alvo.'
+  \quit 3
+\endif
+
 SELECT pg_terminate_backend(active_pid)
 FROM pg_replication_slots
-WHERE slot_name='payments_slot' AND active_pid IS NOT NULL;
+WHERE slot_name = 'payments_slot' AND active_pid IS NOT NULL;
 SELECT pg_sleep(2);
 SELECT pg_drop_replication_slot('payments_slot')
-WHERE EXISTS (SELECT 1 FROM pg_replication_slots WHERE slot_name='payments_slot');
-DROP PUBLICATION IF EXISTS payments_pub;
-DROP SCHEMA IF EXISTS payments CASCADE;
+WHERE EXISTS (SELECT 1 FROM pg_replication_slots WHERE slot_name = 'payments_slot');
 
--- Tabela destino do Sink. A role alerts_sink é global ao cluster e permanece criada.
+DROP PUBLICATION IF EXISTS payments_pub;
+
+-- Remove o default privilege específico concedido à role CDC pelo init.
+SELECT format('ALTER DEFAULT PRIVILEGES IN SCHEMA payments REVOKE SELECT ON TABLES FROM %I', :'cdc_role')
+WHERE EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'payments')
+  AND EXISTS (SELECT 1 FROM pg_roles WHERE rolname = :'cdc_role')
+\gexec
+
+DROP SCHEMA IF EXISTS payments CASCADE;
 DROP TABLE IF EXISTS public.fraud_alerts;
+
+-- Revoga somente privilégios conhecidos concedidos pelo laboratório.
+-- Não usa DROP OWNED/CASCADE: dependências adicionais devem bloquear DROP ROLE.
+SELECT format('REVOKE ALL PRIVILEGES ON DATABASE %I FROM %I', current_database(), :'cdc_role')
+WHERE EXISTS (SELECT 1 FROM pg_roles WHERE rolname = :'cdc_role')
+\gexec
+SELECT format('REVOKE ALL PRIVILEGES ON DATABASE %I FROM %I', current_database(), :'sink_role')
+WHERE EXISTS (SELECT 1 FROM pg_roles WHERE rolname = :'sink_role')
+\gexec
+SELECT format('REVOKE USAGE ON SCHEMA public FROM %I', :'sink_role')
+WHERE EXISTS (SELECT 1 FROM pg_roles WHERE rolname = :'sink_role')
+\gexec
+
+SELECT format('DROP ROLE %I', rolname)
+FROM pg_roles
+WHERE rolname IN (:'cdc_role', :'sink_role')
+  AND rolname <> current_user
+\gexec
+
+SELECT
+  EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'payments') AS schema_payments_exists,
+  EXISTS (SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname = 'public' AND c.relname = 'fraud_alerts') AS fraud_alerts_exists,
+  EXISTS (SELECT 1 FROM pg_publication WHERE pubname = 'payments_pub') AS publication_exists,
+  EXISTS (SELECT 1 FROM pg_replication_slots WHERE slot_name = 'payments_slot') AS replication_slot_exists,
+  EXISTS (SELECT 1 FROM pg_roles WHERE rolname = :'cdc_role') AS cdc_role_exists,
+  EXISTS (SELECT 1 FROM pg_roles WHERE rolname = :'sink_role') AS sink_role_exists;
