@@ -576,6 +576,16 @@ A execução também revelou uma falha de quoting na linha explicativa do Markdo
 
 **Estado atualizado em 14/11/2026:** configuração, DDL, script de criação, auditoria read-only e teardown estão preparados. Conforme resultados de Schema Registry e PostgreSQL apresentados pelo usuário, a compatibilidade estrutural do contrato Avro efetivo de `fraud_alerts` com `public.fraud_alerts` foi confirmada. O conector ainda não foi criado, executado ou homologado. A confirmação estrutural não comprova conectividade independente, privilégios efetivos suficientes nem conversão temporal em execução.
 
+### Inspeção da saída Kafka
+
+Antes da auditoria PostgreSQL, execute:
+
+```bash
+bash operations/inspect-fraud-alerts.sh
+```
+
+O script carrega as configurações locais, seleciona Environment e cluster, valida o tópico `fraud_alerts` e consome Avro desde o início. O operador encerra a inspeção com `Ctrl+C`; a saída, com partição e offset, é registrada em `evidence/homologation/`. A inspeção é somente leitura e não cria nem altera recursos Cloud. A existência de mensagens antigas não comprova que o cenário positivo controlado gerou um alerta novo; a correlação continua obrigatória.
+
 ### Contrato e pré-requisitos
 
 - A saída Flink definida em `flink/sql/04-fraud-detection.sql` contém `card_id`, `first_txn`, `last_txn` e `txn_count`.
