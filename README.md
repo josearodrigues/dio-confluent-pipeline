@@ -60,7 +60,19 @@ Preencha o arquivo `.env`:
 | `PG_ADMIN_USER`, `PG_ADMIN_PASSWORD` | Credenciais administrativas do PostgreSQL |
 | `PG_SINK_USER`, `PG_SINK_PASSWORD` | Credenciais locais da role de destino |
 
-Use o host PostgreSQL direto, sem pooler. O usuário `alerts_sink` é criado/configurado pela inicialização do banco. Gere sua senha localmente:
+### Obter os dados de conexão direta no Neon
+
+Antes de preencher `PG_HOST`, `PG_PORT`, `PG_DATABASE` e as credenciais no `.env`:
+
+1. Abra o projeto no **Neon Console**.
+2. Clique em **Connect**.
+3. Selecione a branch, o compute, o database e a role que serão usados pelo laboratório.
+4. Desative a opção **Connection pooling**.
+5. Copie os dados de conexão exibidos e use-os para preencher as variáveis PostgreSQL no `.env`.
+
+**Como conferir:** o hostname de `PG_HOST` deve ser o endereço direto do endpoint e **não pode conter `-pooler`**. Não remova o sufixo manualmente: desative a opção no painel e copie novamente os dados. A conexão direta é necessária para o uso de logical replication neste laboratório.
+
+O usuário `alerts_sink` é criado/configurado pela inicialização do banco. Gere sua senha localmente:
 
 ```bash
 openssl rand -hex 24
