@@ -100,3 +100,19 @@ O usuário executou `operations/verify-billing.sh` para 2026-11-01 (inclusivo) a
 O resumo reportou valor original total de USD `-0.00009999999999976694` e valor líquido total (`amount`) igual, sem consolidar descontos porque o campo estava nulo/ausente em 4 dos 12 itens. Foram listados custos de CONNECT, FLINK e KAFKA, além de lançamentos `PROMO_CREDIT`. O resultado é o agregado diário retornado pela Costs API para o período, não o saldo de créditos promocionais nem a Invoice Breakdown. Os ambientes retornados incluem `env-3kyr6j` e `env-9o15y0`; não presumir que correspondam a um único ambiente do desafio sem conferir o mapeamento.
 
 **Ressalva de execução:** o resumo foi gerado, mas o shell emitiu `discount_amount: comando não encontrado` ao construir uma linha de texto. A causa foi uso de backticks não escapados dentro de uma string Bash com aspas duplas. A falha afetou somente a frase explicativa no Markdown: a linha saiu com o nome do campo omitido. O script foi corrigido no commit `e65d9415bcfe67501515ce55186010be2302de9f`, escapando os backticks. A evidência gerada continua aproveitável para registrar os dados da consulta; a frase incompleta do Markdown deve ser corrigida localmente antes do commit, ou o resumo deve ser regenerado após sincronizar a correção. A correção do script ainda depende de `bash -n` no clone local. Nenhuma alteração Cloud foi realizada.
+
+
+## Invoice Breakdown do Console — 15/11/2026
+
+O usuário informou os seguintes valores exibidos no Console Confluent para o período de 1 a 30 de novembro de 2026:
+
+| Campo | Valor observado |
+|---|---:|
+| Uso | USD 63,00 |
+| Crédito promocional aplicado (`FREETRIAL400`) | -USD 63,00 |
+| Total accrued charges | USD 0,00 |
+| Créditos gratuitos restantes | USD 337 de USD 400 |
+
+**Interpretação:** no momento da consulta, o Console mostrava USD 63,00 de uso compensado integralmente pelo crédito promocional, sem encargo acumulado a pagar, e saldo restante de USD 337. Trata-se de um retrato do painel informado pelo usuário em 15/11/2026; valores acumulados podem mudar com o uso e a atualização do Console.
+
+Este registro é distinto da coleta da Costs API descrita acima: não é evidência gerada por `operations/verify-billing.sh`, não representa conciliação final da fatura e não substitui a Invoice Breakdown atualizada no Console. Nenhuma ação Cloud foi realizada para esta consulta.
