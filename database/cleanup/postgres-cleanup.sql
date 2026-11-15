@@ -4,19 +4,16 @@
 \getenv sink_role PG_SINK_USER
 \if :{?cdc_role}
 \else
-  \echo 'ERRO: PG_CDC_USER ausente.'
-  \quit 3
+  DO $ BEGIN RAISE EXCEPTION 'PG_CDC_USER ausente.'; END $;
 \endif
 \if :{?sink_role}
 \else
-  \echo 'ERRO: PG_SINK_USER ausente.'
-  \quit 3
+  DO $ BEGIN RAISE EXCEPTION 'PG_SINK_USER ausente.'; END $;
 \endif
 \if :{?cleanup_ok}
   \echo 'Confirmação recebida pelo wrapper; limpeza seletiva iniciada.'
 \else
-  \echo 'ERRO: use CONFIRM_CLEANUP=yes após conferir o alvo.'
-  \quit 3
+  DO $ BEGIN RAISE EXCEPTION 'Confirmação ausente: use CONFIRM_CLEANUP=yes após conferir o alvo.'; END $;
 \endif
 
 -- Não tenta encerrar sessões: no Neon, pg_terminate_backend pode não
@@ -31,8 +28,7 @@ SELECT EXISTS (
 \gset
 
 \if :payments_slot_active
-  \echo 'ERRO: payments_slot está ativo. Pare/exclua o connector CDC na Confluent e repita a limpeza.'
-  \quit 5
+  DO $ BEGIN RAISE EXCEPTION 'payments_slot está ativo. Pare/exclua o connector CDC na Confluent e repita a limpeza.'; END $;
 \endif
 
 -- Slot ausente é aceito; slot existente só é removido quando inativo.
@@ -87,8 +83,7 @@ SELECT
 \if :cleanup_verified
   \echo 'Verificação final aprovada: todos os objetos e roles do laboratório estão ausentes.'
 \else
-  \echo 'ERRO: a verificação final encontrou objetos ou roles ainda existentes.'
-  \quit 4
+  DO $ BEGIN RAISE EXCEPTION 'A verificação final encontrou objetos ou roles do laboratório ainda existentes.'; END $;
 \endif
 
 SELECT
