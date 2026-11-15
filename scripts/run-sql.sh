@@ -87,6 +87,11 @@ if [[ "$SQL_RELATIVE" == database/cleanup/postgres-cleanup.sql ]]; then
   [[ "$PG_CDC_USER" =~ ^[A-Za-z_][A-Za-z0-9_]*$ && "$PG_SINK_USER" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] || { echo "Nomes de roles inválidos." >&2; exit 1; }
   [[ "$PG_CDC_USER" != "$PG_SINK_USER" && "$PG_CDC_USER" != "$PG_ADMIN_USER" && "$PG_SINK_USER" != "$PG_ADMIN_USER" ]] || { echo "Roles CDC, Sink e administrativa devem ser distintas." >&2; exit 1; }
   [[ "${CONFIRM_CLEANUP:-}" == "yes" ]] || { echo "A limpeza remove objetos e roles PG_CDC_USER/PG_SINK_USER. Use CONFIRM_CLEANUP=yes após conferir o alvo." >&2; exit 1; }
+  if [[ "${CONFLUENT_ENV_CONFIRMED:-0}" != "1" ]]; then
+    echo "ATENÇÃO: a ausência do Environment Confluent não foi explicitamente confirmada (CONFLUENT_ENV_CONFIRMED=1)." >&2
+    echo "Se o Environment ou o connector CDC ainda estiver ativo, a remoção do replication slot poderá falhar." >&2
+    echo "Confirme a exclusão/parada na Confluent antes de prosseguir." >&2
+  fi
   echo "Alvo Neon informado: projeto=${NEON_PROJECT_ID:-não informado} branch=${NEON_BRANCH:-main}"
   echo "Alvo PostgreSQL: host=$PG_HOST database=$PG_DATABASE user=$PG_ADMIN_USER"
   echo "Roles a remover: CDC=$PG_CDC_USER; Sink=$PG_SINK_USER"
