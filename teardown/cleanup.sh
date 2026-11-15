@@ -138,7 +138,7 @@ inventory_environment() {
     sr_name="$(jq -r '.name // .display_name // empty' <<<"$sr_json" 2>/dev/null || true)"
     echo "Schema Registry:"
     if [[ -n "$sr_id" ]]; then
-      printf '  - %s | ID: %s\n' "\${sr_name:-nome não retornado}" "$sr_id"
+      printf '  - %s | ID: %s\n' "${sr_name:-nome não retornado}" "$sr_id"
     else
       echo "  - Consulta concluída, mas a resposta não apresentou um ID reconhecível."
       failed=yes
@@ -318,7 +318,7 @@ EOF
 echo "Relatório salvo: $REPORT_PATH"
 \t' read -r cluster_id cluster_name; do
       [[ -n "$cluster_id" ]] || continue
-      printf '  Cluster %s (%s):\n' "\${cluster_name:-nome não retornado}" "$cluster_id"
+      printf '  Cluster %s (%s):\n' "${cluster_name:-nome não retornado}" "$cluster_id"
       if connectors="$(confluent connect cluster list --cluster "$cluster_id" --environment "$env_id" -o json 2>&1)" &&
          connector_list="$(printf '%s' "$connectors" | normalize_list 2>/dev/null)"; then
         print_resource_list "Connect" "$connector_list" || failed=yes
@@ -340,7 +340,7 @@ echo "Relatório salvo: $REPORT_PATH"
 
 print_deletion_warning() {
   local yellow='' red='' reset='' bold='' line
-  if [[ -t 1 && -z "\${NO_COLOR:-}" ]]; then
+  if [[ -t 1 && -z "${NO_COLOR:-}" ]]; then
     red=if [[ -n "$ENV_ID" && -n "$CC_ENV_NAME" ]] && command -v confluent >/dev/null 2>&1; then
   if ENVIRONMENTS_RAW="$(confluent environment list -o json 2>&1)" &&
      ENVIRONMENTS="$(printf '%s' "$ENVIRONMENTS_RAW" | normalize_list 2>/dev/null)"; then
