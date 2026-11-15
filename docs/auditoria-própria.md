@@ -1044,3 +1044,8 @@ Foram substituídos todos os cinco usos de `\quit N` por blocos SQL `DO ... RAIS
  e cinco `RAISE EXCEPTION`. A validação de código de saída ainda requer teste isolado não destrutivo no clone local.
 - O slot `payments_slot` foi observado ativo (`active_pid=1457`) na verificação anterior. A consulta de integridade confirmou que schema, tabela, publication, slot e roles permaneciam presentes.
 - O teste isolado não executou o teardown. Nenhum objeto Neon/Confluent foi removido ou alterado.
+
+
+## Atualização operacional — 15/11/2026
+
+O operador confirmou que removeu manualmente as roles auxiliares PostgreSQL `cdc` e `alerts_sink`. A role owner/administrativa vinculada ao projeto Neon (`payments_owner`) foi preservada: é gerenciada no ciclo de vida do projeto, não deve ser tratada como role descartável do laboratório. O projeto, branch, compute, endpoint e database `payments` permanecem preservados. Esta atualização registra a informação operacional fornecida pelo operador; não representa auditoria independente do estado atual do Neon. Não repetir o teardown Neon para remover essas roles.
