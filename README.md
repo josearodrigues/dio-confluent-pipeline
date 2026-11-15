@@ -253,26 +253,13 @@ O encerrador exige evidência aprovada recente e confirma o estado `STOPPED`; n�
 
 O Sink é uma etapa posterior e só deve ser criado depois de validar a saída Kafka e revisar o contrato Avro e os privilégios PostgreSQL.
 
-Antes da auditoria, confira a mensagem no tópico Kafka `fraud_alerts`. As credenciais e o endpoint do Schema Registry já foram salvos em `.state.env`:
+Antes da auditoria, inspecione a mensagem no tópico Kafka `fraud_alerts`:
 
 ```bash
-source .env
-source .state.env
-confluent kafka topic consume fraud_alerts \
-  --from-beginning \
-  --value-format avro \
-  --print-offset \
-  --schema-registry-endpoint "$SR_URL" \
-  --schema-registry-api-key "$SR_API_KEY" \
-  --schema-registry-api-secret "$SR_API_SECRET" \
-  --api-key "$READER_API_KEY" \
-  --api-secret "$READER_API_SECRET" \
-  --bootstrap "$BOOTSTRAP" \
-  --cluster "$CLUSTER_ID" \
-  --environment "$ENV_ID"
+bash operations/inspect-fraud-alerts.sh
 ```
 
-Interrompa o consumidor com `Ctrl+C` depois de observar a mensagem relevante. Registre tópico, partição, offset e conteúdo necessário para correlacionar a entrega.
+O script carrega `.env` e `.state.env`, seleciona Environment e cluster, valida o tópico e inicia o consumidor Avro desde o início. Interrompa com `Ctrl+C` depois de observar a mensagem relevante. A sessão é registrada em `evidence/homologation/`, incluindo tópico, partição, offset e conteúdo exibido. O script não cria nem altera recursos Cloud.
 
 Primeiro, faça a auditoria read-only da role e da tabela:
 
