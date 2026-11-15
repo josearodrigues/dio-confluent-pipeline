@@ -17,12 +17,12 @@ Uso:
   ./operations/verify-billing.sh <start-date> <end-date>
 
 Datas no formato UTC YYYY-MM-DD. start-date é inclusiva e end-date é exclusiva.
-Sem argumentos, consulta o período recente do laboratório (2026-11-12 até amanhã).
+Sem argumentos, consulta do primeiro dia do mês UTC corrente até amanhã (fim exclusivo).
 USAGE
 }
 
 if [[ "$#" -eq 0 ]]; then
-  START_DATE="2026-11-12"
+  START_DATE="$(date -u +%Y-%m-01)"
   END_DATE="$(date -u -d "tomorrow" +%F 2>/dev/null || date -u +%F)"
 elif [[ "$#" -eq 2 ]]; then
   START_DATE="$1"
