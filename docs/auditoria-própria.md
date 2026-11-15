@@ -166,3 +166,14 @@ bash -n teardown/cleanup.sh && echo "Sintaxe Bash OK"
 ```
 
 **Resultado reportado:** `Sintaxe Bash OK`. A validação confirma somente a sintaxe Bash do arquivo `teardown/cleanup.sh`. Não executa o script, não testa as chamadas à Confluent CLI, não comprova a remoção de recursos e não autoriza a limpeza. O teardown permanece não executado.
+
+
+## Revisão do teardown — 15/11/2026
+
+A decisão de encerramento foi atualizada após confirmação do usuário. O escopo Neon inclui remover as roles configuradas pelo laboratório (`PG_CDC_USER` e `PG_SINK_USER`, normalmente `cdc` e `alerts_sink`), além de publication, replication slot, schema e tabela de destino. Projeto, branch, compute, endpoint e banco permanecem preservados.
+
+A remoção das roles não utiliza `DROP OWNED CASCADE`. O SQL revoga os privilégios conhecidos concedidos pelo init e tenta `DROP ROLE`; dependências externas, ownerships ou grants adicionais fazem o PostgreSQL interromper a operação. Essa é uma proteção deliberada, não uma limpeza completa presumida.
+
+No lado Confluent, o Environment é removido como operação principal. Service Accounts e vínculo MetricsViewer são tratados somente quando os marcadores de estado indicam criação pelo projeto. API keys Flink de escopo regional e identidades preexistentes exigem revisão residual.
+
+**Estado desta atualização:** alterações estáticas preparadas no GitHub; nenhuma execução Bash, SQL, Confluent Cloud ou Neon foi realizada. A sintaxe e o comportamento dos scripts precisam ser validados localmente antes de qualquer execução destrutiva.
