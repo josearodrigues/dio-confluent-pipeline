@@ -135,9 +135,8 @@ Na revisão inicial, não foram alterados código, configurações ou recursos C
 
 ### Próximas prioridades
 
-1. Revisar com calma os limites restantes do teardown, especialmente o que só pode ser confirmado após consulta real aos recursos.
-2. Fazer validação local de sintaxe dos scripts alterados antes de qualquer uso operacional.
-3. Manter role do Sink, detecção de fraude e execução do Sink como pendências separadas; não ampliar o escopo automaticamente.
+1. Validar localmente a sintaxe da alteração do teardown antes de qualquer uso operacional.
+2. Manter role do Sink, detecção de fraude e execução do Sink como pendências separadas; não ampliar o escopo automaticamente.
 
 ### Limites desta atualização
 
