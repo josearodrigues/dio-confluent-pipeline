@@ -56,6 +56,25 @@ delete_owned_identities() {
   delete_owned_sa "$SA_METRICS_ID" "$SA_METRICS_CREATED" "metrics-reader"
   [[ "$SA_REMOVED" == "nenhuma" ]] || SA_REMOVED="${SA_REMOVED#nenhuma }"
 }
+has_owned_identity_state() {
+  [[ ( "$SA_WRITER_CREATED" == yes && -n "$SA_WRITER_ID" ) ||
+     ( "$SA_READER_CREATED" == yes && -n "$SA_READER_ID" ) ||
+     ( "$SA_METRICS_CREATED" == yes && -n "$SA_METRICS_ID" ) ||
+     ( "$METRICS_RBAC_CREATED" == yes && -n "$SA_METRICS_ID" ) ]]
+}
+confirm_and_delete_owned_identities() {
+  has_owned_identity_state || return 0
+  echo "Identidades marcadas como criadas pelo laboratório:"
+  [[ "$SA_WRITER_CREATED" == yes ]] && echo "  cdc-writer: $SA_WRITER_ID"
+  [[ "$SA_READER_CREATED" == yes ]] && echo "  app-reader: $SA_READER_ID"
+  [[ "$SA_METRICS_CREATED" == yes ]] && echo "  metrics-reader: $SA_METRICS_ID"
+  read -r -p "Digite exatamente 'IDENTITIES/$ENV_ID' para confirmar a remoção dessas identidades: " identity_answer
+  if [[ "$identity_answer" == "IDENTITIES/$ENV_ID" ]]; then
+    delete_owned_identities
+  else
+    echo "Identidades Confluent preservadas por falta de confirmação."
+  fi
+}
 
 echo "TEARDOWN CONFLUENT"
 if [[ -n "$ENV_ID" && -n "$CC_ENV_NAME" ]] && command -v confluent >/dev/null 2>&1; then
@@ -70,7 +89,7 @@ if [[ -n "$ENV_ID" && -n "$CC_ENV_NAME" ]] && command -v confluent >/dev/null 2>
       ENV_AFTER="0"
       # Environment pode ter sido removido em execução anterior; limpe apenas
       # identidades cujo estado local registra criação pelo laboratório.
-      delete_owned_identities || {
+      confirm_and_delete_owned_identities || {
         CONFLUENT_STATUS="falha ao remover identidades"
         CONFLUENT_DETAIL="Environment já ausente, mas houve falha ao remover uma identidade criada pelo laboratório."
       }
@@ -102,7 +121,7 @@ if [[ -n "$ENV_ID" && -n "$CC_ENV_NAME" ]] && command -v confluent >/dev/null 2>
           if [[ "$ENV_AFTER" == "0" ]]; then
             CONFLUENT_STATUS="Environment ausente na verificação posterior"
             CONFLUENT_DETAIL="A listagem confirmou que o Environment não existe mais."
-            delete_owned_identities || {
+            confirm_and_delete_owned_identities || {
               CONFLUENT_STATUS="Environment removido; falha ao remover identidades"
               CONFLUENT_DETAIL="Environment ausente, mas houve falha ao remover uma identidade criada pelo laboratório."
             }
