@@ -1,18 +1,23 @@
-# Evidências de observabilidade
+# Evidências de observabilidade e confiabilidade
 
-Este diretório reúne resultados reais de consultas read-only ao ambiente Confluent.
+Este diretório reúne resultados reais de consultas read-only ao ambiente Confluent e análises técnicas baseadas nas evidências versionadas.
+
+## Arquivos
 
 - `*-metrics.json/md`: resposta e resumo da Metrics API.
 - `*-acls.md`: auditoria de ACLs e vínculo RBAC MetricsViewer.
 - `*-billing.json/md`: custos retornados pela Costs API, filtrados pelo Environment do laboratório.
+- [`20261115-reliability-analysis.md`](20261115-reliability-analysis.md): análise consolidada de confiabilidade, resultados, limites e aprendizados do laboratório.
 
-## Coleta registrada
+## Coletas registradas
 
 - Métricas: dois pontos de `io.confluent.kafka.server/received_bytes` e consumer group observado como STABLE.
 - ACLs/RBAC: 17 permissões esperadas encontradas, sem ausências/divergências ou extras; um vínculo MetricsViewer.
 - Billing: seis itens associados ao Environment, total USD 2,7315 (aprox. USD 2,73) para o período diário retornado.
 
-Consulte os arquivos datados desta pasta e [Custos, métricas e segurança operacional](../../operations/cost-and-metrics.md).
+A análise de confiabilidade é um documento interpretativo, não uma saída bruta de execução. Ela distingue resultados observados, comportamentos comprovados e limites que permanecem sem validação.
+
+Consulte também [Custos, métricas e segurança operacional](../../operations/cost-and-metrics.md).
 
 ## Limites
 
