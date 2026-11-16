@@ -117,7 +117,7 @@ chmod 600 "$JSON_FILE"
 ROW_COUNT="$(jq 'length' "$TMP_ROWS")"
 TOTAL_RAW="$(jq '[.[] | .amount] | add // 0' "$TMP_ROWS")"
 # Exibe valores monetários com exatamente duas casas decimais.
-printf -v TOTAL '%.2f' "$TOTAL_RAW"
+TOTAL="$(LC_NUMERIC=C printf '%.2f' "$TOTAL_RAW")"
 
 {
   echo "# Verificação automatizada de Billing"
