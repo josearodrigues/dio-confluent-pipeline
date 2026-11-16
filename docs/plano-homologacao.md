@@ -584,7 +584,7 @@ Antes de criar o Sink, execute:
 bash operations/preflight-fraud-alerts-sink.sh
 ```
 
-O script carrega as configurações locais, seleciona Environment e cluster, valida o tópico `fraud_alerts` e consome Avro desde o início por 30 segundos (padrão), encerrando automaticamente sem intervenção; o período pode ser ajustado por `INSPECT_TIMEOUT_SECONDS`. A saída, com partição e offset, é registrada em `evidence/homologation/`. A inspeção é somente leitura e não cria nem altera recursos Cloud. A existência de mensagens antigas não comprova que o cenário positivo controlado gerou um alerta novo; a correlação continua obrigatória.
+O script carrega as configurações locais, seleciona Environment e cluster, valida o tópico `fraud_alerts` e captura somente a primeira mensagem Avro desde o início. Se nenhuma mensagem chegar, encerra após 5 segundos por padrão; o limite pode ser ajustado por `INSPECT_TIMEOUT_SECONDS`. Ao receber a primeira mensagem, fecha o consumidor automaticamente e suprime o aviso interativo de `Ctrl+C`. A saída, com partição e offset, é registrada em `evidence/homologation/`. A inspeção é somente leitura e não cria nem altera recursos Cloud. A existência de mensagens antigas não comprova que o cenário positivo controlado gerou um alerta novo; a correlação continua obrigatória.
 
 ### Contrato e pré-requisitos
 
