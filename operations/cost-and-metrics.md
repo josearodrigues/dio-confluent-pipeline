@@ -2,7 +2,6 @@
 
 ## Antes da execução
 - Conferir região, tipo do cluster Kafka e limite de CFUs do compute pool.
-- Confirmar créditos e saldo disponíveis no console da Confluent.
 - Evitar criar recursos duplicados e cargas sem objetivo de teste.
 
 ## Durante
@@ -70,49 +69,21 @@ O usuário sincronizou `main`, validou a sintaxe de `operations/verify-metrics.s
 Foram retornados dois pontos: 133.168 bytes às 05:00 UTC (≈130,05 KiB) e 1.250 bytes às 06:00 UTC (≈1,22 KiB), para o cluster `lkc-rrwvjjk`, com janela solicitada `PT6H/now` e granularidade `PT1H`. A consulta confirma a coleta de dados para os pontos retornados, mas não cobertura contínua das seis horas. A coleta automatizada de métricas está validada nesta execução; ACLs/RBAC foram aprovados. Billing também possui execução registrada em 15/11/2026, com evidência em `evidence/observability/20261115T004328Z-billing.md`; a observabilidade geral permanece parcial, pois a análise de confiabilidade é conceitual e não comprova o pipeline ponta a ponta.
 
 
-## Coleta automatizada de Billing — preparação
+## Coleta automatizada de Billing
 
-O verificador `operations/verify-billing.sh` consulta os custos agregados pela Confluent Costs API por meio da Confluent CLI (`confluent billing cost list --start-date ... --end-date ... -o json`). É uma consulta somente leitura e reutiliza a sessão já autenticada da CLI; não cria API keys, não altera permissões e não acessa dados de pagamento.
+O verificador `operations/verify-billing.sh` consulta a Costs API por meio da Confluent CLI (`confluent billing cost list`). A API retorna dados no escopo da organização; o script filtra os itens para manter exclusivamente aqueles associados ao `ENV_ID` do laboratório.
 
 Uso:
 
 ```bash
-bash operations/verify-billing.sh
+./operations/verify-billing.sh
 ./operations/verify-billing.sh 2026-11-01 2026-11-11
 ```
 
-Sem argumentos, consulta do primeiro dia do mês UTC corrente até amanhã (data final exclusiva). Como a Costs API pode apresentar atraso de até 72 horas, os dias mais recentes podem ainda não estar disponíveis; para consultar uma janela específica, informe as datas explicitamente. O intervalo explícito usa início inclusivo e fim exclusivo, no formato `YYYY-MM-DD`; a API aceita no máximo um mês por consulta. O papel necessário é `OrganizationAdmin` ou `BillingAdmin`.
+Sem argumentos, consulta do primeiro dia do mês UTC corrente até amanhã (data final exclusiva). Com argumentos, usa início inclusivo e fim exclusivo, no formato `YYYY-MM-DD`. O intervalo máximo é de um mês por consulta. A API pode levar até 72 horas para disponibilizar dados recentes.
 
-O script preserva a saída JSON original e cria resumo Markdown datado em `evidence/observability/`, ambos com permissão local 600. A normalização aceita valores monetários JSON numéricos, strings decimais e strings com prefixo `$<decimal>`, além de decimais sem prefixo e números JSON, validando o formato antes da conversão. A tabela trata `resource` e `environment` como objeto, string ou `null`: acessa `id` somente quando o valor é objeto e usa a string diretamente quando aplicável. Valores nulos/ausentes são exibidos vazios. `amount` é obrigatório; `original_amount` e `discount_amount` nulos/ausentes não são convertidos silenciosamente em zero. Se qualquer item não trouxer `discount_amount`, o resumo não consolida uma soma global incompleta. O JSON bruto da CLI é preservado antes da renderização da tabela.
+O resumo e o JSON versionável contêm somente os itens associados ao Environment configurado. Itens sem vínculo com esse Environment são descartados. A resposta organizacional integral não é gravada como evidência. A apresentação utiliza apenas `amount`, conforme retornado pela API para cada item filtrado.
 
-**Limitações:** a Costs API agrega os itens diariamente e pode levar até 72 horas para disponibilizar os dados. Portanto, não substitui o valor de encargos correntes do Console. O resultado não comprova o saldo restante de créditos promocionais nem substitui a Invoice Breakdown. Não interpretar ausência de itens como prova de custo zero fora do período consultado.
+A tabela e o total representam os custos dos itens associados ao Environment do laboratório, não o total da organização. Uma consulta sem itens significa apenas que nenhum item foi retornado para o Environment e período informados; não comprova custo zero fora dessa janela ou da disponibilidade dos dados.
 
-**Estado:** a primeira execução real consultou a Costs API para 2026-11-01 a 2026-11-11 e recebeu 12 itens, mas falhou ao renderizar a tabela; o JSON original foi preservado e o resumo Markdown não foi concluído. O parser foi corrigido e testado isoladamente com jq 1.7 em amostras sintéticas. Ainda depende de `bash -n` no clone local, nova execução pelo usuário e inspeção da evidência final. Nenhuma operação Cloud foi executada para aplicar a correção.
-
-
-### Primeira execução concluída do verificador (14/11/2026)
-
-O usuário executou `operations/verify-billing.sh` para 2026-11-01 (inclusivo) a 2026-11-11 (exclusivo). A CLI retornou 12 itens e o script gerou o resumo e o JSON bruto:
-
-- `evidence/observability/20261114T112054Z-billing.json`
-- `evidence/observability/20261114T112054Z-billing.md`
-
-O resumo reportou valor original total de USD `-0.00009999999999976694` e valor líquido total (`amount`) igual, sem consolidar descontos porque o campo estava nulo/ausente em 4 dos 12 itens. Foram listados custos de CONNECT, FLINK e KAFKA, além de lançamentos `PROMO_CREDIT`. O resultado é o agregado diário retornado pela Costs API para o período, não o saldo de créditos promocionais nem a Invoice Breakdown. Os ambientes retornados incluem `env-3kyr6j` e `env-9o15y0`; não presumir que correspondam a um único ambiente do desafio sem conferir o mapeamento.
-
-**Ressalva de execução:** o resumo foi gerado, mas o shell emitiu `discount_amount: comando não encontrado` ao construir uma linha de texto. A causa foi uso de backticks não escapados dentro de uma string Bash com aspas duplas. A falha afetou somente a frase explicativa no Markdown: a linha saiu com o nome do campo omitido. O script foi corrigido no commit `e65d9415bcfe67501515ce55186010be2302de9f`, escapando os backticks. A evidência gerada continua aproveitável para registrar os dados da consulta; a frase incompleta do Markdown deve ser corrigida localmente antes do commit, ou o resumo deve ser regenerado após sincronizar a correção. A correção do script ainda depende de `bash -n` no clone local. Nenhuma alteração Cloud foi realizada.
-
-
-## Invoice Breakdown do Console — 15/11/2026
-
-O usuário informou os seguintes valores exibidos no Console Confluent para o período de 1 a 30 de novembro de 2026:
-
-| Campo | Valor observado |
-|---|---:|
-| Uso | USD 63,00 |
-| Crédito promocional aplicado (`FREETRIAL400`) | -USD 63,00 |
-| Total accrued charges | USD 0,00 |
-| Créditos gratuitos restantes | USD 337 de USD 400 |
-
-**Interpretação:** no momento da consulta, o Console mostrava USD 63,00 de uso compensado integralmente pelo crédito promocional, sem encargo acumulado a pagar, e saldo restante de USD 337. Trata-se de um retrato do painel informado pelo usuário em 15/11/2026; valores acumulados podem mudar com o uso e a atualização do Console.
-
-Este registro é distinto da coleta da Costs API descrita acima: não é evidência gerada por `operations/verify-billing.sh`, não representa conciliação final da fatura e não substitui a Invoice Breakdown atualizada no Console. Nenhuma ação Cloud foi realizada para esta consulta.
+A consulta é somente leitura, reutiliza a sessão autenticada da Confluent CLI e requer papel `OrganizationAdmin` ou `BillingAdmin`. Não cria credenciais, não altera permissões e não modifica recursos Cloud.
