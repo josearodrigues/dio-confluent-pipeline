@@ -1,20 +1,20 @@
 # Evidências de teardown
 
-Esta pasta reúne os relatórios gerados pelas rotinas de teardown do laboratório.
+Esta pasta reúne os relatórios gerados pelas rotinas de encerramento.
 
-## Conteúdo
+## Execução registrada
 
-- Relatórios de execução do teardown, com data/hora no nome do arquivo.
-- Resumo do resultado por etapa, distinguindo solicitação, execução, verificação posterior, bloqueios e falhas.
-- Referências aos logs detalhados, quando aplicável.
+O relatório `20261116T022748Z-teardown-report.md` registra:
+
+- Environment Confluent ausente após a operação.
+- Service Account `metrics-reader` e vínculo MetricsViewer com remoção verificada.
+- Limpeza seletiva no Neon iniciada, com remoção de objetos do laboratório.
+- Falha ao remover a role PostgreSQL `cdc`, por falta de privilégio CREATEROLE/ADMIN sobre a role.
+
+**Conclusão:** teardown Confluent confirmado; limpeza Neon parcial. Não declarar teardown integral concluído. O projeto, branch, compute, endpoint e banco Neon foram preservados conforme o escopo do script.
 
 ## Como interpretar
 
-A presença de um relatório comprova apenas que a rotina registrou aquela execução. Consulte o conteúdo para identificar o que foi solicitado, o que foi efetivamente executado e o que foi confirmado por verificações posteriores. Uma etapa marcada como bloqueada ou com falha não deve ser considerada concluída.
+A presença de um relatório comprova apenas que a rotina registrou aquela execução. Diferencie solicitação, execução, verificação posterior, bloqueios e falhas. Uma etapa com falha não deve ser considerada concluída.
 
-Os relatórios não substituem a inspeção do estado atual dos recursos na Confluent Cloud ou no PostgreSQL/Neon. Não inclua credenciais, tokens, senhas ou valores de variáveis secretas nas evidências.
-
-## Convenção
-
-Os arquivos são mantidos com os nomes e timestamps produzidos pelos scripts. Não sobrescreva relatórios anteriores: cada execução deve preservar seu próprio registro.
-
+Os relatórios não substituem a inspeção do estado atual dos recursos. Não inclua credenciais, tokens, senhas ou valores de variáveis secretas. Preserve os arquivos originais e seus timestamps.
