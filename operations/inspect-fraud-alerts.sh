@@ -36,6 +36,7 @@ confluent kafka topic describe "$TOPIC" --environment "$ENV_ID" --cluster "$CLUS
 echo "==> Consumindo $TOPIC; pressione Ctrl+C após a inspeção."
 set +e
 confluent kafka topic consume "$TOPIC" \
+  --group "app-reader" \
   --from-beginning \
   --value-format avro \
   --print-offset \
