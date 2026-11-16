@@ -273,17 +273,11 @@ Antes da auditoria, inspecione a mensagem no tópico Kafka `fraud_alerts`:
 bash operations/inspect-fraud-alerts.sh
 ```
 
-O script carrega `.env` e `.state.env`, seleciona Environment e cluster, valida o tópico e inicia o consumidor Avro desde o início. Interrompa com `Ctrl+C` depois de observar a mensagem relevante. A sessão é registrada em `evidence/homologation/`, incluindo tópico, partição, offset e conteúdo exibido. O script não cria nem altera recursos Cloud.
+O script carrega `.env` e `.state.env`, seleciona Environment e cluster, valida o tópico e consome Avro desde o início por 30 segundos (padrão). O encerramento é automático, sem necessidade de `Ctrl+C`; ajuste o período com `INSPECT_TIMEOUT_SECONDS`. A sessão é registrada em `evidence/homologation/`, incluindo tópico, partição, offset e conteúdo exibido. A inspeção é somente leitura.
 
-Primeiro, faça a auditoria read-only da role e da tabela:
+A auditoria read-only da role e da tabela e o teste direto de autenticação da role `alerts_sink` já foram executados nesta instância. A role autenticou e possui `INSERT` e `UPDATE` em `public.fraud_alerts`. Não repita a auditoria entre a inspeção Kafka e a criação do Sink.
 
-```bash
-./scripts/run-sql.sh database/verify/alerts.sql
-```
-
-Confira especialmente os atributos e memberships da role `alerts_sink`. A inicialização atualiza sua senha, mas não normaliza privilégios elevados ou memberships preexistentes.
-
-Depois de aprovar o schema e os privilégios:
+Com o schema e as permissões previamente conferidos:
 
 ```bash
 ./infrastructure/connectors/sink/connector.sh
