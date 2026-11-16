@@ -275,7 +275,7 @@ bash operations/preflight-fraud-alerts-sink.sh
 
 O script carrega `.env` e `.state.env`, seleciona Environment e cluster, valida o tópico e inspeciona a primeira mensagem Avro desde o início. O relatório classifica o preflight como **APROVADO** quando a mensagem é recebida e contém `card_id`, `first_txn`, `last_txn` e `txn_count`; **REPROVADO** quando a mensagem não corresponde a esses campos; **INCONCLUSIVO** quando nenhuma mensagem chega dentro do limite; ou **FALHA** quando ocorre erro de leitura. Se nenhuma mensagem chegar, encerra após 7 segundos por padrão; ajuste o limite com `INSPECT_TIMEOUT_SECONDS`. A captura da primeira mensagem encerra o consumidor automaticamente, sem exibir o aviso interativo de `Ctrl+C`. A sessão é registrada em `evidence/homologation/`, incluindo tópico, partição, offset, conteúdo e resultado. A inspeção é somente leitura. A aprovação valida apenas a leitura/desserialização e a presença dos campos esperados; não comprova alerta novo nem persistência no PostgreSQL.
 
-A auditoria read-only da role e da tabela e o teste direto de autenticação da role `alerts_sink` já foram executados nesta instância. A role autenticou e possui `INSERT` e `UPDATE` em `public.fraud_alerts`. Não repita a auditoria entre a inspeção Kafka e a criação do Sink.
+A auditoria read-only da role e da tabela confirmou que `alerts_sink` não possui atributos elevados nem memberships; tem `CONNECT`, `USAGE` e `SELECT`/`INSERT`/`UPDATE` na tabela de destino, sem `CREATE` ou `DELETE`. O teste direto confirmou autenticação e privilégios efetivos de escrita. Consulte o resultado registrado no plano de homologação; não é necessário repetir a auditoria para esta entrega.
 
 Com o schema e as permissões previamente conferidos:
 
@@ -313,6 +313,12 @@ O conector usa UPSERT em `public.fraud_alerts`. Quando estiver `RUNNING`, valide
 - A janela de 60 segundos depende do processamento temporal e dos watermarks do Flink. A espera do cenário não garante emissão imediata em relógio de parede.
 - UPSERT pode tornar reentregas com a mesma chave idempotentes no destino, mas não garante exactly-once ponta a ponta.
 - Uma etapa só está homologada quando há evidência correlacionada do resultado esperado. A existência de código, a execução sem erro ou o estado `RUNNING` não bastam.
+
+## Resultado da entrega
+
+As evidências versionadas comprovam o snapshot CDC (2.760 eventos), CDC incremental (INSERT/UPDATE/DELETE), evolução do subject Avro real, auditoria de ACLs/RBAC, coleta de métricas e consulta de Billing. Os statements Flink foram parados; uma mensagem Avro foi lida do tópico `fraud_alerts`; o PostgreSQL Sink e sua task foram observados como RUNNING, e a consulta ao destino retornou registros.
+
+**Limites importantes:** os alertas são produzidos a partir de dados sintéticos. A evidência disponível não correlaciona inequivocamente todos os alertas aos INSERTs do cenário positivo, portanto não comprova fraude real nem homologação causal completa. O teardown Confluent foi confirmado, mas a limpeza Neon falhou ao remover a role `cdc`; não declarar teardown integral concluído. Detalhes e referências estão em [Homologação e aprendizados](docs/plano-homologacao.md).
 
 ## Documentação técnica
 
