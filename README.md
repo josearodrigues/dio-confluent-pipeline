@@ -273,7 +273,7 @@ Antes da auditoria, inspecione a mensagem no tópico Kafka `fraud_alerts`:
 bash operations/preflight-fraud-alerts-sink.sh
 ```
 
-O script carrega `.env` e `.state.env`, seleciona Environment e cluster, valida o tópico e consome Avro desde o início por 30 segundos (padrão). O encerramento é automático, sem necessidade de `Ctrl+C`; ajuste o período com `INSPECT_TIMEOUT_SECONDS`. A sessão é registrada em `evidence/homologation/`, incluindo tópico, partição, offset e conteúdo exibido. A inspeção é somente leitura.
+O script carrega `.env` e `.state.env`, seleciona Environment e cluster, valida o tópico e captura a primeira mensagem Avro desde o início. Se nenhuma mensagem chegar, encerra após 5 segundos por padrão; ajuste o limite com `INSPECT_TIMEOUT_SECONDS`. A captura da primeira mensagem encerra o consumidor automaticamente, sem exibir o aviso interativo de `Ctrl+C`. A sessão é registrada em `evidence/homologation/`, incluindo tópico, partição, offset e conteúdo exibido. A inspeção é somente leitura.
 
 A auditoria read-only da role e da tabela e o teste direto de autenticação da role `alerts_sink` já foram executados nesta instância. A role autenticou e possui `INSERT` e `UPDATE` em `public.fraud_alerts`. Não repita a auditoria entre a inspeção Kafka e a criação do Sink.
 
