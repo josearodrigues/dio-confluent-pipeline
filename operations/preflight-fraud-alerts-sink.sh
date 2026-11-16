@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Preflight do tópico fraud_alerts: consome mensagens Avro e registra a sessão.
+# Preflight do tópico fraud_alerts: valida a primeira mensagem Avro e registra a sessão.
 set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/../scripts/_common.sh"
 require confluent date tee timeout awk grep
@@ -34,12 +34,13 @@ confluent kafka topic describe "$TOPIC" --environment "$ENV_ID" --cluster "$CLUS
   echo "Environment: $ENV_ID"
   echo "Cluster: $CLUSTER_ID"
   echo "Tópico: $TOPIC"
-  echo "Modo: desde o início; captura da primeira mensagem Avro; timeout de ${INSPECT_TIMEOUT_SECONDS}s se nenhuma chegar."
+  echo "Modo: desde o início; validação da primeira mensagem Avro; timeout de ${INSPECT_TIMEOUT_SECONDS}s se nenhuma chegar."
+  echo "Campos obrigatórios: card_id, first_txn, last_txn, txn_count."
   echo "Credenciais não são registradas."
   echo
 } | tee "$LOG"
 
-echo "==> Verificando a primeira mensagem Avro de $TOPIC (limite: ${INSPECT_TIMEOUT_SECONDS}s)."
+echo "==> Validando a primeira mensagem Avro de $TOPIC (limite: ${INSPECT_TIMEOUT_SECONDS}s)."
 set +e
 timeout --signal=TERM "${INSPECT_TIMEOUT_SECONDS}s" \
   confluent kafka topic consume "$TOPIC" \
@@ -57,8 +58,11 @@ timeout --signal=TERM "${INSPECT_TIMEOUT_SECONDS}s" \
     --environment "$ENV_ID" 2>&1 |
   awk '
     /^Starting Kafka Consumer\./ { next }
-    /^Partition:/ { print; fflush(); found=1; exit }
-    { print; fflush() }
+    /^Partition:/ {
+      if (found) exit
+      found=1
+    }
+    found { print; fflush() }
     END { if (!found) exit 1 }
   ' | tee -a "$LOG"
 statuses=("${PIPESTATUS[@]}")
@@ -67,28 +71,45 @@ consumer_rc="${statuses[0]}"
 filter_rc="${statuses[1]}"
 tee_rc="${statuses[2]}"
 
+has_message=false
+missing_fields=()
+if grep -q '^Partition:' "$LOG"; then
+  has_message=true
+  for field in card_id first_txn last_txn txn_count; do
+    if ! grep -Eq "\"?${field}\"?[[:space:]]*:" "$LOG"; then
+      missing_fields+=("$field")
+    fi
+  done
+fi
+
 {
   echo
   echo "UTC fim: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
-  if grep -q '^Partition:' "$LOG"; then
-    echo "Resultado: primeira mensagem Avro recebida e decodificada."
-    echo "Encerramento: consumidor interrompido após a primeira mensagem."
+  if [[ "$has_message" == true && "${#missing_fields[@]}" -eq 0 ]]; then
+    echo "Resultado: APROVADO — primeira mensagem recebida e os quatro campos obrigatórios foram identificados."
+    echo "Encerramento: captura concluída após a primeira mensagem; timeout/SIGPIPE do consumidor é esperado."
+  elif [[ "$has_message" == true ]]; then
+    echo "Resultado: REPROVADO — mensagem recebida, mas faltam campos obrigatórios: ${missing_fields[*]}."
+    echo "Encerramento: captura da primeira mensagem concluída; conteúdo incompatível com o contrato esperado."
+  elif [[ "$consumer_rc" -eq 124 ]]; then
+    echo "Resultado: INCONCLUSIVO — nenhuma mensagem chegou dentro do limite de ${INSPECT_TIMEOUT_SECONDS}s."
+    echo "Encerramento: limite de tempo atingido."
   else
-    echo "Resultado: nenhuma mensagem Avro foi recebida dentro do limite."
+    echo "Resultado: FALHA — o consumidor não conseguiu concluir a leitura."
     echo "Códigos: consumidor/timeout=$consumer_rc; filtro=$filter_rc; tee=$tee_rc"
   fi
   echo "Evidência: ${LOG#"$ROOT_DIR"/}"
 } | tee -a "$LOG"
 
-if grep -q '^Partition:' "$LOG"; then
-  # 141 é SIGPIPE esperado: o consumidor é encerrado após a primeira mensagem.
+if [[ "$has_message" == true && "${#missing_fields[@]}" -eq 0 ]]; then
+  # 124 é o timeout normal quando só há uma mensagem; 141 é SIGPIPE após fechar o pipe.
   [[ "$consumer_rc" -eq 0 || "$consumer_rc" -eq 124 || "$consumer_rc" -eq 141 ]] || exit "$consumer_rc"
   [[ "$tee_rc" -eq 0 ]] || exit "$tee_rc"
   exit 0
 fi
 
-[[ "$consumer_rc" -eq 124 ]] && {
-  echo "ERRO: nenhuma mensagem foi recebida em ${INSPECT_TIMEOUT_SECONDS}s." >&2
+if [[ "$has_message" == true ]]; then
   exit 1
-}
+fi
+[[ "$consumer_rc" -eq 124 ]] && exit 2
 exit "${consumer_rc:-1}"
