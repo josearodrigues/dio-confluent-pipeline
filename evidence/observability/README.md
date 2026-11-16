@@ -1,14 +1,21 @@
-# Observabilidade
+# Evidências de observabilidade
 
-Este diretório reúne evidências geradas por verificações de observabilidade do laboratório Confluent.
+Este diretório reúne resultados reais de consultas read-only ao ambiente Confluent.
 
-- Arquivos `*-metrics.json`: resposta original da Confluent Metrics API.
-- Arquivos `*-metrics.md`: resumo legível da coleta.
-- Arquivos `*-acls.md`: resultado da conferência read-only de ACLs e do vínculo RBAC MetricsViewer.
-- Arquivos `*-billing.json`: resposta original da consulta de custos agregados pela Costs API.
-- Arquivos `*-billing.md`: resumo de custos, descontos e valores líquidos retornados pela API.
-- Evidências de confiabilidade devem ser adicionadas somente após suas respectivas consultas/validações.
+- `*-metrics.json/md`: resposta e resumo da Metrics API.
+- `*-acls.md`: auditoria de ACLs e vínculo RBAC MetricsViewer.
+- `*-billing.json/md`: custos retornados pela Costs API, filtrados pelo Environment do laboratório.
 
-As evidências devem corresponder a execuções reais, ser datadas e passar por revisão antes de serem versionadas. Não incluir API keys, secrets, connection strings ou outros dados sensíveis. Ausência de pontos em uma série não deve ser interpretada automaticamente como tráfego zero.
+## Coleta registrada
 
-Consulte também [Custos e métricas](../../operations/cost-and-metrics.md) e o [plano de homologação](../../docs/plano-homologacao.md).
+- Métricas: dois pontos de `io.confluent.kafka.server/received_bytes` e consumer group observado como STABLE.
+- ACLs/RBAC: 17 permissões esperadas encontradas, sem ausências/divergências ou extras; um vínculo MetricsViewer.
+- Billing: seis itens associados ao Environment, total USD 2,7315 (aprox. USD 2,73) para o período diário retornado.
+
+Consulte os arquivos datados desta pasta e [Custos, métricas e segurança operacional](../../operations/cost-and-metrics.md).
+
+## Limites
+
+A métrica representa bytes recebidos no cluster, não taxa em bytes/s nem origem individual do tráfego. Dois pontos não demonstram cobertura contínua. Billing representa somente o Environment filtrado e pode atrasar até 72 horas. A coleta não comprova confiabilidade ponta a ponta.
+
+Não incluir API keys, secrets, connection strings ou outros dados sensíveis. Não interpretar ausência de pontos como tráfego zero.
