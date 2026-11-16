@@ -83,7 +83,7 @@ jq -e '
   def money:
     if type == "number" then .
     elif type == "string" then
-      if test("^\\\\$-?[0-9]+([.][0-9]+)?$") then ltrimstr("$") | tonumber
+      if test("^\\$-?[0-9]+([.][0-9]+)?$") then ltrimstr("$") | tonumber
       elif test("^-?[0-9]+([.][0-9]+)?$") then tonumber
       else error("valor monetário em formato não reconhecido") end
     else error("valor monetário ausente ou com tipo inválido") end;
