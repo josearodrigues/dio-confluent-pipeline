@@ -1,0 +1,21 @@
+Confirmação recebida pelo wrapper; limpeza seletiva iniciada.
+ pg_drop_replication_slot 
+--------------------------
+ 
+(1 row)
+
+DROP PUBLICATION
+ALTER DEFAULT PRIVILEGES
+psql:database/cleanup/postgres-cleanup.sql:51: NOTICE:  drop cascades to 5 other objects
+DETAIL:  drop cascades to table payments.customers
+drop cascades to table payments.accounts
+drop cascades to table payments.cards
+drop cascades to table payments.merchants
+drop cascades to table payments.transactions
+DROP SCHEMA
+DROP TABLE
+REVOKE
+REVOKE
+REVOKE
+psql:database/cleanup/postgres-cleanup.sql:70: ERROR:  permission denied to drop role
+DETAIL:  Only roles with the CREATEROLE attribute and the ADMIN option on role "cdc" may drop this role.
