@@ -270,7 +270,7 @@ O Sink é uma etapa posterior e só deve ser criado depois de validar a saída K
 Antes da auditoria, inspecione a mensagem no tópico Kafka `fraud_alerts`:
 
 ```bash
-bash operations/inspect-fraud-alerts.sh
+bash operations/preflight-fraud-alerts-sink.sh
 ```
 
 O script carrega `.env` e `.state.env`, seleciona Environment e cluster, valida o tópico e consome Avro desde o início por 30 segundos (padrão). O encerramento é automático, sem necessidade de `Ctrl+C`; ajuste o período com `INSPECT_TIMEOUT_SECONDS`. A sessão é registrada em `evidence/homologation/`, incluindo tópico, partição, offset e conteúdo exibido. A inspeção é somente leitura.
