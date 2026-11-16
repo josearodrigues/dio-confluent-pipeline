@@ -14,7 +14,7 @@ require confluent date tee timeout awk grep
 : "${SR_API_SECRET:?SR_API_SECRET ausente}"
 
 TOPIC="fraud_alerts"
-INSPECT_TIMEOUT_SECONDS="${INSPECT_TIMEOUT_SECONDS:-5}"
+INSPECT_TIMEOUT_SECONDS="${INSPECT_TIMEOUT_SECONDS:-7}"
 [[ "$INSPECT_TIMEOUT_SECONDS" =~ ^[1-9][0-9]*$ ]] || {
   echo "ERRO: INSPECT_TIMEOUT_SECONDS deve ser um inteiro positivo." >&2
   exit 1
