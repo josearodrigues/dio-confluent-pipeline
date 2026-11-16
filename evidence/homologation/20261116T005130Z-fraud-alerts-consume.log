@@ -1,0 +1,15 @@
+Preflight do tópico Kafka
+UTC início: 2026-11-16T00:51:36Z
+Environment: env-zz29p0
+Cluster: lkc-o3v6ryp
+Tópico: fraud_alerts
+Modo: desde o início; validação da primeira mensagem Avro; timeout de 7s se nenhuma chegar.
+Campos obrigatórios: card_id, first_txn, last_txn, txn_count.
+Credenciais não são registradas.
+
+Partition:3 Offset:0	{"card_id":290,"first_txn":"2026-11-15T21:10:40.071Z","last_txn":"2026-11-15T21:10:40.071Z","txn_count":3}
+
+UTC fim: 2026-11-16T00:51:42Z
+Resultado: APROVADO — primeira mensagem recebida e os quatro campos obrigatórios foram identificados.
+Encerramento: captura concluída após a primeira mensagem; timeout/SIGPIPE do consumidor é esperado.
+Evidência: evidence/homologation/20261116T005130Z-fraud-alerts-consume.log

@@ -1,0 +1,192 @@
+Submetendo payments-pk-accounts
+No Flink endpoint is specified, defaulting to public endpoint: https://flink.us-east-2.aws.confluent.cloud
++---------------+--------------------------------+
+| Creation Date | 2026-11-15 21:09:45.303652     |
+|               | +0000 UTC                      |
+| Name          | payments-pk-accounts           |
+| Statement     | -- Declara a chave da          |
+|               | dimensão usada pelo            |
+|               | Temporal Join. ALTER TABLE     |
+|               | `payments.accounts` ADD        |
+|               | PRIMARY KEY (account_id) NOT   |
+|               | ENFORCED;                      |
+| Compute Pool  | lfcp-yowk0xk                   |
+| Status        | PENDING                        |
++---------------+--------------------------------+
+No Flink endpoint is specified, defaulting to public endpoint: https://flink.us-east-2.aws.confluent.cloud
+Submetendo payments-pk-transactions
+No Flink endpoint is specified, defaulting to public endpoint: https://flink.us-east-2.aws.confluent.cloud
++---------------+--------------------------------+
+| Creation Date | 2026-11-15 21:09:51.103155     |
+|               | +0000 UTC                      |
+| Name          | payments-pk-transactions       |
+| Statement     | -- Declara a chave da tabela   |
+|               | de transações, conforme a      |
+|               | preparação do mentor. ALTER    |
+|               | TABLE `payments.transactions`  |
+|               | ADD PRIMARY KEY                |
+|               | (transaction_id) NOT ENFORCED; |
+| Compute Pool  | lfcp-yowk0xk                   |
+| Status        | PENDING                        |
++---------------+--------------------------------+
+No Flink endpoint is specified, defaulting to public endpoint: https://flink.us-east-2.aws.confluent.cloud
+Submetendo payments-enrichment
+No Flink endpoint is specified, defaulting to public endpoint: https://flink.us-east-2.aws.confluent.cloud
++---------------+--------------------------------------------------------------+
+| Creation Date | 2026-11-15 21:09:57.184652                                   |
+|               | +0000 UTC                                                    |
+| Name          | payments-enrichment                                          |
+| Statement     | --                                                           |
+|               | ============================================================ |
+|               | -- Camada 4a — Enriquecimento com TEMPORAL JOIN --           |
+|               | transactions ⋈ accounts (versão da dimensão no instante      |
+|               | do evento) -- -- Adaptação da sequência demonstrada          |
+|               | pelo mentor: -- 1. materializa a tabela enriquecida por      |
+|               | Temporal Join; -- 2. em 02-append-only.sql, altera seu       |
+|               | changelog para append antes do --    MATCH_RECOGNIZE. --     |
+|               | -- Mantemos os nomes e o contrato do projeto (`payments.*`   |
+|               | e -- `enriched_payments`), sem copiar os identificadores     |
+|               | do ambiente do mentor. -- `$rowtime` da fonte CDC é          |
+|               | usado somente como instante do Temporal Join; -- não é       |
+|               | projetado explicitamente como coluna da tabela de saída. --  |
+|               | ============================================================ |
+|               | CREATE TABLE enriched_payments AS SELECT   t.transaction_id, |
+|               |   t.card_id,   t.amount,   a.account_id,   a.status AS       |
+|               | account_status FROM `payments.transactions` AS t JOIN        |
+|               | `payments.accounts` FOR SYSTEM_TIME AS OF t.`$rowtime` AS a  |
+|               |  ON t.account_id = a.account_id;                             |
+| Compute Pool  | lfcp-yowk0xk                                                 |
+| Status        | PENDING                                                      |
++---------------+--------------------------------------------------------------+
+No Flink endpoint is specified, defaulting to public endpoint: https://flink.us-east-2.aws.confluent.cloud
+No Flink endpoint is specified, defaulting to public endpoint: https://flink.us-east-2.aws.confluent.cloud
+Submetendo payments-append-only
+No Flink endpoint is specified, defaulting to public endpoint: https://flink.us-east-2.aws.confluent.cloud
++---------------+--------------------------------+
+| Creation Date | 2026-11-15 21:10:10.727486     |
+|               | +0000 UTC                      |
+| Name          | payments-append-only           |
+| Statement     | -- Habilita a representação    |
+|               | append-only exigida pelo       |
+|               | MATCH_RECOGNIZE. -- Esta       |
+|               | configuração altera o          |
+|               | changelog consumido pelo       |
+|               | operador seguinte. --          |
+|               | Não equivale a filtrar         |
+|               | universalmente operações       |
+|               | Debezium (c/r/u/d). -- A       |
+|               | forma como updates/retractions |
+|               | são representados deve ser     |
+|               | homologada no plano/runtime.   |
+|               | ALTER TABLE enriched_payments  |
+|               | SET ('changelog.mode' =        |
+|               | 'append');                     |
+| Compute Pool  | lfcp-yowk0xk                   |
+| Status        | PENDING                        |
++---------------+--------------------------------+
+No Flink endpoint is specified, defaulting to public endpoint: https://flink.us-east-2.aws.confluent.cloud
+Submetendo payments-fraud-detection
+No Flink endpoint is specified, defaulting to public endpoint: https://flink.us-east-2.aws.confluent.cloud
++---------------+--------------------------------+
+| Creation Date | 2026-11-15 21:10:16.750875     |
+|               | +0000 UTC                      |
+| Name          | payments-fraud-detection       |
+| Statement     | -- Três ou mais transações     |
+|               | positivas do mesmo cartão      |
+|               | em até 60s de rowtime Kafka.   |
+|               | -- O relógio é a chegada       |
+|               | ao Kafka ($rowtime), não       |
+|               | transactions.created_at.       |
+|               | CREATE TABLE fraud_alerts      |
+|               | AS SELECT * FROM               |
+|               | enriched_payments              |
+|               | MATCH_RECOGNIZE (              |
+|               | PARTITION BY card_id   ORDER   |
+|               | BY `$rowtime`   MEASURES       |
+|               |     FIRST(T.`$rowtime`)        |
+|               | AS first_txn,                  |
+|               | LAST(T.`$rowtime`)             |
+|               | AS last_txn,                   |
+|               | COUNT(T.transaction_id) AS     |
+|               | txn_count   ONE ROW PER MATCH  |
+|               |   AFTER MATCH SKIP PAST LAST   |
+|               | ROW   PATTERN (T{3,}?) WITHIN  |
+|               | INTERVAL '60' SECOND   DEFINE  |
+|               | T AS T.amount > 0 );           |
+| Compute Pool  | lfcp-yowk0xk                   |
+| Status        | PENDING                        |
++---------------+--------------------------------+
+No Flink endpoint is specified, defaulting to public endpoint: https://flink.us-east-2.aws.confluent.cloud
+No Flink endpoint is specified, defaulting to public endpoint: https://flink.us-east-2.aws.confluent.cloud
+
+No Flink endpoint is specified, defaulting to public endpoint: https://flink.us-east-2.aws.confluent.cloud
+          Creation Date          |           Name           |                          Statement                           | Compute Pool |  Status   |         Status Detail          | Latest Offsets |   Latest Offsets Timestamp     
+---------------------------------+--------------------------+--------------------------------------------------------------+--------------+-----------+--------------------------------+----------------+--------------------------------
+  2026-11-15 21:09:45.303652     | payments-pk-accounts     | -- Declara a chave da                                        | lfcp-yowk0xk | COMPLETED | Command completed              |                | 0001-01-01 00:00:00 +0000 UTC  
+  +0000 UTC                      |                          | dimensão usada pelo                                          |              |           | successfully.                  |                |                                
+                                 |                          | Temporal Join. ALTER TABLE                                   |              |           |                                |                |                                
+                                 |                          | `payments.accounts` ADD                                      |              |           |                                |                |                                
+                                 |                          | PRIMARY KEY (account_id) NOT                                 |              |           |                                |                |                                
+                                 |                          | ENFORCED;                                                    |              |           |                                |                |                                
+  2026-11-15 21:09:51.103155     | payments-pk-transactions | -- Declara a chave da tabela                                 | lfcp-yowk0xk | COMPLETED | Command completed              |                | 0001-01-01 00:00:00 +0000 UTC  
+  +0000 UTC                      |                          | de transações, conforme a                                    |              |           | successfully.                  |                |                                
+                                 |                          | preparação do mentor. ALTER                                  |              |           |                                |                |                                
+                                 |                          | TABLE `payments.transactions`                                |              |           |                                |                |                                
+                                 |                          | ADD PRIMARY KEY                                              |              |           |                                |                |                                
+                                 |                          | (transaction_id) NOT ENFORCED;                               |              |           |                                |                |                                
+  2026-11-15 21:09:57.184652     | payments-enrichment      | --                                                           | lfcp-yowk0xk | RUNNING   |                                |                | 0001-01-01 00:00:00 +0000 UTC  
+  +0000 UTC                      |                          | ============================================================ |              |           |                                |                |                                
+                                 |                          | -- Camada 4a — Enriquecimento com TEMPORAL JOIN --           |              |           |                                |                |                                
+                                 |                          | transactions ⋈ accounts (versão da dimensão no instante      |              |           |                                |                |                                
+                                 |                          | do evento) -- -- Adaptação da sequência demonstrada          |              |           |                                |                |                                
+                                 |                          | pelo mentor: -- 1. materializa a tabela enriquecida por      |              |           |                                |                |                                
+                                 |                          | Temporal Join; -- 2. em 02-append-only.sql, altera seu       |              |           |                                |                |                                
+                                 |                          | changelog para append antes do --    MATCH_RECOGNIZE. --     |              |           |                                |                |                                
+                                 |                          | -- Mantemos os nomes e o contrato do projeto (`payments.*`   |              |           |                                |                |                                
+                                 |                          | e -- `enriched_payments`), sem copiar os identificadores     |              |           |                                |                |                                
+                                 |                          | do ambiente do mentor. -- `$rowtime` da fonte CDC é          |              |           |                                |                |                                
+                                 |                          | usado somente como instante do Temporal Join; -- não é       |              |           |                                |                |                                
+                                 |                          | projetado explicitamente como coluna da tabela de saída. --  |              |           |                                |                |                                
+                                 |                          | ============================================================ |              |           |                                |                |                                
+                                 |                          | CREATE TABLE enriched_payments AS SELECT   t.transaction_id, |              |           |                                |                |                                
+                                 |                          |   t.card_id,   t.amount,   a.account_id,   a.status AS       |              |           |                                |                |                                
+                                 |                          | account_status FROM `payments.transactions` AS t JOIN        |              |           |                                |                |                                
+                                 |                          | `payments.accounts` FOR SYSTEM_TIME AS OF t.`$rowtime` AS a  |              |           |                                |                |                                
+                                 |                          |  ON t.account_id = a.account_id;                             |              |           |                                |                |                                
+  2026-11-15 21:10:10.727486     | payments-append-only     | -- Habilita a representação                                  | lfcp-yowk0xk | COMPLETED | Command completed              |                | 0001-01-01 00:00:00 +0000 UTC  
+  +0000 UTC                      |                          | append-only exigida pelo                                     |              |           | successfully.                  |                |                                
+                                 |                          | MATCH_RECOGNIZE. -- Esta                                     |              |           |                                |                |                                
+                                 |                          | configuração altera o                                        |              |           |                                |                |                                
+                                 |                          | changelog consumido pelo                                     |              |           |                                |                |                                
+                                 |                          | operador seguinte. --                                        |              |           |                                |                |                                
+                                 |                          | Não equivale a filtrar                                       |              |           |                                |                |                                
+                                 |                          | universalmente operações                                     |              |           |                                |                |                                
+                                 |                          | Debezium (c/r/u/d). -- A                                     |              |           |                                |                |                                
+                                 |                          | forma como updates/retractions                               |              |           |                                |                |                                
+                                 |                          | são representados deve ser                                   |              |           |                                |                |                                
+                                 |                          | homologada no plano/runtime.                                 |              |           |                                |                |                                
+                                 |                          | ALTER TABLE enriched_payments                                |              |           |                                |                |                                
+                                 |                          | SET ('changelog.mode' =                                      |              |           |                                |                |                                
+                                 |                          | 'append');                                                   |              |           |                                |                |                                
+  2026-11-15 21:10:16.750875     | payments-fraud-detection | -- Três ou mais transações                                   | lfcp-yowk0xk | RUNNING   |                                |                | 0001-01-01 00:00:00 +0000 UTC  
+  +0000 UTC                      |                          | positivas do mesmo cartão                                    |              |           |                                |                |                                
+                                 |                          | em até 60s de rowtime Kafka.                                 |              |           |                                |                |                                
+                                 |                          | -- O relógio é a chegada                                     |              |           |                                |                |                                
+                                 |                          | ao Kafka ($rowtime), não                                     |              |           |                                |                |                                
+                                 |                          | transactions.created_at.                                     |              |           |                                |                |                                
+                                 |                          | CREATE TABLE fraud_alerts                                    |              |           |                                |                |                                
+                                 |                          | AS SELECT * FROM                                             |              |           |                                |                |                                
+                                 |                          | enriched_payments                                            |              |           |                                |                |                                
+                                 |                          | MATCH_RECOGNIZE (                                            |              |           |                                |                |                                
+                                 |                          | PARTITION BY card_id   ORDER                                 |              |           |                                |                |                                
+                                 |                          | BY `$rowtime`   MEASURES                                     |              |           |                                |                |                                
+                                 |                          |     FIRST(T.`$rowtime`)                                      |              |           |                                |                |                                
+                                 |                          | AS first_txn,                                                |              |           |                                |                |                                
+                                 |                          | LAST(T.`$rowtime`)                                           |              |           |                                |                |                                
+                                 |                          | AS last_txn,                                                 |              |           |                                |                |                                
+                                 |                          | COUNT(T.transaction_id) AS                                   |              |           |                                |                |                                
+                                 |                          | txn_count   ONE ROW PER MATCH                                |              |           |                                |                |                                
+                                 |                          |   AFTER MATCH SKIP PAST LAST                                 |              |           |                                |                |                                
+                                 |                          | ROW   PATTERN (T{3,}?) WITHIN                                |              |           |                                |                |                                
+                                 |                          | INTERVAL '60' SECOND   DEFINE                                |              |           |                                |                |                                
+                                 |                          | T AS T.amount > 0 );                                         |              |           |                                |                |                                

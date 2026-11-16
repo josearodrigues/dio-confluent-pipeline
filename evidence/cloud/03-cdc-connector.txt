@@ -1,6 +1,6 @@
 Connector Details
 +--------+-----------------------+
-| ID     | lcc-v7wypn5           |
+| ID     | lcc-xqwkd2k           |
 | Name   | payments-postgres-cdc |
 | Status | RUNNING               |
 | Type   | source                |

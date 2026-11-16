@@ -1,5 +1,5 @@
-Schema Registry: lsrc-0x65336
-Endpoint: https://psrc-4m5d0x0.us-east-2.aws.confluent.cloud
+Schema Registry: lsrc-q2w609d
+Endpoint: https://psrc-0kywq.us-east-2.aws.confluent.cloud
 Subject: contract.transactions-value
 ==> [1/7] Registrando schema v1
 {

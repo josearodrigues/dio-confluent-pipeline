@@ -1,0 +1,43 @@
+Validação de alertas de fraude — 2026-11-15T21:20:52Z
+Environment: env-zz29p0
+Kafka cluster/database: lkc-o3v6ryp
+Compute pool: lfcp-yowk0xk
+Cartão esperado: 1
+txn_count mínimo: 3
+Janela UTC de event time: [2026-11-15 21:14:00.000, 2026-11-15 21:21:00.000]
+
+Consulta limitada à partição do cartão esperado:
+SELECT card_id, first_txn, last_txn, txn_count FROM fraud_alerts WHERE card_id = 1 ORDER BY first_txn DESC LIMIT 100;
+
+No Flink endpoint is specified, defaulting to public endpoint: https://flink.us-east-2.aws.confluent.cloud
+[
+  {
+    "card_id": 1,
+    "first_txn": "2026-11-15 21:12:26.256",
+    "last_txn": "2026-11-15 21:13:15.401",
+    "txn_count": "3"
+  },
+  {
+    "card_id": 1,
+    "first_txn": "2026-11-15 21:10:39.375",
+    "last_txn": "2026-11-15 21:10:41.515",
+    "txn_count": "3"
+  },
+  {
+    "card_id": 1,
+    "first_txn": "2026-11-15 21:10:39.375",
+    "last_txn": "2026-11-15 21:10:39.375",
+    "txn_count": "3"
+  },
+  {
+    "card_id": 1,
+    "first_txn": "2026-11-15 21:10:39.370",
+    "last_txn": "2026-11-15 21:10:39.374",
+    "txn_count": "3"
+  }
+]
+
+Resultado da correlação:
+Alertas consultados: 4
+Alertas correlacionados: 0
+VALIDAÇÃO REPROVADA: nenhum alerta corresponde ao cartão, quantidade e janela informados.

@@ -1,0 +1,137 @@
+Verificação Flink — 2026-11-15T21:11:33Z
+No Flink endpoint is specified, defaulting to public endpoint: https://flink.us-east-2.aws.confluent.cloud
+[
+  {
+    "transaction_id": "641",
+    "card_id": 1,
+    "amount": "651.00",
+    "account_id": 1,
+    "account_status": "active"
+  },
+  {
+    "transaction_id": "562",
+    "card_id": 242,
+    "amount": "572.00",
+    "account_id": 2,
+    "account_status": "active"
+  },
+  {
+    "transaction_id": "1922",
+    "card_id": 2,
+    "amount": "942.00",
+    "account_id": 2,
+    "account_status": "active"
+  },
+  {
+    "transaction_id": "1532",
+    "card_id": 252,
+    "amount": "552.00",
+    "account_id": 12,
+    "account_status": "active"
+  },
+  {
+    "transaction_id": "1852",
+    "card_id": 252,
+    "amount": "872.00",
+    "account_id": 12,
+    "account_status": "active"
+  },
+  {
+    "transaction_id": "1932",
+    "card_id": 12,
+    "amount": "952.00",
+    "account_id": 12,
+    "account_status": "active"
+  },
+  {
+    "transaction_id": "245",
+    "card_id": 245,
+    "amount": "255.00",
+    "account_id": 5,
+    "account_status": "active"
+  },
+  {
+    "transaction_id": "565",
+    "card_id": 245,
+    "amount": "575.00",
+    "account_id": 5,
+    "account_status": "active"
+  },
+  {
+    "transaction_id": "645",
+    "card_id": 5,
+    "amount": "655.00",
+    "account_id": 5,
+    "account_status": "active"
+  },
+  {
+    "transaction_id": "1285",
+    "card_id": 5,
+    "amount": "305.00",
+    "account_id": 5,
+    "account_status": "active"
+  }
+]
+No Flink endpoint is specified, defaulting to public endpoint: https://flink.us-east-2.aws.confluent.cloud
+[
+  {
+    "card_id": 1,
+    "first_txn": "2026-11-15 21:10:39.370",
+    "last_txn": "2026-11-15 21:10:39.374",
+    "txn_count": "3"
+  },
+  {
+    "card_id": 1,
+    "first_txn": "2026-11-15 21:10:39.375",
+    "last_txn": "2026-11-15 21:10:39.375",
+    "txn_count": "3"
+  },
+  {
+    "card_id": 241,
+    "first_txn": "2026-11-15 21:10:39.374",
+    "last_txn": "2026-11-15 21:10:39.374",
+    "txn_count": "3"
+  },
+  {
+    "card_id": 241,
+    "first_txn": "2026-11-15 21:10:39.375",
+    "last_txn": "2026-11-15 21:10:39.375",
+    "txn_count": "3"
+  },
+  {
+    "card_id": 2,
+    "first_txn": "2026-11-15 21:10:39.376",
+    "last_txn": "2026-11-15 21:10:39.377",
+    "txn_count": "3"
+  },
+  {
+    "card_id": 2,
+    "first_txn": "2026-11-15 21:10:39.377",
+    "last_txn": "2026-11-15 21:10:39.377",
+    "txn_count": "3"
+  },
+  {
+    "card_id": 242,
+    "first_txn": "2026-11-15 21:10:39.376",
+    "last_txn": "2026-11-15 21:10:39.377",
+    "txn_count": "3"
+  },
+  {
+    "card_id": 242,
+    "first_txn": "2026-11-15 21:10:39.377",
+    "last_txn": "2026-11-15 21:10:39.377",
+    "txn_count": "3"
+  },
+  {
+    "card_id": 252,
+    "first_txn": "2026-11-15 21:10:39.378",
+    "last_txn": "2026-11-15 21:10:39.378",
+    "txn_count": "3"
+  },
+  {
+    "card_id": 252,
+    "first_txn": "2026-11-15 21:10:39.379",
+    "last_txn": "2026-11-15 21:10:39.379",
+    "txn_count": "3"
+  }
+]

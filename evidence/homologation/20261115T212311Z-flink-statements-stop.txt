@@ -1,0 +1,29 @@
+Encerramento dos statements contínuos — 2026-11-15T21:23:11Z
+Environment: env-zz29p0
+Compute pool: lfcp-yowk0xk
+Evidência de validação aprovada: evidence/homologation/20261115T212130Z-fraud-alerts-validation.txt
+
+No Flink endpoint is specified, defaulting to public endpoint: https://flink.us-east-2.aws.confluent.cloud
+No Flink endpoint is specified, defaulting to public endpoint: https://flink.us-east-2.aws.confluent.cloud
+No Flink endpoint is specified, defaulting to public endpoint: https://flink.us-east-2.aws.confluent.cloud
+Enrichment: payments-enrichment — RUNNING
+Fraud detection: payments-fraud-detection — RUNNING
+Solicitando parada: payments-enrichment
+No Flink endpoint is specified, defaulting to public endpoint: https://flink.us-east-2.aws.confluent.cloud
+Requested to stop Flink SQL statement "payments-enrichment".
+No Flink endpoint is specified, defaulting to public endpoint: https://flink.us-east-2.aws.confluent.cloud
+No Flink endpoint is specified, defaulting to public endpoint: https://flink.us-east-2.aws.confluent.cloud
+Parada confirmada: payments-enrichment — STOPPED
+Solicitando parada: payments-fraud-detection
+No Flink endpoint is specified, defaulting to public endpoint: https://flink.us-east-2.aws.confluent.cloud
+Requested to stop Flink SQL statement "payments-fraud-detection".
+No Flink endpoint is specified, defaulting to public endpoint: https://flink.us-east-2.aws.confluent.cloud
+No Flink endpoint is specified, defaulting to public endpoint: https://flink.us-east-2.aws.confluent.cloud
+Parada confirmada: payments-fraud-detection — STOPPED
+
+Estado final confirmado:
+No Flink endpoint is specified, defaulting to public endpoint: https://flink.us-east-2.aws.confluent.cloud
+payments-enrichment: STOPPED
+No Flink endpoint is specified, defaulting to public endpoint: https://flink.us-east-2.aws.confluent.cloud
+payments-fraud-detection: STOPPED
+ENCERRAMENTO APROVADO

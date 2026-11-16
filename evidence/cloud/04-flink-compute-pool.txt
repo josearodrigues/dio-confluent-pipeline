@@ -1,0 +1,29 @@
+Environment: env-zz29p0
+Compute pool desejado: desafio-pool
+Cloud/região: aws/us-east-2
+Criando compute pool (max CFU: 5)...
++--------------+--------------+
+| Current      | false        |
+| ID           | lfcp-yowk0xk |
+| Name         | desafio-pool |
+| Cloud        | AWS          |
+| Environment  | env-zz29p0   |
+| Max CFU      | 5            |
+| Region       | us-east-2    |
+| Current CFU  | 0            |
+| Status       | PROVISIONING |
+| Default Pool | false        |
++--------------+--------------+
+Compute pool ID: lfcp-yowk0xk
+Status: PROVISIONED
+Detalhes confirmados:
+{
+  "id": "lfcp-yowk0xk",
+  "name": "desafio-pool",
+  "environment": "env-zz29p0",
+  "cloud": "AWS",
+  "region": "us-east-2",
+  "status": "PROVISIONED",
+  "max_cfu": 5
+}
+RESULTADO: compute pool disponível e FLINK_POOL_ID salvo em .state.env.

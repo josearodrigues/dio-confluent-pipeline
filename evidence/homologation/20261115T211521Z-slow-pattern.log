@@ -1,0 +1,2 @@
+psql:database/seed/slow-pattern.sql:5: ERROR:  null value in column "created_at" of relation "transactions" violates not-null constraint
+DETAIL:  Failing row contains (2006, 4, 4, 9, 25.00, BRL, approved, null, null).
