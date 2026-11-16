@@ -584,14 +584,14 @@ Antes da auditoria PostgreSQL, execute:
 bash operations/inspect-fraud-alerts.sh
 ```
 
-O script carrega as configurações locais, seleciona Environment e cluster, valida o tópico `fraud_alerts` e consome Avro desde o início. O operador encerra a inspeção com `Ctrl+C`; a saída, com partição e offset, é registrada em `evidence/homologation/`. A inspeção é somente leitura e não cria nem altera recursos Cloud. A existência de mensagens antigas não comprova que o cenário positivo controlado gerou um alerta novo; a correlação continua obrigatória.
+O script carrega as configurações locais, seleciona Environment e cluster, valida o tópico `fraud_alerts` e consome Avro desde o início. O script consome Avro desde o início por 30 segundos (padrão), encerrando automaticamente sem intervenção; o período pode ser ajustado por `INSPECT_TIMEOUT_SECONDS`. A saída, com partição e offset, é registrada em `evidence/homologation/`. A inspeção é somente leitura e não cria nem altera recursos Cloud. A existência de mensagens antigas não comprova que o cenário positivo controlado gerou um alerta novo; a correlação continua obrigatória.
 
 ### Contrato e pré-requisitos
 
 - A saída Flink definida em `flink/sql/04-fraud-detection.sql` contém `card_id`, `first_txn`, `last_txn` e `txn_count`.
 - **Contrato Avro e tabela — compatibilidade estrutural confirmada em 14/11/2026, conforme resultados apresentados pelo usuário:** `card_id` Avro `int` ↔ PostgreSQL `integer`; `first_txn` e `last_txn` Avro `long` com `logicalType=timestamp-millis` ↔ PostgreSQL `timestamp with time zone`; `txn_count` Avro `long` ↔ PostgreSQL `bigint`. Os quatro campos são obrigatórios no Avro e `NOT NULL` no Neon. O tópico `fraud_alerts` foi reportado com 6 partições e fator de replicação 3. A configuração do Sink usa a chave composta `(card_id, first_txn)`, correspondente à chave prevista no destino. Não repetir a comparação estrutural.
 - Confirmar que `public.fraud_alerts` existe com PK `(card_id, first_txn)` e colunas compatíveis. A inicialização recria essa tabela.
-- A auditoria read-only de `./scripts/run-sql.sh database/verify/alerts.sql` deve ser concluída pela revisão dos atributos da role `alerts_sink`, memberships, privilégios efetivos e ownership. **O resultado específico da consulta de memberships ainda não foi registrado**; não presumir zero linhas.
+- A auditoria read-only de `./scripts/run-sql.sh database/verify/alerts.sql` foi executada em 16/11/2026: a role `alerts_sink` não possui atributos elevados nem memberships; tem CONNECT, USAGE no schema e SELECT/INSERT/UPDATE na tabela, sem CREATE ou DELETE. O teste direto com a credencial da própria role confirmou autenticação e privilégios efetivos de INSERT e UPDATE. Não é necessário repetir essa auditoria entre a inspeção Kafka e a criação do Sink.
 - A role criada pela inicialização recebe CONNECT, USAGE em `public` e SELECT/INSERT/UPDATE na tabela. Se a role já existir, a senha é atualizada, mas atributos elevados e memberships preexistentes não são normalizados. Não presumir privilégio mínimo sem auditar o resultado.
 - A documentação Confluent lista como pré-requisitos gerais DDL CREATE/ALTER/DROP e DML SELECT/INSERT/UPDATE/DELETE. Como esta configuração desabilita `auto.create` e `auto.evolve`, a suficiência dos privilégios reduzidos concedidos pelo SQL não está comprovada; não ampliar permissões sem teste controlado e justificativa. Referência: https://docs.confluent.io/cloud/current/connectors/cc-postgresql-sink.html.
 - A Service Account `app-reader` recebe leitura no tópico `fraud_alerts` e autorização READ no grupo `connect-` por prefixo. A fundação aplica essa ACL de forma idempotente.
@@ -605,7 +605,7 @@ A configuração corresponde aos aliases existentes no SQL Flink público. Não 
 
 ### Execução e critérios de homologação
 
-Com a compatibilidade estrutural já confirmada, somente após registrar o resultado da auditoria de memberships, aprovar os privilégios efetivos e comprovar a autenticação/conectividade independente da role `alerts_sink`:
+Com a compatibilidade estrutural, a auditoria read-only e o teste direto da role `alerts_sink` já confirmados nesta instância, inspecione o tópico Kafka e siga diretamente para a criação do Sink:
 
 ```bash
 bash ./infrastructure/connectors/sink/connector.sh
