@@ -1,57 +1,53 @@
 # Requisitos e critérios de aceite
 
-Este documento define o escopo funcional e técnico do laboratório e os critérios para avaliar sua execução. Requisitos descrevem o que deve ser demonstrado; **não são evidência de implementação executada ou homologada**.
+Este documento define o escopo do laboratório e como avaliar sua execução. Requisito, configuração e estado operacional não equivalem automaticamente a homologação funcional.
 
 ## Requisitos funcionais
 
-| ID | Requisito | Artefatos relacionados |
+| ID | Requisito | Artefatos |
 |---|---|---|
-| RF-01 | Capturar eventos CDC das tabelas customers, accounts, cards e transactions. | `database/init/01-database.sql`, `infrastructure/connectors/cdc/connector.json` |
-| RF-02 | Publicar os eventos CDC nos tópicos Kafka correspondentes. | `infrastructure/connectors/cdc/connector.json` |
-| RF-03 | Declarar no Flink as chaves necessárias ao processamento. | `flink/sql/00-pk-accounts.sql` |
-| RF-04 | Enriquecer transações com a dimensão accounts por Temporal Join. | `flink/sql/01-enrichment.sql` |
-| RF-05 | Preparar a entrada append-only usada pelo reconhecimento de padrão. | `flink/sql/02-append-only.sql` |
-| RF-06 | Identificar três ou mais transações positivas do mesmo cartão em até 60 segundos de `$rowtime` Kafka. | `flink/sql/04-fraud-detection.sql` |
-| RF-07 | Publicar o resultado da detecção no tópico Kafka `fraud_alerts`. | `flink/sql/04-fraud-detection.sql` |
-| RF-08 | Permitir verificar etapas e preservar evidências da execução. | `operations/`, `evidence/` |
-| RF-09 | Persistir os alertas publicados pelo Flink em PostgreSQL por Sink com UPSERT. | `infrastructure/connectors/sink/`, `database/init/01-database.sql`, `database/verify/alerts.sql` |
+| RF-01 | Capturar eventos CDC de customers, accounts, cards e transactions. | `database/init/`, `infrastructure/connectors/cdc/` |
+| RF-02 | Publicar eventos nos tópicos Kafka correspondentes. | CDC Source V2 |
+| RF-03 | Declarar metadados de chave necessários ao Flink. | `flink/sql/00-*` |
+| RF-04 | Enriquecer transações com accounts por Temporal Join. | `flink/sql/01-enrichment.sql` |
+| RF-05 | Preparar a entrada append usada pela detecção. | `flink/sql/02-append-only.sql` |
+| RF-06 | Detectar três ou mais eventos positivos do mesmo cartão em até 60 segundos de `$rowtime`. | `flink/sql/04-fraud-detection.sql` |
+| RF-07 | Publicar alertas no tópico Kafka `fraud_alerts`. | Flink SQL |
+| RF-08 | Preservar evidências de execução e verificações operacionais. | `operations/`, `evidence/` |
+| RF-09 | Persistir alertas em PostgreSQL por Sink com UPSERT. | `infrastructure/connectors/sink/`, `database/` |
 
 ## Requisitos técnicos
 
-- PostgreSQL de origem com logical replication e conectividade de rede a partir do conector gerenciado.
+- PostgreSQL de origem compatível com logical replication e acessível pelo conector.
 - Confluent Cloud com Kafka, Connect, Schema Registry e Flink.
-- Confluent CLI autenticada e compatível com os comandos usados pelos scripts.
-- Ferramentas locais: Bash, `psql`, `jq` e `curl`.
-- Configurações e segredos mantidos fora do Git; arquivos locais devem respeitar as regras de `.gitignore`.
-- PostgreSQL de destino acessível ao Sink, com role `alerts_sink` e tabela pré-criada `public.fraud_alerts`.
-- Dados sintéticos determinísticos: 200 customers, 240 accounts, 320 cards e 2.000 transactions. A tabela merchants é auxiliar e não integra a publication CDC.
+- Confluent CLI autenticada e ferramentas Bash, `psql`, `jq` e `curl`.
+- Segredos e configurações locais fora do Git.
+- Dados sintéticos determinísticos: 200 customers, 240 accounts, 320 cards e 2.000 transactions.
+- PostgreSQL Sink com role dedicada e tabela de destino previamente criada.
 
-## Critérios de aceite
+## Critérios de aceite e estado registrado
 
-Os critérios abaixo devem ser avaliados com evidências do ambiente efetivamente executado.
-
-| ID | Critério | Evidência/observação necessária |
+| ID | Critério | Estado sustentado pela evidência |
 |---|---|---|
-| CA-01 | O conector CDC está em estado RUNNING. | Descrição do conector registrada em `evidence/cloud/03-cdc-connector.txt`. |
-| CA-02 | O snapshot das quatro tabelas foi concluído com as contagens esperadas: 200/240/320/2000. | Logs por tópico e `summary.txt` gerados por `operations/verify-cdc-snapshot.sh`. |
-| CA-03 | Os statements Flink foram submetidos e atingiram os estados esperados pelo fluxo. | `evidence/cloud/04-flink.txt`, conferindo COMPLETED/RUNNING conforme o plano. |
-| CA-04 | O Temporal Join produz registros enriquecidos com a dimensão accounts. | Consulta/observação de dados de saída que demonstre campos da transação e da conta; o estado RUNNING do statement não basta. |
-| CA-05 | As transações de teste são publicadas e processadas no fluxo. | Evidência do cenário positivo e observação dos eventos correspondentes no fluxo. |
-| CA-06 | Três ou mais transações positivas do mesmo cartão em até 60 segundos produzem alerta. | Mensagem observada no tópico `fraud_alerts`, com cartão, contagem e tempos suficientes para demonstrar o padrão. |
-| CA-07 | As evidências identificam data, ambiente e escopo realmente testado, sem expor segredos. | Arquivos em `evidence/` e registro do resultado/limitações. |
-| CA-08 | O contrato Avro aceita a evolução compatível e rejeita a evolução incompatível configuradas no exercício. | `evidence/cloud/02-schema-registry.txt`, distinguindo o subject isolado `contract.transactions-value` do subject CDC real. |
-| CA-09 | O Sink persiste um alerta conhecido no PostgreSQL e tolera reentrega com a mesma chave. | Schema Avro real compatível, conector/task operacionais, mensagem correlacionada no Kafka e linha em `public.fraud_alerts`; repetir a chave e confirmar UPSERT sem duplicação. |
+| CA-01 | Conector CDC operacional. | Estado RUNNING registrado em `evidence/cloud/03-cdc-connector.txt`. |
+| CA-02 | Snapshot das quatro tabelas (200/240/320/2.000). | Comprovado: 2.760 eventos `op=r`, resumo em `evidence/homologation/20261115T203833Z-34858-cdc-snapshot/summary.txt`. |
+| CA-03 | CDC incremental INSERT/UPDATE/DELETE. | Comprovado com `snapshot=false`, partição e offsets em `evidence/homologation/20261115T210658Z-cdc-incremental.txt`. |
+| CA-04 | Evolução compatível do subject Avro real. | Comprovada: versão 1→2, BACKWARD e evento no offset 2000 em `evidence/homologation/20261115T210745Z-real-schema-evolution.txt`. |
+| CA-05 | Statements Flink executados e encerrados. | Execução registrada; enrichment e detecção posteriormente confirmados STOPPED em `evidence/homologation/20261115T212311Z-flink-statements-stop.txt`. |
+| CA-06 | Enriquecimento funcional e detecção correlacionada ao cenário positivo. | Parcial. Alertas foram gerados, mas não há correlação inequívoca entre todos os alertas e os INSERTs de teste. |
+| CA-07 | Mensagem no tópico de alertas. | Mensagem Avro lida em partição 3, offset 0; não correlacionada ao cenário positivo específico. |
+| CA-08 | Sink e persistência. | Connector/task RUNNING e consulta ao destino com registros. Não há teste controlado de reentrega nem correlação de uma mensagem específica com uma linha. |
+| CA-09 | Segurança e observabilidade. | ACLs/RBAC aprovados; métricas e Billing coletados. Evidências em `evidence/observability/`. |
+| CA-10 | Teardown. | Confluent confirmado ausente. Limpeza Neon parcial: falha ao remover role `cdc`; teardown integral não comprovado. |
 
-## Critério complementar
+## Limitações de interpretação
 
-O cenário negativo de três transações espaçadas além de 60 segundos pode ser usado para avaliar o limite temporal. O resultado deve ser observado no tópico de saída com tempo suficiente para considerar o processamento e o watermark. Esse teste é complementar ao aceite mínimo e não deve ser declarado aprovado apenas porque o SQL de carga terminou.
+- `NOT ENFORCED` declara metadados de chave, mas não valida unicidade na origem.
+- `$rowtime` é o tempo de evento Kafka, não `created_at`.
+- Append não equivale a filtrar exclusivamente INSERTs; atualizações CDC podem contribuir como novas linhas.
+- A regra é demonstrativa e opera sobre dados sintéticos. Alertas não comprovam fraude real.
+- A homologação positiva exige correlacionar IDs/offsets dos eventos de entrada com o alerta. Cartão, contagem e janela temporal, isoladamente, podem aceitar alertas preexistentes.
+- O Sink RUNNING não comprova persistência nem exactly-once. UPSERT pode tornar reentregas com a mesma chave idempotentes, mas não oferece garantia ponta a ponta.
+- O teardown é independente por provedor. A falha de uma etapa impede declarar a limpeza integral concluída.
 
-A verificação de CDC incremental (`INSERT`, `UPDATE`, `DELETE`) e a evolução do schema real do CDC também são verificações complementares, documentadas no plano de homologação. A evolução do subject isolado de contrato Avro não substitui a evolução do subject produzido pelo conector CDC.
-
-## Limitações que afetam os critérios
-
-- `NOT ENFORCED` declara metadados de chave ao Flink, mas não verifica unicidade real na origem.
-- `$rowtime` representa o timestamp de evento Kafka utilizado pelo Flink, não o timestamp de negócio `created_at`.
-- Append não equivale a filtrar exclusivamente INSERTs: eventos CDC de criação, snapshot e atualização podem entrar como novas linhas; exclusões são ignoradas conforme o SQL versionado.
-- A regra é demonstrativa. Não implementa reconciliação completa de estado, deduplicação ou avaliação de risco de produção. O Sink está preparado para persistência, mas não foi executado nem homologado; a configuração não comprova entrega.
-- A presença de scripts, SQL e documentação no repositório não comprova execução cloud. Critérios sem evidência permanecem pendentes.
+Consulte [Homologação e aprendizados](plano-homologacao.md) e as evidências primárias em `evidence/`.
