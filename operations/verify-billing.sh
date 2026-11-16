@@ -65,7 +65,8 @@ JSON_FILE="$EVIDENCE_DIR/${STAMP}-billing.json"
 SUMMARY_FILE="$EVIDENCE_DIR/${STAMP}-billing.md"
 TMP_JSON="$(mktemp)"
 TMP_ROWS="$(mktemp)"
-trap 'rm -f "$TMP_JSON" "$TMP_ROWS"' EXIT
+FILTERED_ROWS="$(mktemp)"
+trap 'rm -f "$TMP_JSON" "$TMP_ROWS" "$FILTERED_ROWS"' EXIT
 
 echo "Consultando custos Confluent Cloud via CLI (somente leitura)..."
 if ! confluent billing cost list \
@@ -79,41 +80,27 @@ fi
 # A CLI normalmente retorna a coleção JSON; também aceitamos o envelope data
 # documentado pela Costs API, incluindo organizações no formato legado.
 jq -e '
-  # A CLI Confluent serializa valores monetários como strings com prefixo USD.
-  # Aceitamos também números JSON e strings decimais sem prefixo para compatibilidade.
   def money:
     if type == "number" then .
     elif type == "string" then
-      if test("^\\$-?[0-9]+([.][0-9]+)?$") then ltrimstr("$") | tonumber
+      if test("^\\\\$-?[0-9]+([.][0-9]+)?$") then ltrimstr("$") | tonumber
       elif test("^-?[0-9]+([.][0-9]+)?$") then tonumber
       else error("valor monetário em formato não reconhecido") end
     else error("valor monetário ausente ou com tipo inválido") end;
   (if type == "array" then .
    elif type == "object" and (.data | type) == "array" then .data
-   else error("formato JSON não reconhecido: esperada lista ou objeto com data[]")
-   end)
+   else error("formato JSON não reconhecido: esperada lista ou objeto com data[]") end)
   | if all(.[]; type == "object") then .
-    else error("a coleção contém item que não é objeto")
-    end
-  | map(
-      if has("amount") then .amount = (.amount | money)
-      else error("item sem amount") end
-      | if .original_amount == null then .
-        else .original_amount = (.original_amount | money) end
-      | if .discount_amount == null then .
-        else .discount_amount = (.discount_amount | money) end
-    )
+    else error("a coleção contém item que não é objeto") end
+  | map(if has("amount") then .amount = (.amount | money)
+        else error("item sem amount") end)
 ' "$TMP_JSON" >"$TMP_ROWS" || {
   echo "Resposta de Billing não passou na validação; JSON bruto preservado apenas temporariamente." >&2
   exit 1
 }
 
-mv "$TMP_JSON" "$JSON_FILE"
-chmod 600 "$JSON_FILE"
-
-# Filtra itens para o Environment atual do projeto (ou créditos aplicados ao projeto)
-FILTERED_ROWS="$(mktemp)"
-trap 'rm -f "$TMP_JSON" "$TMP_ROWS" "$FILTERED_ROWS"' EXIT
+# Filtra estritamente pelo Environment do projeto antes de persistir a evidência.
+# A resposta organizacional integral permanece apenas em arquivo temporário.
 jq --arg env "$ENV_ID" '
   def get_env:
     if (.environment | type) == "object" then .environment.id
@@ -121,51 +108,36 @@ jq --arg env "$ENV_ID" '
     elif (.resource | type) == "object" and (.resource.environment | type) == "object" then .resource.environment.id
     elif (.resource | type) == "object" and (.resource.environment | type) == "string" then .resource.environment
     else null end;
-  map(select(get_env == $env or (get_env == null and .line_type == "PROMO_CREDIT")))
-' "$TMP_ROWS" > "$FILTERED_ROWS"
+  map(select(get_env == $env))
+' "$TMP_ROWS" >"$FILTERED_ROWS"
 mv "$FILTERED_ROWS" "$TMP_ROWS"
+cp "$TMP_ROWS" "$JSON_FILE"
+chmod 600 "$JSON_FILE"
 
 ROW_COUNT="$(jq 'length' "$TMP_ROWS")"
-TOTALS="$(jq -r '
-  {
-    item_count: length,
-    original: ([.[] | (.original_amount // 0)] | add // 0),
-    discount: (if all(.[]; .discount_amount? != null)
-               then ([.[] | .discount_amount] | add // 0)
-               else null end),
-    discount_missing_count: ([.[] | select(.discount_amount? == null)] | length),
-    amount: ([.[] | .amount] | add // 0)
-  }
-' "$TMP_ROWS")"
+TOTAL="$(jq '[.[] | .amount] | add // 0' "$TMP_ROWS")"
 
 {
   echo "# Verificação automatizada de Billing"
   echo
   echo "- Coletado em (UTC): $STAMP"
+  echo "- Environment: $ENV_ID"
   echo "- Período consultado: $START_DATE (inclusivo) até $END_DATE (exclusivo)"
   echo "- Itens retornados: $ROW_COUNT"
   echo "- Origem: \`confluent billing cost list -o json\`"
-  echo "- Escopo: custos agregados diariamente pela Costs API."
   echo
-  echo "## Totais retornados pela API"
+  echo "## Custo do Environment do projeto"
   echo
   echo "| Campo | USD |"
   echo "|---|---:|"
-  jq -r '
-    "| Valor original | " + (.original | tostring) + " |",
-    (if .discount == null
-     then "| Descontos/créditos discriminados | Não consolidado: campo nulo/ausente em " + (.discount_missing_count | tostring) + " de " + (.item_count | tostring) + " itens |"
-     else "| Descontos/créditos discriminados | " + (.discount | tostring) + " |"
-     end),
-    "| Valor líquido (amount) | " + (.amount | tostring) + " |"
-  ' <<<"$TOTALS"
+  echo "| Custo total (amount) | $TOTAL |"
   echo
   echo "## Itens de custo"
   echo
-  echo "| Data inicial | Produto | Tipo | Ambiente | Recurso | Quantidade | Unidade | Valor original (USD) | Desconto (USD) | Líquido (USD) |"
-  echo "|---|---|---|---|---|---:|---|---:|---:|---:|"
+  echo "| Data inicial | Produto | Tipo | Ambiente | Recurso | Quantidade | Unidade | Custo (USD) |"
+  echo "|---|---|---|---|---|---:|---|---:|"
   jq -r '
-    def s: if . == null then "" else tostring | gsub("[|\\r\\n]"; " ") end;
+    def s: if . == null then "" else tostring | gsub("[|\\\\r\\\\n]"; " ") end;
     def get($value; $key):
       if ($value | type) == "object" then $value[$key] else null end;
     .[] |
@@ -185,39 +157,27 @@ TOTALS="$(jq -r '
                 // (if ($resource | type) == "string" then $resource else "" end)) | s) +
      " | " + (($item.quantity // "") | s) +
      " | " + (($item.unit // "") | s) +
-     " | " + (($item.original_amount // "") | s) +
-     " | " + (($item.discount_amount // "") | s) +
      " | " + (($item.amount // "") | s) + " |")
-
   ' "$TMP_ROWS"
   if [[ "$ROW_COUNT" -eq 0 ]]; then
     echo
-    echo "A consulta foi aceita, mas não retornou itens para o período. Isso não prova custo zero fora da janela/dos dados disponíveis."
+    echo "Nenhum item foi retornado para o Environment e período informados. Isso não comprova custo zero fora dessa janela ou dos dados disponíveis."
   fi
   echo
-  echo "## Alavancas de Redução de Custos (Pilar ③ Custos)"
+  echo "## Limitações"
   echo
-  echo "| Alavanca | Ação Técnica no Pipeline | Impacto Financeiro / Eficiência |"
-  echo "|---|---|---|"
-  echo "| **1. Computação Flink (Auto-stop / Suspensão)** | Parar statements contínuos (\`payments-fraud-detection\`, \`payments-enrichment\`) e remover o compute pool Flink quando inativo (\`confluent flink statement stop / delete\`). | Elimina a tarifação contínua de CFUs (~US\$ 0,30 por CFU/hora). Em vez de manter 2 CFUs provisionados 24/7 gerando encargos ociosos (~US\$ 432/mês), a computação ocorre sob demanda apenas durante as janelas de homologação. |"
-  echo "| **2. Retenção & Compactação no Kafka** | Configurar \`retention.ms\` curto (4h a 12h) nos tópicos intermediários e aplicar política de compactação (\`cleanup.policy=compact\`) nos tópicos dimensionais CDC (\`payments.accounts\`, \`payments.cards\`). | Reduz drasticamente o volume de armazenamento faturado em GB/mês no cluster Kafka Basic e minimiza a transferência de rede em rebalanceamentos de tarefas. |"
-  echo
-  echo "## Limitações e interpretação"
-  echo
-  echo "- A Costs API pode levar até 72 horas para disponibilizar os dados; os valores não representam necessariamente os encargos correntes do Console."
-  echo "- Sem argumentos, a consulta cobre do primeiro dia do mês UTC corrente até amanhã (fim exclusivo). A Costs API pode apresentar defasagem de até 72 horas; para períodos mais recentes, considere informar datas explícitas."
-  echo "- A API agrega os itens diariamente. O campo \`amount\` é o valor após os descontos discriminados pela API."
-  echo "- Quando \`discount_amount\` vier nulo/ausente em qualquer item, o resumo não apresenta uma soma global de descontos como se estivesse completa."
-  echo "- O resultado não informa o saldo restante de créditos promocionais nem substitui a tela de Invoice Breakdown."
-  echo "- A consulta exige papel OrganizationAdmin ou BillingAdmin. A autenticação é a sessão já configurada na Confluent CLI; o script não cria nem altera credenciais."
-  echo "- Nenhum recurso, permissão, método de pagamento ou configuração Cloud foi alterado."
+  echo "- A Costs API agrega os itens diariamente e pode levar até 72 horas para disponibilizar dados recentes."
+  echo "- O resultado contém exclusivamente itens associados ao Environment configurado; não representa o total da organização."
+  echo "- A consulta exige papel OrganizationAdmin ou BillingAdmin e reutiliza a sessão já autenticada na Confluent CLI."
+  echo "- Nenhum recurso ou configuração Cloud foi alterado."
   echo
   echo "## Arquivos"
   echo
-  echo "- JSON original: \`evidence/observability/$(basename "$JSON_FILE")\`"
+  echo "- JSON filtrado do Environment: \`evidence/observability/$(basename "$JSON_FILE")\`"
   echo "- Resumo: \`evidence/observability/$(basename "$SUMMARY_FILE")\`"
 } >"$SUMMARY_FILE"
 chmod 600 "$SUMMARY_FILE"
+
 
 cat "$SUMMARY_FILE"
 echo
