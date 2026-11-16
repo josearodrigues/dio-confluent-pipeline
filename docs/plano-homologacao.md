@@ -581,7 +581,7 @@ A execução também revelou uma falha de quoting na linha explicativa do Markdo
 Antes de criar o Sink, execute:
 
 ```bash
-bash operations/inspect-fraud-alerts.sh
+bash operations/preflight-fraud-alerts-sink.sh
 ```
 
 O script carrega as configurações locais, seleciona Environment e cluster, valida o tópico `fraud_alerts` e consome Avro desde o início por 30 segundos (padrão), encerrando automaticamente sem intervenção; o período pode ser ajustado por `INSPECT_TIMEOUT_SECONDS`. A saída, com partição e offset, é registrada em `evidence/homologation/`. A inspeção é somente leitura e não cria nem altera recursos Cloud. A existência de mensagens antigas não comprova que o cenário positivo controlado gerou um alerta novo; a correlação continua obrigatória.
